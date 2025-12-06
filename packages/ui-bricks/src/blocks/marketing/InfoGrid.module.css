@@ -23,7 +23,7 @@
 
 @media (min-width: 768px) {
     .grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(var(--grid-cols, 3), 1fr);
     }
 }
 
@@ -39,13 +39,9 @@
     padding: 2rem;
 }
 
-.cardLarge {
-    grid-column: span 1;
-}
-
 @media (min-width: 768px) {
-    .cardLarge {
-        grid-column: span 2;
+    .card {
+        grid-column: var(--col-span, span 1);
     }
 }
 

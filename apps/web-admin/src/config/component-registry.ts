@@ -15,8 +15,35 @@ export const COMPONENT_DEFINITIONS = {
       { name: "primaryCtaLink", type: "text", label: "Primary Link" },
     ]
   },
+  InfoGrid: {
+    label: "Info Grid",
+    defaultProps: { 
+      title: "Info Grid", 
+      columns: 3, 
+      items: [
+        { title: "Feature 1", description: "Description here", colSpan: 1 },
+        { title: "Feature 2", description: "Description here", colSpan: 1 },
+        { title: "Feature 3", description: "Description here", colSpan: 1 },
+      ] 
+    },
+    fields: [
+      { name: "title", type: "text", label: "Section Title" },
+      { name: "columns", type: "number", label: "Columns" },
+      { 
+        name: "items", 
+        type: "array", 
+        label: "Grid Items",
+        itemSchema: [
+          { name: "title", type: "text", label: "Title" },
+          { name: "description", type: "text", label: "Description" },
+          { name: "image", type: "image", label: "Image" },
+          { name: "colSpan", type: "number", label: "Column Span" }
+        ]
+      }
+    ]
+  },
   BenefitsGrid: {
-    label: "Benefits Grid",
+    label: "Benefits Grid (Legacy)",
     defaultProps: { title: "Why Us?" },
     fields: [
       { name: "title", type: "text", label: "Section Title" },

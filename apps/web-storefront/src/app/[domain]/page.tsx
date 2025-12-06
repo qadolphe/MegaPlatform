@@ -1,5 +1,5 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid, BenefitsGrid, Header, Footer } from "@repo/ui-bricks";
+import { Hero, ProductGrid, InfoGrid, Header, Footer } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
 
 // 1. The Registry: Map database strings to real Code
@@ -7,7 +7,8 @@ import { notFound } from "next/navigation";
 const COMPONENT_REGISTRY: Record<string, any> = {
   'Hero': Hero,
   'ProductGrid': ProductGrid,
-  'BenefitsGrid': BenefitsGrid,
+  'BenefitsGrid': InfoGrid,
+  'InfoGrid': InfoGrid,
 };
 
 // Helper to parse the domain
