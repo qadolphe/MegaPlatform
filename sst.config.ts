@@ -17,9 +17,9 @@ export default $config({
       path: "apps/web-storefront",
     });
 
-    return {
-      adminUrl: admin.url,
-      storefrontUrl: storefront.url,
-    };
+    // return {
+    //   adminUrl: admin.url,
+    //   storefrontUrl: storefront.url,
+    // };
   },
 });
