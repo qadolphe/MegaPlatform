@@ -26,14 +26,16 @@ export const Hero = ({
     return (
         <section className={styles.hero}>
             <div className={styles.heroBackground}>
-                <Image
-                    src={backgroundImage}
-                    alt="Hero Background"
-                    fill
-                    className={styles.heroImage}
-                    quality={90}
-                    priority
-                />
+                {backgroundImage && (
+                    <Image
+                        src={backgroundImage}
+                        alt="Hero Background"
+                        fill
+                        className={styles.heroImage}
+                        quality={90}
+                        priority
+                    />
+                )}
                 <div className={styles.heroOverlay} />
             </div>
             

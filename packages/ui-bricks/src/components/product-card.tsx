@@ -14,7 +14,7 @@ interface ProductCardProps {
     overrideLink?: string
 }
 
-export default function ProductCard({
+export const ProductCard = ({
     product,
     isActive = false,
     innerRef,
@@ -23,7 +23,7 @@ export default function ProductCard({
     overrideDescription,
     overrideButtonText,
     overrideLink
-}: ProductCardProps) {
+}: ProductCardProps) => {
     const config = product.ui || {}
 
     const displayTitle = overrideTitle || product.name

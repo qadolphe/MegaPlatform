@@ -16,7 +16,7 @@ interface BenefitsGridProps {
     benefits?: Benefit[]
 }
 
-export default function BenefitsGrid({
+export const BenefitsGrid = ({
     title = "Why Satin?",
     benefits = [
         {
@@ -39,7 +39,7 @@ export default function BenefitsGrid({
             alt: "Premium Feel"
         }
     ]
-}: BenefitsGridProps) {
+}: BenefitsGridProps) => {
     return (
         <section className={styles.section}>
             <h2 className={styles.title}>{title}</h2>
@@ -50,12 +50,14 @@ export default function BenefitsGrid({
                         className={`${styles.card} ${benefit.large ? styles.cardLarge : ''}`}
                     >
                         <div className={styles.imageWrapper}>
-                            <Image
-                                src={benefit.image}
-                                alt={benefit.alt}
-                                fill
-                                className={styles.image}
-                            />
+                            {benefit.image && (
+                                <Image
+                                    src={benefit.image}
+                                    alt={benefit.alt}
+                                    fill
+                                    className={styles.image}
+                                />
+                            )}
                             <div className={styles.overlay} />
                         </div>
                         <div className={styles.content}>

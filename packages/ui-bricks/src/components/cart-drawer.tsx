@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AnimatedCounter from './ui/animated-counter';
 
-export default function CartDrawer() {
+export const CartDrawer = () => {
     const { isOpen, closeCart, items, removeItem, updateQuantity, totalPrice } = useCart();
     const [isLoading, setIsLoading] = useState(false);
     const pathname = usePathname();

@@ -1,5 +1,5 @@
 "use client";
-import ProductCard from "../../components/product-card";
+import { ProductCard } from "../../components/product-card";
 import styles from "./ProductGrid.module.css";
 
 export const ProductGrid = ({ title, products = [] }: { title: string, products: any[] }) => {
