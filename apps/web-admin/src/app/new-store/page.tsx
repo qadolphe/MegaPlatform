@@ -2,9 +2,12 @@
 import { useState } from "react";
 import { supabase } from "@repo/database";
 
+import { useRouter } from "next/navigation";
+
 export default function CreateStore() {
   const [name, setName] = useState("");
   const [subdomain, setSubdomain] = useState("");
+  const router = useRouter();
 
   const handleCreate = async () => {
     // 1. Get the current user
@@ -21,7 +24,7 @@ export default function CreateStore() {
 
     if (error) return alert(error.message);
 
-    // 2. Create the default "Home" page with a default Hero
+    // 3. Create the default "Home" page with a default Hero
     const defaultLayout = [
       {
         type: "Hero",
@@ -37,6 +40,7 @@ export default function CreateStore() {
     });
 
     alert("Store created!");
+    router.push("/"); // Redirect to dashboard
   };
 
   return (

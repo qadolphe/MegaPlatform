@@ -14,8 +14,9 @@ const getSubdomain = (host: string) => {
   // 1. Localhost Support (e.g. "bob.localhost:3000")
   if (host.includes("localhost")) {
     const parts = host.split(".");
-    // if parts = ["bob", "localhost:3000"], subdomain is "bob"
-    return parts.length > 1 ? parts[0] : null; 
+    // If just "localhost:3000", there is no subdomain -> return null
+    if (parts.length === 1 || parts[0] === "localhost") return null;
+    return parts[0]; 
   }
   
   // 2. Production Support (e.g. "bob.hoodieplatform.com")
