@@ -98,7 +98,7 @@ export default function Dashboard() {
                   Edit
                 </Link>
                 <a
-                  href={`http://${store.subdomain}.localhost:3001`}
+                  href={`http://${store.subdomain}.localhost:3000`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50 text-sm font-medium transition-colors"

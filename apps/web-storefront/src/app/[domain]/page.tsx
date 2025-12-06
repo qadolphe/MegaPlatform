@@ -1,5 +1,5 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid } from "@repo/ui-bricks";
+import { Hero, ProductGrid, BenefitsGrid, Header, Footer } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
 
 // 1. The Registry: Map database strings to real Code
@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 const COMPONENT_REGISTRY: Record<string, any> = {
   'Hero': Hero,
   'ProductGrid': ProductGrid,
+  'BenefitsGrid': BenefitsGrid,
 };
 
 // Helper to parse the domain
@@ -26,6 +27,31 @@ const getSubdomain = (host: string) => {
   
   // 3. Custom Domain (e.g. "bob-hoodies.com")
   return null; // It's a custom domain, return null to signal "use full host"
+};
+
+// Helper to replace missing local images with placeholders
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sanitizeProps = (props: any): any => {
+  if (!props) return props;
+  if (typeof props === 'string' && (props.startsWith('/images/') || props.startsWith('/'))) {
+    // Check if it looks like an image path
+    if (props.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+       // Return a placeholder image from Unsplash
+       return 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80';
+    }
+  }
+  if (Array.isArray(props)) {
+    return props.map(sanitizeProps);
+  }
+  if (typeof props === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newProps: any = {};
+    for (const key in props) {
+      newProps[key] = sanitizeProps(props[key]);
+    }
+    return newProps;
+  }
+  return props;
 };
 
 export default async function DomainPage({
@@ -62,7 +88,7 @@ export default async function DomainPage({
       {layout.map((block: any, index: number) => {
         const Component = COMPONENT_REGISTRY[block.type];
         if (!Component) return null;
-        return <Component key={index} {...block.props} />;
+        return <Component key={index} {...sanitizeProps(block.props)} />;
       })}
     </main>
   );
