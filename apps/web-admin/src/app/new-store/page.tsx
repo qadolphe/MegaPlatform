@@ -7,10 +7,15 @@ export default function CreateStore() {
   const [subdomain, setSubdomain] = useState("");
 
   const handleCreate = async () => {
-    // 1. Create the Store
+    // 1. Get the current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return alert("You must be logged in!");
+
+    // 2. Create the Store
     const { data: store, error } = await supabase
       .from("stores")
-      .insert({ name, subdomain, owner_id: "USER_ID_HERE" }) // Use real auth later
+      .insert({ name, subdomain, owner_id: user.id })
       .select()
       .single();
 

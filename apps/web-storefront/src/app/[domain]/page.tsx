@@ -1,12 +1,30 @@
 import { supabase } from "@repo/database";
-import { Hero } from "@repo/ui-bricks";
+import { Hero, ProductGrid } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
 
 // 1. The Registry: Map database strings to real Code
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const COMPONENT_REGISTRY: Record<string, any> = {
   'Hero': Hero,
-  // 'ProductGrid': ProductGrid, // Add this later
+  'ProductGrid': ProductGrid,
+};
+
+// Helper to parse the domain
+const getSubdomain = (host: string) => {
+  // 1. Localhost Support (e.g. "bob.localhost:3000")
+  if (host.includes("localhost")) {
+    const parts = host.split(".");
+    // if parts = ["bob", "localhost:3000"], subdomain is "bob"
+    return parts.length > 1 ? parts[0] : null; 
+  }
+  
+  // 2. Production Support (e.g. "bob.hoodieplatform.com")
+  if (host.includes("hoodieplatform.com")) {
+    return host.split(".")[0];
+  }
+  
+  // 3. Custom Domain (e.g. "bob-hoodies.com")
+  return null; // It's a custom domain, return null to signal "use full host"
 };
 
 export default async function DomainPage({
@@ -14,19 +32,17 @@ export default async function DomainPage({
 }: {
   params: Promise<{ domain: string }>;
 }) {
-  const { domain } = await params;
+  // DECODE the domain (Next.js passes it URL-encoded)
+  const { domain: rawDomain } = await params;
+  const host = decodeURIComponent(rawDomain);
+  const subdomain = getSubdomain(host);
 
-  // 2. Resolve the domain to a Store ID
-  // Logic: Check if it's a subdomain (bob.platform.com) or custom domain (bob.com)
-  const isSubdomain = domain.includes("hoodieplatform.com"); // Change to your real domain
-  
   const query = supabase.from("stores").select("id, name, store_pages(layout_config)");
   
-  if (isSubdomain) {
-    const subdomain = domain.split('.')[0]; 
+  if (subdomain) {
     query.eq('subdomain', subdomain);
   } else {
-    query.eq('custom_domain', domain);
+    query.eq('custom_domain', host);
   }
 
   const { data: store, error } = await query.single();
