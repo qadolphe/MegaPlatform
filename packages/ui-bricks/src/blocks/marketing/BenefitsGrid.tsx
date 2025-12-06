@@ -1,7 +1,7 @@
 "use client";
 
 import Image from 'next/image';
-import styles from './benefits-grid.module.css';
+import styles from './BenefitsGrid.module.css';
 
 interface Benefit {
     title: string

@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X, ShoppingBag, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import styles from './cart-drawer.module.css';
+import styles from './CartDrawer.module.css';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AnimatedCounter from './ui/animated-counter';

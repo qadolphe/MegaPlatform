@@ -1,4 +1,4 @@
-import styles from './skeleton-card.module.css';
+import styles from './SkeletonCard.module.css';
 
 export const SkeletonCard = () => {
     return (

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Check } from 'lucide-react'
-import styles from './product-card.module.css'
+import styles from './ProductCard.module.css'
 
 interface ProductCardProps {
     product: any
