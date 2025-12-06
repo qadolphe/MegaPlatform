@@ -1,5 +1,33 @@
 // Define what props are available for editing for each component
 export const COMPONENT_DEFINITIONS = {
+  Header: {
+    label: "Header",
+    defaultProps: {
+      logoText: "My Store",
+      links: [
+        { label: "Home", href: "/" },
+        { label: "Shop", href: "/products" },
+        { label: "About", href: "/about" }
+      ]
+    },
+    fields: [
+      { name: "logoText", type: "text", label: "Logo Text" },
+      { 
+        name: "links", 
+        type: "array", 
+        label: "Navigation Links",
+        itemSchema: [
+          { name: "label", type: "text", label: "Label" },
+          { name: "href", type: "page-link", label: "Link" }
+        ]
+      }
+    ]
+  },
+  Footer: {
+    label: "Footer",
+    defaultProps: {},
+    fields: []
+  },
   Hero: {
     label: "Hero Section",
     defaultProps: { 
@@ -11,8 +39,10 @@ export const COMPONENT_DEFINITIONS = {
       { name: "title", type: "text", label: "Headline" },
       { name: "subtitle", type: "text", label: "Subheadline" },
       { name: "backgroundImage", type: "image", label: "Background Image" },
-      { name: "primaryCtaText", type: "text", label: "Primary Button" },
-      { name: "primaryCtaLink", type: "text", label: "Primary Link" },
+      { name: "primaryCtaText", type: "text", label: "Primary Button Label" },
+      { name: "primaryCtaLink", type: "page-link", label: "Primary Button Link" },
+      { name: "secondaryCtaText", type: "text", label: "Secondary Button Label" },
+      { name: "secondaryCtaLink", type: "page-link", label: "Secondary Button Link" },
     ]
   },
   InfoGrid: {

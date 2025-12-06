@@ -37,11 +37,24 @@ export default function CreateStore() {
 
     // 3. Create the default "Home" page with a default Hero
     const defaultLayout = [
+      { 
+        id: crypto.randomUUID(),
+        type: "Header", 
+        props: { 
+          title: name, 
+          links: [
+            { label: "Home", href: "/" }, 
+            { label: "Shop", href: "/shop" }
+          ] 
+        } 
+      },
       {
+        id: crypto.randomUUID(),
         type: "Hero",
         props: { title: `Welcome to ${name}!` }
       },
       {
+        id: crypto.randomUUID(),
         type: "ProductGrid",
         props: { 
           title: "Featured Products",
@@ -51,6 +64,11 @@ export default function CreateStore() {
             { id: 3, title: "Graphic Tee", price: 2999 }
           ]
         }
+      },
+      { 
+        id: crypto.randomUUID(),
+        type: "Footer", 
+        props: { copyright: `© ${new Date().getFullYear()} ${name}` } 
       }
     ];
 
@@ -58,7 +76,8 @@ export default function CreateStore() {
       store_id: store.id,
       slug: "home",
       layout_config: defaultLayout,
-      published: true
+      published: true,
+      is_home: true
     });
 
     setLoading(false);

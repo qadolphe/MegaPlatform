@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 // 1. The Registry: Map database strings to real Code
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const COMPONENT_REGISTRY: Record<string, any> = {
+  'Header': Header,
+  'Footer': Footer,
   'Hero': Hero,
   'ProductGrid': ProductGrid,
   'BenefitsGrid': InfoGrid,
@@ -65,7 +67,7 @@ export default async function DomainPage({
   const host = decodeURIComponent(rawDomain);
   const subdomain = getSubdomain(host);
 
-  const query = supabase.from("stores").select("id, name, store_pages(layout_config)");
+  const query = supabase.from("stores").select("id, name, store_pages(layout_config, slug, is_home)");
   
   if (subdomain) {
     query.eq('subdomain', subdomain);
@@ -79,7 +81,8 @@ export default async function DomainPage({
 
   // 3. Get the "Home" page layout
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const homePage = store.store_pages?.[0] as any; // Simplified for MVP
+  const pages = store.store_pages as any[] || [];
+  const homePage = pages.find(p => p.is_home) || pages.find(p => p.slug === 'home') || pages[0];
   const layout = homePage?.layout_config || [];
 
   // 4. The "Engine": Loop through JSON and render components

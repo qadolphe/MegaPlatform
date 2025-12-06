@@ -12,6 +12,8 @@ interface EditorState {
   
   // Actions
   addBlock: (type: string, defaultProps?: any) => void;
+  insertBlock: (index: number, type: string, defaultProps?: any) => void;
+  moveBlock: (id: string, direction: 'up' | 'down') => void;
   updateBlockProps: (id: string, newProps: any) => void;
   selectBlock: (id: string) => void;
   setBlocks: (blocks: Block[]) => void;
@@ -30,6 +32,31 @@ export const useEditorStore = create<EditorState>((set) => ({
         props: defaultProps 
       }]
     })),
+
+  insertBlock: (index, type, defaultProps = {}) =>
+    set((state) => {
+      const newBlocks = [...state.blocks];
+      newBlocks.splice(index, 0, {
+        id: crypto.randomUUID(),
+        type,
+        props: defaultProps
+      });
+      return { blocks: newBlocks };
+    }),
+
+  moveBlock: (id, direction) =>
+    set((state) => {
+      const index = state.blocks.findIndex((b) => b.id === id);
+      if (index === -1) return {};
+      
+      const newBlocks = [...state.blocks];
+      if (direction === 'up' && index > 0) {
+        [newBlocks[index], newBlocks[index - 1]] = [newBlocks[index - 1], newBlocks[index]];
+      } else if (direction === 'down' && index < newBlocks.length - 1) {
+        [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+      }
+      return { blocks: newBlocks };
+    }),
 
   selectBlock: (id) => set({ selectedBlockId: id }),
 

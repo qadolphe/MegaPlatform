@@ -4,7 +4,7 @@ import { supabase } from "@repo/database";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ExternalLink, Edit, Plus } from "lucide-react";
+import { ExternalLink, Edit, Plus, FileText } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Store = any;
@@ -91,11 +91,11 @@ export default function Dashboard() {
               </div>
               <div className="border-t border-gray-100 p-4 bg-gray-50 rounded-b-lg flex gap-3">
                 <Link
-                  href={`/editor/${store.id}`}
+                  href={`/store/${store.id}/pages`}
                   className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50 text-sm font-medium transition-colors"
                 >
-                  <Edit className="h-4 w-4" />
-                  Edit
+                  <FileText className="h-4 w-4" />
+                  Pages
                 </Link>
                 <a
                   href={`http://${store.subdomain}.localhost:3000`}

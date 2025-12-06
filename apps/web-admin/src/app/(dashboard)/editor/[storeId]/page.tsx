@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@repo/database";
-import { Hero, InfoGrid, ProductGrid } from "@repo/ui-bricks"; // Import real components
+import { Hero, InfoGrid, ProductGrid, Header, Footer } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown } from "lucide-react";
 import { MediaManager } from "@/components/media-manager";
 import Link from "next/link";
 
 // Mapping for rendering on the Canvas
 const RENDER_MAP: Record<string, any> = {
+  Header,
+  Footer,
   Hero,
   BenefitsGrid: InfoGrid,
   InfoGrid,
@@ -20,35 +22,65 @@ const RENDER_MAP: Record<string, any> = {
 
 export default function EditorPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const storeId = params.storeId as string;
-  const { blocks, addBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock } = useEditorStore();
+  const pageSlug = searchParams.get("slug") || "home";
+  
+  const { blocks, addBlock, insertBlock, moveBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock } = useEditorStore();
   
   const [loading, setLoading] = useState(true);
+  const [pageName, setPageName] = useState("");
+  const [availablePages, setAvailablePages] = useState<{name: string, slug: string}[]>([]);
   const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media' | 'properties'>('components');
   const [mediaPreview, setMediaPreview] = useState<{name: string, url: string}[]>([]);
   const [isMediaManagerOpen, setIsMediaManagerOpen] = useState(false);
   const [activePropName, setActivePropName] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [insertIndex, setInsertIndex] = useState<number | null>(null);
+
+  // Create Page Modal State
+  const [isCreatePageOpen, setIsCreatePageOpen] = useState(false);
+  const [newPageName, setNewPageName] = useState("");
+  const [newPageSlug, setNewPageSlug] = useState("");
 
   // 1. Load initial data
   useEffect(() => {
     async function loadData() {
       const { data } = await supabase
         .from("store_pages")
-        .select("layout_config")
+        .select("layout_config, name")
         .eq("store_id", storeId)
-        .eq("slug", "home") // Assuming editing 'home' page for MVP
+        .eq("slug", pageSlug)
         .single();
       
-      if (data?.layout_config) {
-        setBlocks(data.layout_config as any);
+      if (data) {
+        if (data.layout_config) {
+            // Ensure every block has an ID
+            const blocksWithIds = (data.layout_config as any[]).map(b => ({
+                ...b,
+                id: b.id || crypto.randomUUID()
+            }));
+            setBlocks(blocksWithIds);
+        }
+        if (data.name) setPageName(data.name);
       }
+
+      // Fetch all pages for the link picker
+      const { data: pagesData } = await supabase
+        .from("store_pages")
+        .select("name, slug")
+        .eq("store_id", storeId);
+      
+      if (pagesData) {
+        setAvailablePages(pagesData);
+      }
+
       setLoading(false);
     }
     loadData();
     fetchMediaPreview();
-  }, [storeId]);
+  }, [storeId, pageSlug]);
 
   const fetchMediaPreview = async () => {
       const { data } = await supabase.storage.from("site-assets").list();
@@ -67,7 +99,7 @@ export default function EditorPage() {
       .from("store_pages")
       .update({ layout_config: blocks })
       .eq("store_id", storeId)
-      .eq("slug", "home");
+      .eq("slug", pageSlug);
 
     if (error) alert("Error saving!");
     else alert("Saved successfully!");
@@ -94,6 +126,37 @@ export default function EditorPage() {
     fetchMediaPreview(); // Refresh sidebar
   };
 
+  const handleCreatePage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPageName || !newPageSlug) return;
+
+    const { data, error } = await supabase
+      .from("store_pages")
+      .insert([
+        {
+          store_id: storeId,
+          name: newPageName,
+          slug: newPageSlug.toLowerCase().replace(/\s+/g, "-"),
+          layout_config: [
+            { id: crypto.randomUUID(), type: "Header", props: { logoText: newPageName } },
+            { id: crypto.randomUUID(), type: "Footer", props: {} }
+          ]
+        }
+      ])
+      .select("name, slug")
+      .single();
+
+    if (error) {
+      alert("Error creating page: " + error.message);
+    } else {
+      setAvailablePages([...availablePages, data]);
+      setIsCreatePageOpen(false);
+      setNewPageName("");
+      setNewPageSlug("");
+      alert("Page created! You can now select it from the dropdown.");
+    }
+  };
+
   const openMediaManager = (propName: string) => {
     setActivePropName(propName);
     setIsMediaManagerOpen(true);
@@ -117,11 +180,11 @@ export default function EditorPage() {
       {/* --- HEADER --- */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-50 shadow-md">
         <div className="flex items-center gap-4">
-            <Link href="/" className="text-slate-400 hover:text-white transition">
+            <Link href={`/store/${storeId}/pages`} className="text-slate-400 hover:text-white transition">
                 <ChevronLeft size={20} />
             </Link>
             <h1 className="font-semibold text-lg tracking-tight">Visual Editor</h1>
-            <span className="px-2 py-0.5 bg-slate-800 rounded text-xs text-slate-400 border border-slate-700">Home Page</span>
+            <span className="px-2 py-0.5 bg-slate-800 rounded text-xs text-slate-400 border border-slate-700">{pageName || pageSlug}</span>
         </div>
         
         <div className="flex items-center gap-3">
@@ -193,7 +256,14 @@ export default function EditorPage() {
                         {Object.entries(COMPONENT_DEFINITIONS).map(([key, def]) => (
                             <button
                             key={key}
-                            onClick={() => addBlock(key, def.defaultProps)}
+                            onClick={() => {
+                                if (insertIndex !== null) {
+                                    insertBlock(insertIndex, key, def.defaultProps);
+                                    setInsertIndex(null);
+                                } else {
+                                    addBlock(key, def.defaultProps);
+                                }
+                            }}
                             className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:border-blue-400 hover:shadow-sm hover:bg-blue-50/30 transition text-left group bg-white"
                             >
                             <div className="h-8 w-8 bg-slate-100 rounded flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
@@ -311,6 +381,35 @@ export default function EditorPage() {
                                             <Plus size={12} /> Add Item
                                         </button>
                                     </div>
+                                ) : field.type === 'page-link' ? (
+                                    <div className="flex flex-col gap-2">
+                                        <select
+                                            className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                                            value={selectedBlock.props[field.name] || ""}
+                                            onChange={(e) => {
+                                                if (e.target.value === 'CREATE_NEW') {
+                                                    setIsCreatePageOpen(true);
+                                                } else {
+                                                    updateBlockProps(selectedBlock.id, { [field.name]: e.target.value });
+                                                }
+                                            }}
+                                        >
+                                            <option value="">Select a page...</option>
+                                            {availablePages.map((page) => (
+                                                <option key={page.slug} value={`/${page.slug}`}>
+                                                    {page.name || page.slug} (/{page.slug})
+                                                </option>
+                                            ))}
+                                            <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Page</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            placeholder="Or type custom URL..."
+                                            className="w-full border border-slate-300 rounded-md p-2 text-xs text-slate-500 focus:text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                            value={selectedBlock.props[field.name] || ""}
+                                            onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                        />
+                                    </div>
                                 ) : field.type === 'image' ? (
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
@@ -359,7 +458,7 @@ export default function EditorPage() {
             <div className="flex-1 overflow-y-auto p-8">
             <div className={`bg-white min-h-[800px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all duration-300 ${
                 viewMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-6xl'
-            }`}>
+            }`} style={{ transform: 'scale(1)' }}>
                 {blocks.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 p-20 gap-4">
                     <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
@@ -368,38 +467,85 @@ export default function EditorPage() {
                     <p>Your canvas is empty. Add components from the left.</p>
                 </div>
                 ) : (
-                blocks.map((block) => {
+                blocks.map((block, index) => {
                     const Component = RENDER_MAP[block.type];
                     const isSelected = block.id === selectedBlockId;
                     
                     return (
-                    <div 
-                        key={block.id}
-                        onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
-                        className={`relative group transition-all duration-200 ${
-                        isSelected 
-                            ? "ring-2 ring-blue-500 ring-inset z-10" 
-                            : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
-                        }`}
-                    >
-                        {/* Render the actual UI Block */}
-                        {Component ? <Component {...block.props} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
-                        
-                        {/* Actions Overlay */}
-                        {isSelected && (
-                        <div className="absolute -top-3 -right-3 flex gap-1 z-50">
+                    <div key={block.id}>
+                        {/* Insert Zone */}
+                        <div className="h-4 -my-2 relative z-20 flex items-center justify-center group/insert opacity-0 hover:opacity-100 transition-all">
+                            <div className="w-full h-0.5 bg-blue-500 absolute top-1/2 left-0 right-0"></div>
                             <button 
-                                onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
-                                className="bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition transform hover:scale-105"
-                                title="Remove Block"
+                                onClick={() => {
+                                    setInsertIndex(index);
+                                    setActiveSidebarTab('components');
+                                    if (!isSidebarOpen) setIsSidebarOpen(true);
+                                }}
+                                className="relative z-10 bg-blue-600 text-white rounded-full p-1 shadow-sm transform hover:scale-110 transition"
+                                title="Insert Component Here"
                             >
-                                <Trash size={14} />
+                                <Plus size={14} />
                             </button>
                         </div>
-                        )}
+
+                        <div 
+                            onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
+                            className={`relative group transition-all duration-200 ${
+                            isSelected 
+                                ? "ring-2 ring-blue-500 ring-inset z-10" 
+                                : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
+                            }`}
+                        >
+                            {/* Render the actual UI Block */}
+                            {Component ? <Component {...block.props} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
+                            
+                            {/* Actions Overlay */}
+                            {isSelected && (
+                            <div className="absolute -top-3 -right-3 flex gap-1 z-50">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
+                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
+                                    title="Move Up"
+                                >
+                                    <ArrowUp size={14} />
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'down'); }}
+                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
+                                    title="Move Down"
+                                >
+                                    <ArrowDown size={14} />
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
+                                    className="bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition transform hover:scale-105"
+                                    title="Remove Block"
+                                >
+                                    <Trash size={14} />
+                                </button>
+                            </div>
+                            )}
+                        </div>
                     </div>
                     );
                 })
+                )}
+                
+                {/* Add at bottom button */}
+                {blocks.length > 0 && (
+                    <div className="h-24 flex items-center justify-center border-t border-dashed border-slate-200 mt-4 p-4">
+                        <button 
+                            onClick={() => {
+                                setInsertIndex(blocks.length);
+                                setActiveSidebarTab('components');
+                                if (!isSidebarOpen) setIsSidebarOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition border border-slate-200 hover:border-blue-200"
+                        >
+                            <Plus size={16} /> Add Component at End
+                        </button>
+                    </div>
                 )}
             </div>
             </div>
@@ -413,6 +559,56 @@ export default function EditorPage() {
         onClose={() => setIsMediaManagerOpen(false)} 
         onSelect={handleImageSelect} 
       />
+
+      {/* Create Page Modal */}
+      {isCreatePageOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+            <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+                <h3 className="text-lg font-bold mb-4">Create New Page</h3>
+                <form onSubmit={handleCreatePage}>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Page Name</label>
+                        <input 
+                            type="text" 
+                            className="w-full border border-slate-300 rounded p-2"
+                            value={newPageName}
+                            onChange={(e) => {
+                                setNewPageName(e.target.value);
+                                if (!newPageSlug) setNewPageSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
+                            }}
+                            placeholder="e.g. Contact Us"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Slug</label>
+                        <input 
+                            type="text" 
+                            className="w-full border border-slate-300 rounded p-2 bg-slate-50"
+                            value={newPageSlug}
+                            onChange={(e) => setNewPageSlug(e.target.value)}
+                            placeholder="e.g. contact-us"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button 
+                            type="button" 
+                            onClick={() => setIsCreatePageOpen(false)}
+                            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                            Create Page
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
     </div>
   );
 }

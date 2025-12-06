@@ -12,9 +12,13 @@ create table stores (
 create table store_pages (
   id uuid default gen_random_uuid() primary key,
   store_id uuid references stores(id) on delete cascade not null,
+  name text,                                    -- e.g. "Home Page"
   slug text not null,                           -- e.g. "home", "about"
   layout_config jsonb default '[]'::jsonb,      -- THE MAGIC COLUMN
   published boolean default false,
+  is_home boolean default false,                -- New: Marks the landing page
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
   unique(store_id, slug)
 );
 
