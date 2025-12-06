@@ -6,7 +6,9 @@ import { supabase } from "@repo/database";
 import { Hero, BenefitsGrid, ProductGrid } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { Save, Plus, Trash } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload } from "lucide-react";
+import { MediaManager } from "@/components/media-manager";
+import Link from "next/link";
 
 // Mapping for rendering on the Canvas
 const RENDER_MAP: Record<string, any> = {
@@ -19,6 +21,10 @@ export default function EditorPage() {
   const { storeId } = useParams();
   const { blocks, addBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock } = useEditorStore();
   const [loading, setLoading] = useState(true);
+  const [isMediaManagerOpen, setIsMediaManagerOpen] = useState(false);
+  const [activePropName, setActivePropName] = useState<string | null>(null);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media'>('components');
+  const [mediaPreview, setMediaPreview] = useState<{name: string, url: string}[]>([]);
 
   // 1. Load initial data
   useEffect(() => {
@@ -36,7 +42,19 @@ export default function EditorPage() {
       setLoading(false);
     }
     loadData();
+    fetchMediaPreview();
   }, [storeId]);
+
+  const fetchMediaPreview = async () => {
+      const { data } = await supabase.storage.from("site-assets").list();
+      if (data) {
+        const imageUrls = data.slice(0, 20).map((file) => { // Limit to 20 for sidebar
+          const { data: publicUrlData } = supabase.storage.from("site-assets").getPublicUrl(file.name);
+          return { name: file.name, url: publicUrlData.publicUrl };
+        });
+        setMediaPreview(imageUrls);
+      }
+  };
 
   // 2. Save function
   const handleSave = async () => {
@@ -50,104 +68,238 @@ export default function EditorPage() {
     else alert("Saved successfully!");
   };
 
-  if (loading) return <div>Loading editor...</div>;
+  const handleImageSelect = (url: string) => {
+    if (selectedBlockId && activePropName) {
+      updateBlockProps(selectedBlockId, { [activePropName]: url });
+    }
+    setIsMediaManagerOpen(false);
+    setActivePropName(null);
+    fetchMediaPreview(); // Refresh sidebar
+  };
+
+  const openMediaManager = (propName: string) => {
+    setActivePropName(propName);
+    setIsMediaManagerOpen(true);
+  };
+
+  if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500">Loading editor...</div>;
 
   const selectedBlock = blocks.find(b => b.id === selectedBlockId);
   const selectedDef = selectedBlock ? COMPONENT_DEFINITIONS[selectedBlock.type as keyof typeof COMPONENT_DEFINITIONS] : null;
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* --- LEFT: TOOLBOX --- */}
-      <div className="w-64 bg-white border-r p-4 flex flex-col gap-4">
-        <h2 className="font-bold text-gray-700">Components</h2>
-        <div className="grid gap-2">
-          {Object.entries(COMPONENT_DEFINITIONS).map(([key, def]) => (
-            <button
-              key={key}
-              onClick={() => addBlock(key, def.defaultProps)}
-              className="flex items-center gap-2 p-3 border rounded hover:bg-blue-50 hover:border-blue-500 transition text-left"
-            >
-              <Plus size={16} />
-              <span className="text-sm font-medium">{def.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* --- CENTER: CANVAS --- */}
-      <div className="flex-1 flex flex-col">
-        <div className="h-14 border-b bg-white flex items-center justify-between px-6">
-          <span className="font-semibold text-gray-500">Editing: Home Page</span>
-          <button 
-            onClick={handleSave}
-            className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800"
-          >
-            <Save size={16} /> Save Changes
-          </button>
+    <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-900">
+      {/* --- HEADER --- */}
+      <header className="fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-50 shadow-md">
+        <div className="flex items-center gap-4">
+            <Link href="/" className="text-slate-400 hover:text-white transition">
+                <ChevronLeft size={20} />
+            </Link>
+            <h1 className="font-semibold text-lg tracking-tight">Visual Editor</h1>
+            <span className="px-2 py-0.5 bg-slate-800 rounded text-xs text-slate-400 border border-slate-700">Home Page</span>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-4xl mx-auto bg-white min-h-[800px] shadow-lg rounded-lg overflow-hidden">
-            {blocks.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-gray-400 p-20">
-                Click a component on the left to add it.
-              </div>
-            ) : (
-              blocks.map((block) => {
-                const Component = RENDER_MAP[block.type];
-                const isSelected = block.id === selectedBlockId;
-                
-                return (
-                  <div 
-                    key={block.id}
-                    onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
-                    className={`relative group border-2 transition-all ${
-                      isSelected ? "border-blue-500" : "border-transparent hover:border-blue-200"
-                    }`}
-                  >
-                    {/* Render the actual UI Block */}
-                    {Component ? <Component {...block.props} /> : <div>Unknown Block</div>}
+        <div className="flex items-center gap-3">
+            <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"><Monitor size={16} /></button>
+                <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded"><Smartphone size={16} /></button>
+            </div>
+            <div className="h-6 w-px bg-slate-700 mx-2"></div>
+            <button 
+                onClick={handleSave}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition text-sm font-medium shadow-sm"
+            >
+                <Save size={16} /> Save
+            </button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 pt-16 w-full">
+        {/* --- LEFT: SIDEBAR --- */}
+        <div className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm z-40">
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200">
+                <button 
+                    onClick={() => setActiveSidebarTab('components')}
+                    className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 ${activeSidebarTab === 'components' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                >
+                    <Layers size={16} /> Components
+                </button>
+                <button 
+                    onClick={() => setActiveSidebarTab('media')}
+                    className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 ${activeSidebarTab === 'media' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                >
+                    <ImageIcon size={16} /> Media
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+                {activeSidebarTab === 'components' ? (
+                    <div className="grid gap-3">
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Drag & Drop</p>
+                        {Object.entries(COMPONENT_DEFINITIONS).map(([key, def]) => (
+                            <button
+                            key={key}
+                            onClick={() => addBlock(key, def.defaultProps)}
+                            className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:border-blue-400 hover:shadow-sm hover:bg-blue-50/30 transition text-left group bg-white"
+                            >
+                            <div className="h-8 w-8 bg-slate-100 rounded flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                <Plus size={16} />
+                            </div>
+                            <div>
+                                <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700 block">{def.label}</span>
+                                <span className="text-xs text-slate-400">Click to add</span>
+                            </div>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        <button 
+                            onClick={() => { setActivePropName(null); setIsMediaManagerOpen(true); }}
+                            className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition text-sm font-medium flex items-center justify-center gap-2"
+                        >
+                            <Upload size={16} /> Upload New
+                        </button>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                            {mediaPreview.map((img) => (
+                                <div key={img.name} className="aspect-square relative group rounded-md overflow-hidden border border-slate-200 bg-slate-50">
+                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <button 
+                                            onClick={() => { navigator.clipboard.writeText(img.url); alert("URL Copied!"); }}
+                                            className="text-xs bg-white text-slate-800 px-2 py-1 rounded shadow-sm font-medium"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* --- CENTER: CANVAS --- */}
+        <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-100/50">
+            <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-5xl mx-auto bg-white min-h-[800px] shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all">
+                {blocks.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 p-20 gap-4">
+                    <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
+                        <Layers size={32} className="opacity-50" />
+                    </div>
+                    <p>Your canvas is empty. Add components from the left.</p>
+                </div>
+                ) : (
+                blocks.map((block) => {
+                    const Component = RENDER_MAP[block.type];
+                    const isSelected = block.id === selectedBlockId;
                     
-                    {/* Delete Button (Visible on hover/select) */}
-                    {isSelected && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded shadow-md z-50"
-                      >
-                        <Trash size={14} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
+                    return (
+                    <div 
+                        key={block.id}
+                        onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
+                        className={`relative group transition-all duration-200 ${
+                        isSelected 
+                            ? "ring-2 ring-blue-500 ring-inset z-10" 
+                            : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
+                        }`}
+                    >
+                        {/* Render the actual UI Block */}
+                        {Component ? <Component {...block.props} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
+                        
+                        {/* Actions Overlay */}
+                        {isSelected && (
+                        <div className="absolute -top-3 -right-3 flex gap-1 z-50">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
+                                className="bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition transform hover:scale-105"
+                                title="Remove Block"
+                            >
+                                <Trash size={14} />
+                            </button>
+                        </div>
+                        )}
+                    </div>
+                    );
+                })
+                )}
+            </div>
+            </div>
+        </div>
+
+        {/* --- RIGHT: PROPERTIES --- */}
+        <div className="w-80 bg-white border-l border-slate-200 flex flex-col shadow-sm z-40">
+            <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+                <h2 className="font-semibold text-slate-700 flex items-center gap-2">
+                    <Settings size={16} /> Properties
+                </h2>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4">
+                {selectedBlock && selectedDef ? (
+                <div className="flex flex-col gap-5">
+                    <div className="pb-4 border-b border-slate-100">
+                        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded">
+                            {selectedDef.label}
+                        </span>
+                    </div>
+
+                    {selectedDef.fields.map((field) => (
+                    <div key={field.name}>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                        {field.label}
+                        </label>
+                        {field.type === 'image' ? (
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input
+                                    type="text"
+                                    className="w-full border border-slate-300 rounded-md p-2 text-sm pl-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    value={selectedBlock.props[field.name] || ""}
+                                    onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                />
+                                <div className="absolute left-2.5 top-2.5 text-slate-400">
+                                    <ImageIcon size={14} />
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => openMediaManager(field.name)}
+                                className="bg-slate-100 border border-slate-300 rounded-md px-3 hover:bg-slate-200 text-slate-600 transition"
+                                title="Select Image"
+                            >
+                                <Upload size={16} />
+                            </button>
+                        </div>
+                        ) : (
+                        <input
+                            type="text"
+                            className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                            value={selectedBlock.props[field.name] || ""}
+                            onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                        />
+                        )}
+                    </div>
+                    ))}
+                </div>
+                ) : (
+                <div className="flex flex-col items-center justify-center h-64 text-slate-400 text-center p-4">
+                    <Settings size={32} className="mb-3 opacity-20" />
+                    <p className="text-sm">Select a block on the canvas to edit its properties.</p>
+                </div>
+                )}
+            </div>
         </div>
       </div>
 
-      {/* --- RIGHT: PROPERTIES --- */}
-      <div className="w-80 bg-white border-l p-4">
-        <h2 className="font-bold text-gray-700 mb-4">Properties</h2>
-        {selectedBlock && selectedDef ? (
-          <div className="flex flex-col gap-4">
-            {selectedDef.fields.map((field) => (
-              <div key={field.name}>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase">
-                  {field.label}
-                </label>
-                <input
-                  type="text"
-                  className="w-full border rounded p-2 text-sm"
-                  value={selectedBlock.props[field.name] || ""}
-                  onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-400 text-sm">Select a block on the canvas to edit its properties.</p>
-        )}
-      </div>
+      <MediaManager 
+        isOpen={isMediaManagerOpen} 
+        onClose={() => setIsMediaManagerOpen(false)} 
+        onSelect={handleImageSelect} 
+      />
     </div>
   );
 }

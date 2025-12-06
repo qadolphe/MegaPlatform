@@ -1,0 +1,47 @@
+.productsSection {
+    padding: 4rem 1rem;
+    background: linear-gradient(to bottom, #000, #111827);
+    min-height: auto;
+    display: block;
+}
+
+@media (min-width: 768px) {
+    .productsSection {
+        padding: 8rem 1rem;
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+}
+
+.sectionTitle {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 4rem;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+
+.cardContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+    width: 100%;
+    height: auto;
+    min-height: 600px;
+    padding: 0 1.5rem 4rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    .cardContainer {
+        flex-direction: row;
+        gap: 1rem;
+        height: 500px;
+        min-height: auto;
+        padding: 0;
+    }
+}

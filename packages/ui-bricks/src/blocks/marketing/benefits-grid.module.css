@@ -1,0 +1,89 @@
+.section {
+    padding: 6rem 1rem;
+    background: #000;
+    position: relative;
+}
+
+.title {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 4rem;
+    color: #fff;
+    letter-spacing: -0.025em;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    background: #111;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 2rem;
+}
+
+.cardLarge {
+    grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+    .cardLarge {
+        grid-column: span 2;
+    }
+}
+
+.image {
+    object-fit: cover;
+    transition: transform 0.5s;
+}
+
+.imageWrapper {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.card:hover .image {
+    transform: scale(1.05);
+}
+
+.content {
+    position: relative;
+    z-index: 10;
+}
+
+.cardTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.cardDesc {
+    color: #ccc;
+    font-size: 1rem;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    z-index: 1;
+}

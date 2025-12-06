@@ -1,0 +1,215 @@
+/* --- CARD STYLES --- */
+.card {
+    position: relative;
+    width: 100%;
+
+    /* Auto height allows content to fit naturally */
+    height: auto;
+    min-height: 600px;
+
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    text-align: center;
+    padding-bottom: 3rem;
+
+    /* Visual Focus State (Mobile) */
+    opacity: 0.5;
+    transform: scale(0.98);
+    transition: transform 0.5s ease, opacity 0.5s ease, border-color 0.5s ease;
+    will-change: transform, opacity;
+
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.card.focused {
+    opacity: 1;
+    transform: scale(1);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+}
+
+.cardContent {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1.5rem;
+}
+
+.cardTitle {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    white-space: normal;
+    line-height: 1.1;
+}
+
+.productDesc {
+    color: #e5e7eb;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Price - Always Visible */
+.productPrice {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+    opacity: 1;
+    transition: all 0.5s ease;
+}
+
+/* --- INNER CONTENT --- */
+.expandedContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    opacity: 1;
+    margin-top: 1rem;
+    width: 100%;
+}
+
+.productLink {
+    background: #fff;
+    color: #000;
+    padding: 0.8rem 2rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    transition: transform 0.2s, background-color 0.2s;
+    display: inline-block;
+    opacity: 1;
+    transform: none;
+    margin-top: 1rem;
+}
+
+.productLink:hover {
+    background-color: #f3f4f6;
+    transform: translateY(-2px);
+}
+
+.featureList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    color: #d1d5db;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    align-items: center;
+}
+
+.featureItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+}
+
+.checkIcon {
+    color: #a855f7;
+    flex-shrink: 0;
+}
+
+/* --- BACKGROUNDS --- */
+.backgroundImageContainer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.backgroundImage {
+    object-fit: cover;
+    transition: transform 0.7s ease;
+}
+
+.card:hover .backgroundImage,
+.card.focused .backgroundImage {
+    transform: scale(1.05);
+}
+
+.gradientOverlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 50%, #000 100%);
+    z-index: 1;
+    transition: background 0.5s ease;
+}
+
+/* --- DESKTOP OVERRIDES --- */
+@media (min-width: 768px) {
+    .card {
+        flex: 1;
+        height: 100%;
+        min-height: 100%;
+        /* Reset min-height */
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 0;
+        justify-content: center;
+        transition: flex 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        opacity: 1;
+        transform: none;
+        will-change: auto;
+    }
+
+    /* Hover Interaction (Accordion Effect) */
+    .card:hover {
+        flex: 3;
+        border-color: rgba(168, 85, 247, 0.4);
+    }
+
+    .cardContent {
+        padding: 0 1rem;
+    }
+
+    /* Inactive State: Dim backgrounds */
+    :global(.product-card-container):hover .card:not(:hover) .gradientOverlay {
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.9) 60%, #000 100%);
+    }
+
+    /* Inactive State: Hide Buttons */
+    :global(.product-card-container):hover .card:not(:hover) .productLink {
+        opacity: 0;
+        transform: translateY(10px);
+        pointer-events: none;
+    }
+
+    .card:hover .cardTitle {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .card:hover .productPrice {
+        transform: scale(1.1);
+        color: #c084fc;
+    }
+
+    .card:not(:hover) .featureList {
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+
+    .card:hover .featureList {
+        opacity: 1;
+    }
+}

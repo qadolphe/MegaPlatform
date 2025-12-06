@@ -1,11 +1,12 @@
 export * from "./blocks/marketing/Hero";
 export { default as BenefitsGrid } from "./blocks/marketing/benefits-grid";
 export * from "./blocks/commerce/ProductGrid";
+export * from "./blocks/layout/Header";
+export * from "./blocks/layout/Footer";
 
 // Components
-export { default as Header } from "./components/header";
-export { default as Footer } from "./components/footer";
 export { default as ProductCard } from "./components/product-card";
+export { default as SkeletonCard } from "./components/skeleton-card";
 export { default as CartDrawer } from "./components/cart-drawer";
 export { default as ScrollAnimation } from "./components/ui/scroll-animation";
 export { default as AnimatedCounter } from "./components/ui/animated-counter";

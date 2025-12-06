@@ -2,12 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import styles from './Hero.module.css'
 
 interface HeroProps {
     title?: string
@@ -29,41 +24,37 @@ export const Hero = ({
     backgroundImage = "/images/essentials-kit.jpg"
 }: HeroProps) => {
     return (
-        <section className="relative min-h-screen flex flex-col items-center justify-center text-center pt-20 px-4 overflow-hidden bg-gradient-to-b from-black to-gray-900">
-            <div className="absolute inset-0 z-0">
+        <section className={styles.hero}>
+            <div className={styles.heroBackground}>
                 <Image
                     src={backgroundImage}
                     alt="Hero Background"
                     fill
-                    className="object-cover opacity-30 mask-image-gradient"
-                    style={{ 
-                        maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
-                        WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)'
-                    }}
+                    className={styles.heroImage}
                     quality={90}
                     priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/90 z-10" />
+                <div className={styles.heroOverlay} />
             </div>
             
-            <div className="relative z-10 max-w-4xl mt-0">
-                <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight text-white tracking-tight whitespace-pre-line">
+            <div className={styles.heroContent}>
+                <h1 className={styles.heroTitle}>
                     {title}
                 </h1>
-                <p className="text-xl md:text-2xl text-gray-400 mb-12 leading-relaxed max-w-2xl mx-auto">
+                <p className={styles.heroSubtitle}>
                     {subtitle}
                 </p>
                 
-                <div className="flex flex-col md:flex-row gap-6 w-full max-w-xl mx-auto">
+                <div className={styles.forkContainer}>
                     <Link 
                         href={primaryCtaLink} 
-                        className="flex-1 bg-white text-black py-5 px-8 rounded-full font-bold uppercase tracking-wider hover:bg-purple-400 hover:text-white hover:-translate-y-0.5 hover:shadow-lg transition-all flex items-center justify-center text-base"
+                        className={styles.primaryButton}
                     >
                         {primaryCtaText}
                     </Link>
                     <Link 
                         href={secondaryCtaLink} 
-                        className="flex-1 bg-white/5 text-white py-5 px-8 rounded-full font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 hover:bg-white/15 hover:border-white hover:-translate-y-0.5 transition-all flex items-center justify-center text-base"
+                        className={styles.secondaryButton}
                     >
                         {secondaryCtaText}
                     </Link>
