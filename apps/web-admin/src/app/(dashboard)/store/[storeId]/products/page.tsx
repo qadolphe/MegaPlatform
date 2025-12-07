@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@repo/database";
-import { Plus, Search, Package, Edit, Trash, ArrowLeft } from "lucide-react";
+import { Plus, Search, Package, Edit, Trash, ArrowLeft, LayoutTemplate } from "lucide-react";
 import Link from "next/link";
+import { PageSwitcher } from "@/components/PageSwitcher";
 
 type Product = {
   id: string;
@@ -13,10 +14,12 @@ type Product = {
   images: string[];
   published: boolean;
   inventory: number; // We'll sum variants for this display
+  slug: string;
 };
 
 export default function ProductsList() {
   const params = useParams();
+  const router = useRouter();
   const storeId = params.storeId as string;
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +49,62 @@ export default function ProductsList() {
     setLoading(false);
   };
 
+  const handleCreateCustomPage = async (product: Product) => {
+    const slug = `products/${product.slug}`;
+    
+    // Check if page already exists
+    const { data: existingPage } = await supabase
+        .from("store_pages")
+        .select("id")
+        .eq("store_id", storeId)
+        .eq("slug", slug)
+        .single();
+
+    if (existingPage) {
+        if (confirm("A custom page for this product already exists. Do you want to edit it?")) {
+            router.push(`/editor/${storeId}?slug=${slug}`);
+        }
+        return;
+    }
+
+    if (!confirm(`Create a custom page for "${product.title}"? This will override the default product layout.`)) return;
+
+    // Create new page
+    const { error } = await supabase
+      .from("store_pages")
+      .insert([
+        {
+          store_id: storeId,
+          name: product.title,
+          slug: slug,
+          layout_config: [
+            { id: crypto.randomUUID(), type: "Header", props: { logoText: "Store" } },
+            { 
+                id: crypto.randomUUID(), 
+                type: "ProductDetail", 
+                props: { 
+                    product: {
+                        id: product.id,
+                        name: product.title,
+                        description: "Product Description",
+                        base_price: product.price,
+                        image_url: product.images?.[0] || "",
+                        slug: product.slug
+                    }
+                } 
+            },
+            { id: crypto.randomUUID(), type: "Footer", props: {} }
+          ]
+        }
+      ]);
+
+    if (error) {
+      alert("Error creating page: " + error.message);
+    } else {
+      router.push(`/editor/${storeId}?slug=${slug}`);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     
@@ -62,17 +121,11 @@ export default function ProductsList() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/" className="p-2 hover:bg-slate-100 rounded-full transition">
-            <ArrowLeft size={20} className="text-slate-500" />
-        </Link>
-        <div>
-            <h1 className="text-2xl font-bold text-slate-900">Products</h1>
-            <p className="text-slate-500">Manage your inventory and catalog.</p>
-        </div>
+      <div className="flex items-center justify-between mb-8">
+        <PageSwitcher storeId={storeId} activeTab="products" />
         <Link 
             href={`/store/${storeId}/products/new`}
-            className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium"
         >
             <Plus size={18} /> Add Product
         </Link>
@@ -134,6 +187,13 @@ export default function ProductsList() {
                         </td>
                         <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
+                                <button
+                                    onClick={() => handleCreateCustomPage(product)}
+                                    className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition"
+                                    title="Create Custom Page"
+                                >
+                                    <LayoutTemplate size={16} />
+                                </button>
                                 <Link 
                                     href={`/store/${storeId}/products/${product.id}`}
                                     className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"

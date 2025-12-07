@@ -14,6 +14,8 @@ type Page = {
   is_home: boolean;
 };
 
+import { PageSwitcher } from "@/components/PageSwitcher";
+
 export default function PagesList() {
   const params = useParams();
   const storeId = params.storeId as string;
@@ -113,17 +115,11 @@ export default function PagesList() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/" className="p-2 hover:bg-slate-100 rounded-full transition">
-            <ArrowLeft size={20} className="text-slate-500" />
-        </Link>
-        <div>
-            <h1 className="text-2xl font-bold text-slate-900">Pages</h1>
-            <p className="text-slate-500">Manage the pages for your store.</p>
-        </div>
+      <div className="flex items-center justify-between mb-8">
+        <PageSwitcher storeId={storeId} activeTab="pages" />
         <button 
             onClick={() => setIsCreating(true)}
-            className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium"
         >
             <Plus size={18} /> Create Page
         </button>
