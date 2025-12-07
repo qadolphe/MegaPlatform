@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Store, Globe } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +10,7 @@ export default function CreateStore() {
   const [subdomain, setSubdomain] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   const handleCreate = async () => {
     if (!name || !subdomain) return alert("Please fill in all fields");

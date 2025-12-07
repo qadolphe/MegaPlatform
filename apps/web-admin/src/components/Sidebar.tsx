@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, PlusCircle, Settings, LogOut, Store, ChevronLeft, ChevronRight } from "lucide-react";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const navigation = [
@@ -17,6 +17,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const supabase = createClient();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

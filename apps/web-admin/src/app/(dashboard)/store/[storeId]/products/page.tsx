@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { Plus, Search, Package, Edit, Trash, ArrowLeft, LayoutTemplate } from "lucide-react";
 import Link from "next/link";
 import { PageSwitcher } from "@/components/PageSwitcher";
@@ -24,6 +24,7 @@ export default function ProductsList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const supabase = createClient();
 
   useEffect(() => {
     fetchProducts();

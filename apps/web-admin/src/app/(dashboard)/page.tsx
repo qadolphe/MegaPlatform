@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -12,9 +12,15 @@ type Store = any;
 export default function Dashboard() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
+  const [baseDomain, setBaseDomain] = useState("localhost:3000");
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBaseDomain(window.location.host);
+    }
+
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -37,7 +43,7 @@ export default function Dashboard() {
     };
 
     checkUser();
-  }, [router]);
+  }, [router, supabase]);
 
   if (loading) return <div>Loading dashboard...</div>;
 
@@ -105,7 +111,7 @@ export default function Dashboard() {
                   Products
                 </Link>
                 <a
-                  href={`http://${store.subdomain}.localhost:3000`}
+                  href={`//${store.subdomain}.${baseDomain}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="col-span-2 flex items-center justify-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 py-2 rounded-md hover:bg-blue-100 text-sm font-medium transition-colors"

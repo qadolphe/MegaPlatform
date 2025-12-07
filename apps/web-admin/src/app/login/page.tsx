@@ -1,14 +1,37 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Store, Mail, ArrowRight, Loader2, CheckCircle2, LayoutDashboard, ShoppingBag, BarChart3 } from "lucide-react";
 
-export default function Login() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) {
+      setIsRedirecting(true);
+      router.push(`/auth/callback?code=${code}`);
+    }
+  }, [searchParams, router]);
+
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-600">Completing sign in...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,5 +248,13 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

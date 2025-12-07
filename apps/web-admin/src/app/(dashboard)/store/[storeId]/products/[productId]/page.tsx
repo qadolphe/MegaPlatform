@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { ArrowLeft, Save, Plus, Trash, Image as ImageIcon, Upload } from "lucide-react";
 import Link from "next/link";
 import { MediaManager } from "@/components/media-manager";
@@ -13,6 +13,7 @@ export default function ProductEditor() {
   const storeId = params.storeId as string;
   const productId = params.productId as string;
   const isNew = productId === "new";
+  const supabase = createClient();
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);

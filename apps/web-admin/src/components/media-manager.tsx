@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { X, Upload, Image as ImageIcon, Check, Loader2, Trash2 } from "lucide-react";
 
 interface MediaManagerProps {
@@ -15,6 +15,7 @@ export function MediaManager({ isOpen, onClose, onSelect }: MediaManagerProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   // Fetch images on open
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { Plus, Edit, Trash, FileText, ArrowLeft, Star } from "lucide-react";
 import Link from "next/link";
 
@@ -25,6 +25,7 @@ export default function PagesList() {
   const [isCreating, setIsCreating] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
+  const supabase = createClient();
 
   useEffect(() => {
     fetchPages();

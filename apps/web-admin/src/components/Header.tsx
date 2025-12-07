@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const supabase = createClient();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
     });
-  }, []);
+  }, [supabase]);
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-white px-8 shadow-sm">

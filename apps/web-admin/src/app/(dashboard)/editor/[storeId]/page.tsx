@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { supabase } from "@repo/database";
+import { createClient } from "@/lib/supabase/client";
 import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
@@ -27,6 +27,7 @@ export default function EditorPage() {
   const router = useRouter();
   const storeId = params.storeId as string;
   const pageSlug = searchParams.get("slug") || "home";
+  const supabase = createClient();
   
   const { blocks, addBlock, insertBlock, moveBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock, undo, redo, canUndo, canRedo } = useEditorStore();
   
