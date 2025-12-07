@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import { useCart } from '../../hooks/use-cart';
 import styles from './ProductDetail.module.css';
+import ScrollAnimation from '../../components/ui/scroll-animation';
+import { AnimationTheme } from '../../lib/animation-config';
 
 interface ProductDetailProps {
     product: {
@@ -13,10 +15,11 @@ interface ProductDetailProps {
         image_url: string;
         slug: string;
         type?: 'kit' | 'service';
-    }
+    };
+    animationStyle?: AnimationTheme;
 }
 
-export const ProductDetail = ({ product }: ProductDetailProps) => {
+export const ProductDetail = ({ product, animationStyle = 'simple' }: ProductDetailProps) => {
     const { addItem, openCart } = useCart();
 
     if (!product) {
@@ -42,30 +45,32 @@ export const ProductDetail = ({ product }: ProductDetailProps) => {
     }).format((product.base_price || 0) / 100);
 
     return (
-        <section className={styles.container}>
-            <div className={styles.imageContainer}>
+        <div className={styles.container}>
+            <ScrollAnimation theme={animationStyle} className={styles.imageContainer} hoverable={true}>
                 {product.image_url && (
                     <Image 
                         src={product.image_url} 
                         alt={product.name} 
-                        fill 
+                        width={600}
+                        height={600}
                         className={styles.productImage}
                         priority
                     />
                 )}
-            </div>
-            <div className={styles.details}>
+            </ScrollAnimation>
+            <ScrollAnimation theme={animationStyle} delay={0.2} className={styles.details}>
                 <h1 className={styles.title}>{product.name}</h1>
                 <p className={styles.price}>{formattedPrice}</p>
                 <div className={styles.description}>
                     {product.description}
                 </div>
-                <div className={styles.actions}>
-                    <button onClick={handleAddToCart} className={styles.addToCartBtn}>
-                        Add to Cart
-                    </button>
-                </div>
-            </div>
-        </section>
+                <button 
+                    onClick={handleAddToCart}
+                    className={styles.addToCartBtn}
+                >
+                    Add to Cart
+                </button>
+            </ScrollAnimation>
+        </div>
     );
 };

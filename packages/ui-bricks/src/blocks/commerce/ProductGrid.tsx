@@ -1,15 +1,19 @@
 "use client";
 import { ProductCard } from "../../components/ProductCard";
 import styles from "./ProductGrid.module.css";
+import ScrollAnimation from "../../components/ui/scroll-animation";
+import { AnimationTheme } from "../../lib/animation-config";
 
 export const ProductGrid = ({ 
   title, 
   products = [], 
-  columns = 4 
+  columns = 4,
+  animationStyle = 'simple'
 }: { 
   title: string, 
   products: any[], 
-  columns?: number 
+  columns?: number,
+  animationStyle?: AnimationTheme
 }) => {
   return (
     <section className={styles.productsSection}>
@@ -22,8 +26,15 @@ export const ProductGrid = ({
             gap: '1rem'
         }}
       >
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+        {products.map((product, index) => (
+          <ScrollAnimation 
+            key={product.id} 
+            theme={animationStyle} 
+            delay={index * 0.05}
+            hoverable={true}
+          >
+            <ProductCard product={product} />
+          </ScrollAnimation>
         ))}
       </div>
     </section>

@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@repo/database";
-import { Hero, InfoGrid, ProductGrid, Header, Footer } from "@repo/ui-bricks"; // Import real components
+import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette } from "lucide-react";
 import { MediaManager } from "@/components/media-manager";
 import Link from "next/link";
 
@@ -17,7 +17,8 @@ const RENDER_MAP: Record<string, any> = {
   Hero,
   BenefitsGrid: InfoGrid,
   InfoGrid,
-  ProductGrid
+  ProductGrid,
+  ProductDetail
 };
 
 export default function EditorPage() {
@@ -31,8 +32,9 @@ export default function EditorPage() {
   
   const [loading, setLoading] = useState(true);
   const [pageName, setPageName] = useState("");
+  const [storeTheme, setStoreTheme] = useState("simple");
   const [availablePages, setAvailablePages] = useState<{name: string, slug: string}[]>([]);
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media' | 'properties'>('components');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media' | 'properties' | 'theme'>('components');
   const [mediaPreview, setMediaPreview] = useState<{name: string, url: string}[]>([]);
   const [isMediaManagerOpen, setIsMediaManagerOpen] = useState(false);
   const [activePropName, setActivePropName] = useState<string | null>(null);
@@ -63,6 +65,17 @@ export default function EditorPage() {
         .eq("slug", pageSlug)
         .single();
       
+      // Fetch store theme
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("theme")
+        .eq("id", storeId)
+        .single();
+      
+      if (storeData?.theme) {
+        setStoreTheme(storeData.theme);
+      }
+
       if (data) {
         if (data.layout_config) {
             // Ensure every block has an ID
@@ -347,9 +360,52 @@ export default function EditorPage() {
                 >
                     <ImageIcon size={16} /> Media
                 </button>
+                <button 
+                    onClick={() => setActiveSidebarTab('theme')}
+                    className={`flex-1 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 ${activeSidebarTab === 'theme' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                >
+                    <Palette size={16} /> Theme
+                </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
+                {activeSidebarTab === 'theme' && (
+                    <div className="flex flex-col gap-5">
+                        <div className="pb-4 border-b border-slate-100">
+                            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded">
+                                Global Theme
+                            </span>
+                            <p className="text-xs text-slate-500 mt-2">
+                                This theme controls the default animation style for all components set to "Theme Default".
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                                Animation Style
+                            </label>
+                            <select
+                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                value={storeTheme}
+                                onChange={async (e) => {
+                                    const newTheme = e.target.value;
+                                    setStoreTheme(newTheme);
+                                    await supabase
+                                        .from("stores")
+                                        .update({ theme: newTheme })
+                                        .eq("id", storeId);
+                                }}
+                            >
+                                <option value="simple">Simple (Fade Up)</option>
+                                <option value="playful">Playful (Scale Up)</option>
+                                <option value="elegant">Elegant (Fade In)</option>
+                                <option value="dynamic">Dynamic (Slide In)</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+
                 {activeSidebarTab === 'components' && (
                     <div className="grid gap-3">
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Drag & Drop</p>
@@ -438,6 +494,19 @@ export default function EditorPage() {
                                         <option value="all">All Products</option>
                                         {collections.map(c => (
                                             <option key={c.id} value={c.id}>{c.title}</option>
+                                        ))}
+                                    </select>
+                                ) : field.type === 'select' ? (
+                                    <select
+                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                        value={selectedBlock.props[field.name] || ""}
+                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                    >
+                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                        {(field as any).options?.map((opt: any) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.value === 'theme' ? `Theme Default (${storeTheme})` : opt.label}
+                                            </option>
                                         ))}
                                     </select>
                                 ) : field.type === 'array' ? (
@@ -615,6 +684,10 @@ export default function EditorPage() {
                     
                     // Inject Preview Data
                     let previewProps = { ...block.props };
+                    
+                    // Inject Global Theme (matches Storefront behavior)
+                    previewProps.animationStyle = storeTheme;
+
                     if (block.type === 'ProductGrid') {
                         const collectionId = block.props.collectionId || 'all';
                         let filtered = [];

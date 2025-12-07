@@ -63,7 +63,7 @@ export default async function DynamicPage({
   // My admin currently creates flat slugs like "about-us", so we just join them just in case
   const targetSlug = slugArray.join('/');
 
-  const query = supabase.from("stores").select("id, name, store_pages(layout_config, slug, is_home)");
+  const query = supabase.from("stores").select("id, name, theme, store_pages(layout_config, slug, is_home)");
   
   if (subdomain) {
     query.eq('subdomain', subdomain);
@@ -245,6 +245,9 @@ export default async function DynamicPage({
         if (block.type === 'ProductDetail' && productDetailData) {
             props = { ...props, product: productDetailData };
         }
+
+        // Inject Global Theme
+        props.animationStyle = (store as any).theme || 'simple';
 
         return <Component key={index} {...props} />;
       })}

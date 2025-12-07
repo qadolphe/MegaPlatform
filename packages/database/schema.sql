@@ -5,7 +5,8 @@ create table stores (
   owner_id uuid references auth.users not null, -- Links to Supabase Auth
   subdomain text unique not null,               -- e.g. "bob-hoodies"
   custom_domain text unique,                    -- e.g. "bobhoodies.com"
-  name text not null
+  name text not null,
+  theme text default 'simple'                   -- Global animation theme
 );
 
 -- 2. Pages: The "Visual Config" for the Dynamic Renderer

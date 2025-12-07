@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import styles from './InfoGrid.module.css';
+import ScrollAnimation from '../../components/ui/scroll-animation';
+import { AnimationTheme } from '../../lib/animation-config';
 
 interface InfoItem {
     title: string;
@@ -16,13 +18,15 @@ interface InfoGridProps {
     items?: InfoItem[];
     benefits?: InfoItem[]; // Backward compatibility
     columns?: number;
+    animationStyle?: AnimationTheme;
 }
 
 export const InfoGrid = ({
     title = "Info Grid",
     items = [],
     benefits,
-    columns = 3
+    columns = 3,
+    animationStyle = "simple"
 }: InfoGridProps) => {
     const gridItems = items.length > 0 ? items : (benefits || []);
 
@@ -36,8 +40,11 @@ export const InfoGrid = ({
                 } as React.CSSProperties}
             >
                 {gridItems.map((item, index) => (
-                    <div 
+                    <ScrollAnimation 
                         key={index} 
+                        theme={animationStyle}
+                        delay={index * 0.1}
+                        hoverable={true}
                         className={styles.card}
                         style={{ 
                             '--col-span': item.colSpan ? `span ${item.colSpan}` : 'span 1' 
@@ -58,9 +65,9 @@ export const InfoGrid = ({
                             <h3 className={styles.cardTitle}>{item.title}</h3>
                             <p className={styles.cardDesc}>{item.description}</p>
                         </div>
-                    </div>
+                    </ScrollAnimation>
                 ))}
             </div>
         </section>
-    );
+    )
 }

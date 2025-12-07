@@ -3,13 +3,18 @@
 import Link from 'next/link';
 import ScrollAnimation from '../../components/ui/scroll-animation';
 import styles from './Footer.module.css';
+import { AnimationTheme } from '../../lib/animation-config';
 
-export const Footer = () => {
+interface FooterProps {
+    animationStyle?: AnimationTheme;
+}
+
+export const Footer = ({ animationStyle = 'simple' }: FooterProps) => {
     return (
         <footer className={styles.footer}>
             <div className="container mx-auto px-4 max-w-7xl">
                 <div className={styles.grid}>
-                    <ScrollAnimation variant="fadeUp" delay={0.1}>
+                    <ScrollAnimation theme={animationStyle} variant="fadeUp" delay={0.1}>
                         <div className={styles.col}>
                             <h3 className={styles.heading}>Satin Kits</h3>
                             <p className={styles.text}>
@@ -18,7 +23,7 @@ export const Footer = () => {
                         </div>
                     </ScrollAnimation>
 
-                    <ScrollAnimation variant="fadeUp" delay={0.2}>
+                    <ScrollAnimation theme={animationStyle} variant="fadeUp" delay={0.2}>
                         <div className={styles.col}>
                             <h4 className={styles.subheading}>Shop</h4>
                             <ul className={styles.list}>
@@ -29,7 +34,7 @@ export const Footer = () => {
                         </div>
                     </ScrollAnimation>
 
-                    <ScrollAnimation variant="fadeUp" delay={0.3}>
+                    <ScrollAnimation theme={animationStyle} variant="fadeUp" delay={0.3}>
                         <div className={styles.col}>
                             <h4 className={styles.subheading}>Support</h4>
                             <ul className={styles.list}>
@@ -40,7 +45,7 @@ export const Footer = () => {
                         </div>
                     </ScrollAnimation>
 
-                    <ScrollAnimation variant="fadeUp" delay={0.4}>
+                    <ScrollAnimation theme={animationStyle} variant="fadeUp" delay={0.4}>
                         <div className={styles.col}>
                             <h4 className={styles.subheading}>Stay Updated</h4>
                             <p className={styles.text}>Subscribe for new colors and tutorials.</p>

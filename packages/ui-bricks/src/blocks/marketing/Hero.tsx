@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import styles from './Hero.module.css'
+import ScrollAnimation from '../../components/ui/scroll-animation'
+import { AnimationTheme } from '../../lib/animation-config'
 
 interface HeroProps {
     title?: string
@@ -12,6 +14,7 @@ interface HeroProps {
     secondaryCtaText?: string
     secondaryCtaLink?: string
     backgroundImage?: string
+    animationStyle?: AnimationTheme
 }
 
 export const Hero = ({
@@ -21,7 +24,8 @@ export const Hero = ({
     primaryCtaLink = "/products/kits",
     secondaryCtaText = "How Mail-In Works",
     secondaryCtaLink = "/services/mail-in-service",
-    backgroundImage = "/images/essentials-kit.jpg"
+    backgroundImage = "/images/essentials-kit.jpg",
+    animationStyle = "simple"
 }: HeroProps) => {
     return (
         <section className={styles.hero}>
@@ -40,26 +44,32 @@ export const Hero = ({
             </div>
             
             <div className={styles.heroContent}>
-                <h1 className={styles.heroTitle}>
-                    {title}
-                </h1>
-                <p className={styles.heroSubtitle}>
-                    {subtitle}
-                </p>
+                <ScrollAnimation theme={animationStyle}>
+                    <h1 className={styles.heroTitle}>
+                        {title}
+                    </h1>
+                    <p className={styles.heroSubtitle}>
+                        {subtitle}
+                    </p>
+                </ScrollAnimation>
                 
                 <div className={styles.forkContainer}>
-                    <Link 
-                        href={primaryCtaLink} 
-                        className={styles.primaryButton}
-                    >
-                        {primaryCtaText}
-                    </Link>
-                    <Link 
-                        href={secondaryCtaLink} 
-                        className={styles.secondaryButton}
-                    >
-                        {secondaryCtaText}
-                    </Link>
+                    <ScrollAnimation theme={animationStyle} delay={0.2} hoverable={true}>
+                        <Link 
+                            href={primaryCtaLink} 
+                            className={styles.primaryButton}
+                        >
+                            {primaryCtaText}
+                        </Link>
+                    </ScrollAnimation>
+                    <ScrollAnimation theme={animationStyle} delay={0.3} hoverable={true}>
+                        <Link 
+                            href={secondaryCtaLink} 
+                            className={styles.secondaryButton}
+                        >
+                            {secondaryCtaText}
+                        </Link>
+                    </ScrollAnimation>
                 </div>
             </div>
         </section>

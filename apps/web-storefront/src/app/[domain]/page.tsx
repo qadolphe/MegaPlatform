@@ -67,7 +67,7 @@ export default async function DomainPage({
   const host = decodeURIComponent(rawDomain);
   const subdomain = getSubdomain(host);
 
-  const query = supabase.from("stores").select("id, name, store_pages(layout_config, slug, is_home)");
+  const query = supabase.from("stores").select("id, name, theme, store_pages(layout_config, slug, is_home)");
   
   if (subdomain) {
     query.eq('subdomain', subdomain);
@@ -133,6 +133,9 @@ export default async function DomainPage({
         if (!Component) return null;
         
         let props = sanitizeProps(block.props);
+
+        // Inject global theme
+        props.animationStyle = store.theme;
 
         // Inject real products into ProductGrid
         if (block.type === 'ProductGrid') {
