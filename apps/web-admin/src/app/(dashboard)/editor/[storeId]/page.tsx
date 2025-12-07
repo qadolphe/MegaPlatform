@@ -184,7 +184,30 @@ export default function EditorPage() {
                 <ChevronLeft size={20} />
             </Link>
             <h1 className="font-semibold text-lg tracking-tight">Visual Editor</h1>
-            <span className="px-2 py-0.5 bg-slate-800 rounded text-xs text-slate-400 border border-slate-700">{pageName || pageSlug}</span>
+            <div className="relative">
+                <select 
+                    value={pageSlug}
+                    onChange={(e) => {
+                        const newSlug = e.target.value;
+                        if (newSlug === 'new_page_action') {
+                            setIsCreatePageOpen(true);
+                        } else {
+                            // Navigate to new page
+                            window.location.href = `/editor/${storeId}?slug=${newSlug}`;
+                        }
+                    }}
+                    className="appearance-none bg-slate-800 text-white text-sm border border-slate-700 rounded pl-3 pr-8 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer hover:bg-slate-700 transition"
+                >
+                    {availablePages.map(p => (
+                        <option key={p.slug} value={p.slug}>{p.name} (/{p.slug})</option>
+                    ))}
+                    <option disabled>──────────</option>
+                    <option value="new_page_action">+ Create New Page</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+            </div>
         </div>
         
         <div className="flex items-center gap-3">
@@ -253,7 +276,9 @@ export default function EditorPage() {
                 {activeSidebarTab === 'components' && (
                     <div className="grid gap-3">
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Drag & Drop</p>
-                        {Object.entries(COMPONENT_DEFINITIONS).map(([key, def]) => (
+                        {Object.entries(COMPONENT_DEFINITIONS)
+                            .filter(([key]) => key !== 'Header' && key !== 'Footer')
+                            .map(([key, def]) => (
                             <button
                             key={key}
                             onClick={() => {
@@ -470,24 +495,28 @@ export default function EditorPage() {
                 blocks.map((block, index) => {
                     const Component = RENDER_MAP[block.type];
                     const isSelected = block.id === selectedBlockId;
+                    const isHeader = block.type === 'Header';
+                    const isFooter = block.type === 'Footer';
                     
                     return (
                     <div key={block.id}>
-                        {/* Insert Zone */}
-                        <div className="h-4 -my-2 relative z-20 flex items-center justify-center group/insert opacity-0 hover:opacity-100 transition-all">
-                            <div className="w-full h-0.5 bg-blue-500 absolute top-1/2 left-0 right-0"></div>
-                            <button 
-                                onClick={() => {
-                                    setInsertIndex(index);
-                                    setActiveSidebarTab('components');
-                                    if (!isSidebarOpen) setIsSidebarOpen(true);
-                                }}
-                                className="relative z-10 bg-blue-600 text-white rounded-full p-1 shadow-sm transform hover:scale-110 transition"
-                                title="Insert Component Here"
-                            >
-                                <Plus size={14} />
-                            </button>
-                        </div>
+                        {/* Insert Zone - Hide before Header */}
+                        {!isHeader && (
+                            <div className="h-4 -my-2 relative z-20 flex items-center justify-center group/insert opacity-0 hover:opacity-100 transition-all">
+                                <div className="w-full h-0.5 bg-blue-500 absolute top-1/2 left-0 right-0"></div>
+                                <button 
+                                    onClick={() => {
+                                        setInsertIndex(index);
+                                        setActiveSidebarTab('components');
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                    }}
+                                    className="relative z-10 bg-blue-600 text-white rounded-full p-1 shadow-sm transform hover:scale-110 transition"
+                                    title="Insert Component Here"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        )}
 
                         <div 
                             onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
@@ -501,7 +530,7 @@ export default function EditorPage() {
                             {Component ? <Component {...block.props} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
                             
                             {/* Actions Overlay */}
-                            {isSelected && (
+                            {isSelected && !isHeader && !isFooter && (
                             <div className="absolute -top-3 -right-3 flex gap-1 z-50">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
@@ -532,21 +561,8 @@ export default function EditorPage() {
                 })
                 )}
                 
-                {/* Add at bottom button */}
-                {blocks.length > 0 && (
-                    <div className="h-24 flex items-center justify-center border-t border-dashed border-slate-200 mt-4 p-4">
-                        <button 
-                            onClick={() => {
-                                setInsertIndex(blocks.length);
-                                setActiveSidebarTab('components');
-                                if (!isSidebarOpen) setIsSidebarOpen(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition border border-slate-200 hover:border-blue-200"
-                        >
-                            <Plus size={16} /> Add Component at End
-                        </button>
-                    </div>
-                )}
+                {/* Add at bottom button - Insert BEFORE Footer */}
+                {/* REMOVED as per user request */}
             </div>
             </div>
         </div>
