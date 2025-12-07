@@ -6,7 +6,7 @@ import { supabase } from "@repo/database";
 import { Hero, InfoGrid, ProductGrid, Header, Footer } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket } from "lucide-react";
 import { MediaManager } from "@/components/media-manager";
 import Link from "next/link";
 
@@ -27,7 +27,7 @@ export default function EditorPage() {
   const storeId = params.storeId as string;
   const pageSlug = searchParams.get("slug") || "home";
   
-  const { blocks, addBlock, insertBlock, moveBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock } = useEditorStore();
+  const { blocks, addBlock, insertBlock, moveBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock, undo, redo, canUndo, canRedo } = useEditorStore();
   
   const [loading, setLoading] = useState(true);
   const [pageName, setPageName] = useState("");
@@ -52,6 +52,10 @@ export default function EditorPage() {
   // 1. Load initial data
   useEffect(() => {
     async function loadData() {
+      const autosaveKey = `autosave_${storeId}_${pageSlug}`;
+      const savedLocal = localStorage.getItem(autosaveKey);
+      let loadedBlocks: any[] = [];
+
       const { data } = await supabase
         .from("store_pages")
         .select("layout_config, name")
@@ -62,14 +66,27 @@ export default function EditorPage() {
       if (data) {
         if (data.layout_config) {
             // Ensure every block has an ID
-            const blocksWithIds = (data.layout_config as any[]).map(b => ({
+            loadedBlocks = (data.layout_config as any[]).map(b => ({
                 ...b,
                 id: b.id || crypto.randomUUID()
             }));
-            setBlocks(blocksWithIds);
         }
         if (data.name) setPageName(data.name);
       }
+
+      // Restore from autosave if available
+      if (savedLocal) {
+          try {
+              const parsed = JSON.parse(savedLocal);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                  loadedBlocks = parsed;
+              }
+          } catch (e) {
+              console.error("Autosave parse error", e);
+          }
+      }
+      
+      setBlocks(loadedBlocks);
 
       // Fetch all pages for the link picker
       const { data: pagesData } = await supabase
@@ -113,6 +130,14 @@ export default function EditorPage() {
     fetchMediaPreview();
   }, [storeId, pageSlug]);
 
+  // Autosave Effect
+  useEffect(() => {
+      if (!loading && blocks.length > 0) {
+          const autosaveKey = `autosave_${storeId}_${pageSlug}`;
+          localStorage.setItem(autosaveKey, JSON.stringify(blocks));
+      }
+  }, [blocks, loading, storeId, pageSlug]);
+
   const fetchMediaPreview = async () => {
       const { data } = await supabase.storage.from("site-assets").list();
       if (data) {
@@ -124,16 +149,19 @@ export default function EditorPage() {
       }
   };
 
-  // 2. Save function
-  const handleSave = async () => {
+  // 2. Deploy function
+  const handleDeploy = async () => {
     const { error } = await supabase
       .from("store_pages")
       .update({ layout_config: blocks })
       .eq("store_id", storeId)
       .eq("slug", pageSlug);
 
-    if (error) alert("Error saving!");
-    else alert("Saved successfully!");
+    if (error) alert("Error deploying!");
+    else {
+        alert("Deployed successfully!");
+        localStorage.removeItem(`autosave_${storeId}_${pageSlug}`);
+    }
   };
 
   const handleImageSelect = (url: string) => {
@@ -249,6 +277,24 @@ export default function EditorPage() {
             >
                 {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
             </button>
+            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
+                <button 
+                    onClick={undo}
+                    disabled={!canUndo()}
+                    className={`p-1.5 rounded transition ${!canUndo() ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                    title="Undo"
+                >
+                    <Undo size={16} />
+                </button>
+                <button 
+                    onClick={redo}
+                    disabled={!canRedo()}
+                    className={`p-1.5 rounded transition ${!canRedo() ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                    title="Redo"
+                >
+                    <Redo size={16} />
+                </button>
+            </div>
             <div className="h-6 w-px bg-slate-700 mx-2"></div>
             <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                 <button 
@@ -266,10 +312,10 @@ export default function EditorPage() {
             </div>
             <div className="h-6 w-px bg-slate-700 mx-2"></div>
             <button 
-                onClick={handleSave}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition text-sm font-medium shadow-sm"
+                onClick={handleDeploy}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition text-sm font-medium shadow-sm"
             >
-                <Save size={16} /> Save
+                <Rocket size={16} /> Deploy
             </button>
         </div>
       </header>
