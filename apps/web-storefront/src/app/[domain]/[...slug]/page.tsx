@@ -246,8 +246,10 @@ export default async function DynamicPage({
             props = { ...props, product: productDetailData };
         }
 
-        // Inject Global Theme
-        props.animationStyle = (store as any).theme || 'simple';
+        // Inject Global Theme if requested
+        if (props.animationStyle === 'theme') {
+            props.animationStyle = (store as any).theme || 'simple';
+        }
 
         return <Component key={index} {...props} />;
       })}

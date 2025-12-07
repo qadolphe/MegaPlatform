@@ -134,8 +134,10 @@ export default async function DomainPage({
         
         let props = sanitizeProps(block.props);
 
-        // Inject global theme
-        props.animationStyle = store.theme;
+        // Inject global theme if requested
+        if (props.animationStyle === 'theme') {
+            props.animationStyle = store.theme;
+        }
 
         // Inject real products into ProductGrid
         if (block.type === 'ProductGrid') {

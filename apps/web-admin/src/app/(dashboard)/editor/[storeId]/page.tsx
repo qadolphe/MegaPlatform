@@ -686,7 +686,9 @@ export default function EditorPage() {
                     let previewProps = { ...block.props };
                     
                     // Inject Global Theme (matches Storefront behavior)
-                    previewProps.animationStyle = storeTheme;
+                    if (previewProps.animationStyle === 'theme') {
+                        previewProps.animationStyle = storeTheme;
+                    }
 
                     if (block.type === 'ProductGrid') {
                         const collectionId = block.props.collectionId || 'all';
