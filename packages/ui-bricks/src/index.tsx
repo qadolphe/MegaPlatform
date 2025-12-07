@@ -1,6 +1,7 @@
 export * from "./blocks/marketing/Hero";
 export * from "./blocks/marketing/InfoGrid";
 export * from "./blocks/commerce/ProductGrid";
+export * from "./blocks/commerce/ProductDetail";
 export * from "./blocks/layout/Header";
 export * from "./blocks/layout/Footer";
 

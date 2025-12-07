@@ -1,5 +1,5 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid, InfoGrid, Header, Footer } from "@repo/ui-bricks";
+import { Hero, ProductGrid, InfoGrid, Header, Footer, ProductDetail } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
 
 // 1. The Registry: Map database strings to real Code
@@ -11,6 +11,7 @@ const COMPONENT_REGISTRY: Record<string, any> = {
   'ProductGrid': ProductGrid,
   'BenefitsGrid': InfoGrid,
   'InfoGrid': InfoGrid,
+  'ProductDetail': ProductDetail,
 };
 
 // Helper to parse the domain
@@ -74,18 +75,117 @@ export default async function DynamicPage({
 
   if (error || !store) return notFound();
 
-  // Find the specific page
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pages = store.store_pages as any[] || [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let layout: any[] = [];
+
+  // 1. Try to find an explicit page record first (DB-backed page)
   const targetPage = pages.find(p => p.slug === targetSlug);
 
-  if (!targetPage) return notFound();
+  if (targetPage) {
+      layout = targetPage.layout_config || [];
+      
+      // Hydrate ProductDetail if present (for DB-backed product pages)
+      const productDetailBlock = layout.find((b: any) => b.type === 'ProductDetail');
+      if (productDetailBlock) {
+          // If we are on a product route, fetch that product
+          if (slugArray.length === 2 && slugArray[0] === 'products') {
+              const productSlug = slugArray[1];
+              const { data: product } = await supabase
+                .from("products")
+                .select("*")
+                .eq("store_id", store.id)
+                .eq("slug", productSlug)
+                .single();
+              
+              if (product) {
+                  // Inject product data into the block props for rendering
+                  // We'll handle this injection in the render loop below by checking for 'productData'
+                  // But since we map over layout later, let's just mutate/prepare a map or handle it there.
+                  // Actually, let's just attach it to the block temporarily or use a separate map.
+                  // Simpler: Just fetch it here and use it in the map loop.
+              }
+          }
+      }
+  } 
+  // 2. If no explicit page, check if it's a Product URL and generate dynamic layout
+  else if (slugArray.length === 2 && slugArray[0] === 'products') {
+      const productSlug = slugArray[1];
+      const { data: product } = await supabase
+        .from("products")
+        .select("*")
+        .eq("store_id", store.id)
+        .eq("slug", productSlug)
+        .single();
+      
+      if (!product) return notFound();
 
-  const layout = targetPage.layout_config || [];
+      // Get Header/Footer from Home page (or first available page) to maintain consistency
+      const homePage = pages.find(p => p.is_home) || pages[0];
+      const homeLayout = homePage?.layout_config || [];
+      const headerBlock = homeLayout.find((b: any) => b.type === 'Header') || { type: 'Header', props: { logoText: store.name } };
+      const footerBlock = homeLayout.find((b: any) => b.type === 'Footer') || { type: 'Footer', props: {} };
 
-  // Fetch Products if needed
+      // Construct Product Page Layout
+      layout = [
+          headerBlock,
+          {
+              type: 'ProductDetail',
+              props: {
+                  product: {
+                      id: product.id,
+                      name: product.title,
+                      description: product.description,
+                      base_price: product.price,
+                      image_url: product.images?.[0] || product.image_url,
+                      slug: product.slug,
+                      type: product.type
+                  }
+              }
+          },
+          {
+              type: 'ProductGrid',
+              props: { title: "You might also like", collectionId: 'all', columns: 4 }
+          },
+          footerBlock
+      ];
+
+  } else {
+      return notFound();
+  }
+
+  // Fetch Products for Grids if needed
   const productGrids = layout.filter((b: any) => b.type === 'ProductGrid');
   const productsMap: Record<string, any[]> = {};
+  
+  // Fetch Product Data for Detail if needed (and not already populated by dynamic generation)
+  // If we loaded from DB, the ProductDetail block might be empty.
+  let productDetailData: any = null;
+  const hasProductDetail = layout.some((b: any) => b.type === 'ProductDetail');
+  
+  if (hasProductDetail && !layout.find((b: any) => b.type === 'ProductDetail')?.props?.product) {
+       if (slugArray.length === 2 && slugArray[0] === 'products') {
+          const productSlug = slugArray[1];
+          const { data: product } = await supabase
+            .from("products")
+            .select("*")
+            .eq("store_id", store.id)
+            .eq("slug", productSlug)
+            .single();
+          if (product) {
+              productDetailData = {
+                  id: product.id,
+                  name: product.title,
+                  description: product.description,
+                  base_price: product.price,
+                  image_url: product.images?.[0] || product.image_url,
+                  slug: product.slug,
+                  type: product.type
+              };
+          }
+       }
+  }
 
   for (const block of productGrids) {
       const collectionId = block.props.collectionId || 'all';
@@ -139,6 +239,11 @@ export default async function DynamicPage({
                 products: productsMap[colId] || [],
                 columns: block.props.columns || 4 
             };
+        }
+
+        // Inject product data into ProductDetail if available from separate fetch
+        if (block.type === 'ProductDetail' && productDetailData) {
+            props = { ...props, product: productDetailData };
         }
 
         return <Component key={index} {...props} />;

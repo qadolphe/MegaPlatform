@@ -77,7 +77,7 @@ export default function ProductEditor() {
       title,
       slug, // In a real app, handle slug collisions
       description,
-      price,
+      price: isNaN(price) ? 0 : price,
       compare_at_price: comparePrice,
       images,
       options,
@@ -122,8 +122,8 @@ export default function ProductEditor() {
     const variantsToInsert = variants.map(v => ({
         product_id: savedProductId,
         title: v.title,
-        price: v.price || price, // Fallback to base price
-        inventory_quantity: v.inventory_quantity,
+        price: isNaN(v.price) ? (isNaN(price) ? 0 : price) : v.price, // Fallback to base price
+        inventory_quantity: isNaN(v.inventory_quantity) ? 0 : v.inventory_quantity,
         options: v.options
     }));
 
@@ -303,7 +303,7 @@ export default function ProductEditor() {
                                 <td className="px-4 py-2">
                                     <input 
                                         type="number" 
-                                        value={variant.price / 100}
+                                        value={isNaN(variant.price) ? "" : variant.price / 100}
                                         onChange={(e) => {
                                             const newVars = [...variants];
                                             newVars[idx].price = parseFloat(e.target.value) * 100;
@@ -315,7 +315,7 @@ export default function ProductEditor() {
                                 <td className="px-4 py-2">
                                     <input 
                                         type="number" 
-                                        value={variant.inventory_quantity}
+                                        value={isNaN(variant.inventory_quantity) ? "" : variant.inventory_quantity}
                                         onChange={(e) => {
                                             const newVars = [...variants];
                                             newVars[idx].inventory_quantity = parseInt(e.target.value);
@@ -367,7 +367,7 @@ export default function ProductEditor() {
                         <label className="block text-sm font-medium text-slate-700 mb-1">Base Price ($)</label>
                         <input 
                             type="number" 
-                            value={price / 100}
+                            value={isNaN(price) ? "" : price / 100}
                             onChange={(e) => setPrice(parseFloat(e.target.value) * 100)}
                             className="w-full border border-slate-300 rounded-md p-2"
                         />
