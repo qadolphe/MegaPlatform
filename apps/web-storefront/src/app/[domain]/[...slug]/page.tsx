@@ -15,21 +15,15 @@ const COMPONENT_REGISTRY: Record<string, any> = {
 
 // Helper to parse the domain
 const getSubdomain = (host: string) => {
-  // 1. Localhost Support (e.g. "bob.localhost:3000")
   if (host.includes("localhost")) {
     const parts = host.split(".");
-    // If just "localhost:3000", there is no subdomain -> return null
     if (parts.length === 1 || parts[0] === "localhost") return null;
     return parts[0]; 
   }
-  
-  // 2. Production Support (e.g. "bob.hoodieplatform.com")
   if (host.includes("hoodieplatform.com")) {
     return host.split(".")[0];
   }
-  
-  // 3. Custom Domain (e.g. "bob-hoodies.com")
-  return null; // It's a custom domain, return null to signal "use full host"
+  return null;
 };
 
 // Helper to replace missing local images with placeholders
@@ -37,9 +31,7 @@ const getSubdomain = (host: string) => {
 const sanitizeProps = (props: any): any => {
   if (!props) return props;
   if (typeof props === 'string' && (props.startsWith('/images/') || props.startsWith('/'))) {
-    // Check if it looks like an image path
     if (props.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-       // Return a placeholder image from Unsplash
        return 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80';
     }
   }
@@ -57,15 +49,18 @@ const sanitizeProps = (props: any): any => {
   return props;
 };
 
-export default async function DomainPage({
+export default async function DynamicPage({
   params,
 }: {
-  params: Promise<{ domain: string }>;
+  params: Promise<{ domain: string; slug: string[] }>;
 }) {
-  // DECODE the domain (Next.js passes it URL-encoded)
-  const { domain: rawDomain } = await params;
+  const { domain: rawDomain, slug: slugArray } = await params;
   const host = decodeURIComponent(rawDomain);
   const subdomain = getSubdomain(host);
+  
+  // Construct the slug string (e.g. "about" or "shop/hoodies")
+  // My admin currently creates flat slugs like "about-us", so we just join them just in case
+  const targetSlug = slugArray.join('/');
 
   const query = supabase.from("stores").select("id, name, store_pages(layout_config, slug, is_home)");
   
@@ -79,13 +74,16 @@ export default async function DomainPage({
 
   if (error || !store) return notFound();
 
-  // 3. Get the "Home" page layout
+  // Find the specific page
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pages = store.store_pages as any[] || [];
-  const homePage = pages.find(p => p.is_home) || pages.find(p => p.slug === 'home') || pages[0];
-  const layout = homePage?.layout_config || [];
+  const targetPage = pages.find(p => p.slug === targetSlug);
 
-  // 4. Fetch Products if needed
+  if (!targetPage) return notFound();
+
+  const layout = targetPage.layout_config || [];
+
+  // Fetch Products if needed
   const productGrids = layout.filter((b: any) => b.type === 'ProductGrid');
   const productsMap: Record<string, any[]> = {};
 
@@ -124,7 +122,6 @@ export default async function DomainPage({
       }));
   }
 
-  // 5. The "Engine": Loop through JSON and render components
   return (
     <main>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

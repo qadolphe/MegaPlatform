@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@repo/database";
 import { Hero, InfoGrid, ProductGrid, Header, Footer } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
@@ -23,6 +23,7 @@ const RENDER_MAP: Record<string, any> = {
 export default function EditorPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const storeId = params.storeId as string;
   const pageSlug = searchParams.get("slug") || "home";
   
@@ -43,6 +44,10 @@ export default function EditorPage() {
   const [isCreatePageOpen, setIsCreatePageOpen] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
+
+  // Product/Collection Data for Preview
+  const [collections, setCollections] = useState<{id: string, title: string}[]>([]);
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
 
   // 1. Load initial data
   useEffect(() => {
@@ -74,6 +79,32 @@ export default function EditorPage() {
       
       if (pagesData) {
         setAvailablePages(pagesData);
+      }
+
+      // Fetch collections
+      const { data: collectionsData } = await supabase
+        .from("collections")
+        .select("id, title")
+        .eq("store_id", storeId);
+      if (collectionsData) setCollections(collectionsData);
+
+      // Fetch products for preview
+      const { data: productsData } = await supabase
+        .from("products")
+        .select("*, product_collections(collection_id)")
+        .eq("store_id", storeId)
+        .eq("published", true);
+      
+      if (productsData) {
+          setStoreProducts(productsData.map((p: any) => ({
+              id: p.id,
+              name: p.title, // ProductCard expects 'name'
+              description: p.description,
+              base_price: p.price, // ProductCard expects 'base_price'
+              image_url: p.images?.[0] || p.image_url, // ProductCard expects 'image_url'
+              slug: p.slug,
+              collectionIds: p.product_collections?.map((pc: any) => pc.collection_id) || []
+          })));
       }
 
       setLoading(false);
@@ -193,7 +224,7 @@ export default function EditorPage() {
                             setIsCreatePageOpen(true);
                         } else {
                             // Navigate to new page
-                            window.location.href = `/editor/${storeId}?slug=${newSlug}`;
+                            router.push(`/editor/${storeId}?slug=${newSlug}`);
                         }
                     }}
                     className="appearance-none bg-slate-800 text-white text-sm border border-slate-700 rounded pl-3 pr-8 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer hover:bg-slate-700 transition"
@@ -286,7 +317,13 @@ export default function EditorPage() {
                                     insertBlock(insertIndex, key, def.defaultProps);
                                     setInsertIndex(null);
                                 } else {
-                                    addBlock(key, def.defaultProps);
+                                    // Default: Insert before Footer if it exists
+                                    const footerIndex = blocks.findIndex(b => b.type === 'Footer');
+                                    if (footerIndex !== -1) {
+                                        insertBlock(footerIndex, key, def.defaultProps);
+                                    } else {
+                                        addBlock(key, def.defaultProps);
+                                    }
                                 }
                             }}
                             className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:border-blue-400 hover:shadow-sm hover:bg-blue-50/30 transition text-left group bg-white"
@@ -346,7 +383,18 @@ export default function EditorPage() {
                                 {field.label}
                                 </label>
                                 
-                                {field.type === 'array' ? (
+                                {field.type === 'collection-select' ? (
+                                    <select
+                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                        value={selectedBlock.props[field.name] || "all"}
+                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                    >
+                                        <option value="all">All Products</option>
+                                        {collections.map(c => (
+                                            <option key={c.id} value={c.id}>{c.title}</option>
+                                        ))}
+                                    </select>
+                                ) : field.type === 'array' ? (
                                     <div className="space-y-3">
                                         {(selectedBlock.props[field.name] || []).map((item: any, index: number) => (
                                             <div key={index} className="border border-slate-200 rounded p-3 bg-slate-50">
@@ -359,7 +407,8 @@ export default function EditorPage() {
                                                     }} className="text-red-400 hover:text-red-600"><Trash size={12} /></button>
                                                 </div>
                                                 {/* Render sub-fields */}
-                                                {field.itemSchema?.map((subField: any) => (
+                                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                                {(field as any).itemSchema?.map((subField: any) => (
                                                     <div key={subField.name} className="mb-2">
                                                         <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">{subField.label}</label>
                                                         {subField.type === 'image' ? (
@@ -483,7 +532,27 @@ export default function EditorPage() {
             <div className="flex-1 overflow-y-auto p-8">
             <div className={`bg-white min-h-[800px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all duration-300 ${
                 viewMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-6xl'
-            }`} style={{ transform: 'scale(1)' }}>
+            }`} 
+            style={{ transform: 'scale(1)' }}
+            onClickCapture={(e) => {
+                const link = (e.target as HTMLElement).closest('a');
+                if (link) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const href = link.getAttribute('href');
+                    if (href && href.startsWith('/')) {
+                        const slug = href === '/' ? 'home' : href.substring(1);
+                        // Check if page exists
+                        const pageExists = availablePages.some(p => p.slug === slug);
+                        if (pageExists) {
+                            router.push(`/editor/${storeId}?slug=${slug}`);
+                        } else {
+                            alert(`Page /${slug} does not exist yet.`);
+                        }
+                    }
+                }
+            }}
+            >
                 {blocks.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 p-20 gap-4">
                     <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
@@ -497,6 +566,22 @@ export default function EditorPage() {
                     const isSelected = block.id === selectedBlockId;
                     const isHeader = block.type === 'Header';
                     const isFooter = block.type === 'Footer';
+                    
+                    // Inject Preview Data
+                    let previewProps = { ...block.props };
+                    if (block.type === 'ProductGrid') {
+                        const collectionId = block.props.collectionId || 'all';
+                        let filtered = [];
+                        if (collectionId === 'all') {
+                            filtered = storeProducts;
+                        } else {
+                            filtered = storeProducts.filter(p => p.collectionIds.includes(collectionId));
+                        }
+                        
+                        if (filtered.length > 0) {
+                            previewProps.products = filtered.slice(0, 8);
+                        }
+                    }
                     
                     return (
                     <div key={block.id}>
@@ -527,7 +612,7 @@ export default function EditorPage() {
                             }`}
                         >
                             {/* Render the actual UI Block */}
-                            {Component ? <Component {...block.props} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
+                            {Component ? <Component {...previewProps} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
                             
                             {/* Actions Overlay */}
                             {isSelected && !isHeader && !isFooter && (

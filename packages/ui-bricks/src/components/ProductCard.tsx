@@ -32,9 +32,15 @@ export const ProductCard = ({
     const displayLink = overrideLink || `${config.linkPrefix || '/products'}/${product.slug}`
 
     const getPriceDisplay = (p: any) => {
-        if (p.type === 'kit') return `Starting from $${p.base_price}`
-        if (p.slug === 'concierge') return `Cost of Hoodie + $${p.base_price}`
-        return `$${p.base_price}`
+        const price = p.base_price || 0;
+        const formatted = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        }).format(price / 100);
+
+        if (p.type === 'kit') return `Starting from ${formatted}`
+        if (p.slug === 'concierge') return `Cost of Hoodie + ${formatted}`
+        return formatted
     }
 
     return (

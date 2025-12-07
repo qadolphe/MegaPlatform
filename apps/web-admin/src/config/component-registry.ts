@@ -81,9 +81,15 @@ export const COMPONENT_DEFINITIONS = {
   },
   ProductGrid: {
     label: "Product Grid",
-    defaultProps: { category: "all" },
+    defaultProps: { 
+      title: "Featured Products",
+      collectionId: "all",
+      columns: 4
+    },
     fields: [
-      { name: "category", type: "text", label: "Category Filter" },
+      { name: "title", type: "text", label: "Section Title" },
+      { name: "collectionId", type: "collection-select", label: "Collection" },
+      { name: "columns", type: "number", label: "Columns (2-6)" },
     ]
   }
 };

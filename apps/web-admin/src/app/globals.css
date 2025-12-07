@@ -25,3 +25,24 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Standardize Input Text Colors for Admin */
+input, textarea, select {
+  color: #0f172a !important; /* slate-900 */
+}
+
+/* Ensure placeholders are visible but distinct */
+::placeholder {
+  color: #94a3b8 !important; /* slate-400 */
+  opacity: 1;
+}
+
+/* Force light mode styles for admin inputs even if system is dark, 
+   as the admin UI seems designed for light mode primarily */
+@media (prefers-color-scheme: dark) {
+  input, textarea, select {
+    background-color: #ffffff;
+    color: #0f172a !important;
+    border-color: #cbd5e1;
+  }
+}
