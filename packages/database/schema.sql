@@ -6,7 +6,8 @@ create table stores (
   subdomain text unique not null,               -- e.g. "bob-hoodies"
   custom_domain text unique,                    -- e.g. "bobhoodies.com"
   name text not null,
-  theme text default 'simple'                   -- Global animation theme
+  theme text default 'simple',                  -- Global animation theme
+  colors jsonb default '{"primary": "#000000", "secondary": "#ffffff", "accent": "#3b82f6", "background": "#ffffff", "text": "#000000"}'::jsonb -- Global color scheme
 );
 
 -- 2. Pages: The "Visual Config" for the Dynamic Renderer

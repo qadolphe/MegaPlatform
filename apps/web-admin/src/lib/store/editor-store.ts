@@ -6,12 +6,29 @@ export type Block = {
   props: Record<string, any>;
 };
 
+export type StoreColors = {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    text: string;
+};
+
+const DEFAULT_COLORS: StoreColors = {
+    primary: "#000000",
+    secondary: "#ffffff",
+    accent: "#3b82f6",
+    background: "#ffffff",
+    text: "#000000"
+};
+
 interface EditorState {
   blocks: Block[];
+  storeColors: StoreColors;
   selectedBlockId: string | null;
   
   // History
-  history: Block[][];
+  history: { blocks: Block[], colors: StoreColors }[];
   historyIndex: number;
 
   // Actions
@@ -19,8 +36,9 @@ interface EditorState {
   insertBlock: (index: number, type: string, defaultProps?: any) => void;
   moveBlock: (id: string, direction: 'up' | 'down') => void;
   updateBlockProps: (id: string, newProps: any) => void;
-  selectBlock: (id: string) => void;
+  selectBlock: (id: string | null) => void;
   setBlocks: (blocks: Block[], addToHistory?: boolean) => void;
+  setStoreColors: (colors: StoreColors, addToHistory?: boolean) => void;
   removeBlock: (id: string) => void;
   undo: () => void;
   redo: () => void;
@@ -30,6 +48,7 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   blocks: [],
+  storeColors: DEFAULT_COLORS,
   selectedBlockId: null,
   history: [],
   historyIndex: -1,
@@ -43,7 +62,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }];
       
       const newHistory = state.history.slice(0, state.historyIndex + 1);
-      newHistory.push(newBlocks);
+      newHistory.push({ blocks: newBlocks, colors: state.storeColors });
       
       return {
         blocks: newBlocks,
@@ -62,7 +81,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
       
       const newHistory = state.history.slice(0, state.historyIndex + 1);
-      newHistory.push(newBlocks);
+      newHistory.push({ blocks: newBlocks, colors: state.storeColors });
 
       return { 
           blocks: newBlocks,
@@ -82,7 +101,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       newBlocks.splice(newIndex, 0, movedBlock);
       
       const newHistory = state.history.slice(0, state.historyIndex + 1);
-      newHistory.push(newBlocks);
+      newHistory.push({ blocks: newBlocks, colors: state.storeColors });
 
       return { 
           blocks: newBlocks,
@@ -98,7 +117,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         );
         
         const newHistory = state.history.slice(0, state.historyIndex + 1);
-        newHistory.push(newBlocks);
+        newHistory.push({ blocks: newBlocks, colors: state.storeColors });
 
         return {
             blocks: newBlocks,
@@ -112,7 +131,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setBlocks: (blocks, addToHistory = false) => set((state) => {
       if (addToHistory) {
         const newHistory = state.history.slice(0, state.historyIndex + 1);
-        newHistory.push(blocks);
+        newHistory.push({ blocks, colors: state.storeColors });
         return {
             blocks,
             history: newHistory,
@@ -122,8 +141,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       // Reset history
       return { 
           blocks, 
-          history: [blocks], 
+          history: [{ blocks, colors: state.storeColors }], 
           historyIndex: 0 
+      };
+  }),
+
+  setStoreColors: (colors, addToHistory = true) => set((state) => {
+      if (addToHistory) {
+        const newHistory = state.history.slice(0, state.historyIndex + 1);
+        newHistory.push({ blocks: state.blocks, colors });
+        return {
+            storeColors: colors,
+            history: newHistory,
+            historyIndex: newHistory.length - 1
+        };
+      }
+      
+      const newHistory = state.history.length === 0 ? [{ blocks: state.blocks, colors }] : state.history;
+      const newIndex = state.history.length === 0 ? 0 : state.historyIndex;
+
+      return { 
+          storeColors: colors,
+          history: newHistory,
+          historyIndex: newIndex
       };
   }),
 
@@ -132,7 +172,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         const newBlocks = state.blocks.filter((b) => b.id !== id);
         
         const newHistory = state.history.slice(0, state.historyIndex + 1);
-        newHistory.push(newBlocks);
+        newHistory.push({ blocks: newBlocks, colors: state.storeColors });
 
         return {
             blocks: newBlocks,
@@ -145,8 +185,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   undo: () => set((state) => {
       if (state.historyIndex <= 0) return {};
       const newIndex = state.historyIndex - 1;
+      const snapshot = state.history[newIndex];
       return {
-          blocks: state.history[newIndex],
+          blocks: snapshot.blocks,
+          storeColors: snapshot.colors,
           historyIndex: newIndex
       };
   }),
@@ -154,8 +196,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   redo: () => set((state) => {
       if (state.historyIndex >= state.history.length - 1) return {};
       const newIndex = state.historyIndex + 1;
+      const snapshot = state.history[newIndex];
       return {
-          blocks: state.history[newIndex],
+          blocks: snapshot.blocks,
+          storeColors: snapshot.colors,
           historyIndex: newIndex
       };
   }),

@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail } from "@repo/ui-bricks"; // Import real components
+import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
+import { CounterInput } from "@/components/ui/counter-input";
 import Link from "next/link";
 
 // Mapping for rendering on the Canvas
@@ -18,7 +20,10 @@ const RENDER_MAP: Record<string, any> = {
   BenefitsGrid: InfoGrid,
   InfoGrid,
   ProductGrid,
-  ProductDetail
+  ProductDetail,
+  TextContent,
+  VideoGrid,
+  ImageBox
 };
 
 export default function EditorPage() {
@@ -29,7 +34,7 @@ export default function EditorPage() {
   const pageSlug = searchParams.get("slug") || "home";
   const supabase = createClient();
   
-  const { blocks, addBlock, insertBlock, moveBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock, undo, redo, canUndo, canRedo } = useEditorStore();
+  const { blocks, addBlock, insertBlock, moveBlock, updateBlockProps, selectBlock, selectedBlockId, setBlocks, removeBlock, undo, redo, canUndo, canRedo, storeColors, setStoreColors } = useEditorStore();
   
   const [loading, setLoading] = useState(true);
   const [pageName, setPageName] = useState("");
@@ -42,18 +47,27 @@ export default function EditorPage() {
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [insertIndex, setInsertIndex] = useState<number | null>(null);
+  const [baseDomain, setBaseDomain] = useState("localhost:3000");
 
   // Create Page Modal State
   const [isCreatePageOpen, setIsCreatePageOpen] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
+  const [missingPagePath, setMissingPagePath] = useState<string | null>(null);
 
   // Product/Collection Data for Preview
   const [collections, setCollections] = useState<{id: string, title: string}[]>([]);
   const [storeProducts, setStoreProducts] = useState<any[]>([]);
 
+  const [storeSubdomain, setStoreSubdomain] = useState<string>("");
+  const [deploySuccess, setDeploySuccess] = useState(false);
+
   // 1. Load initial data
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+        setBaseDomain(window.location.host);
+    }
+
     async function loadData() {
       const autosaveKey = `autosave_${storeId}_${pageSlug}`;
       const savedLocal = localStorage.getItem(autosaveKey);
@@ -66,38 +80,116 @@ export default function EditorPage() {
         .eq("slug", pageSlug)
         .single();
       
-      // Fetch store theme
+      // Fetch store theme and subdomain
       const { data: storeData } = await supabase
         .from("stores")
-        .select("theme")
+        .select("theme, subdomain, colors")
         .eq("id", storeId)
         .single();
       
-      if (storeData?.theme) {
-        setStoreTheme(storeData.theme);
+      if (storeData) {
+        if (storeData.theme) setStoreTheme(storeData.theme);
+        if (storeData.subdomain) setStoreSubdomain(storeData.subdomain);
+        if (storeData.colors) setStoreColors(storeData.colors as any, false);
       }
 
-      if (data) {
-        if (data.layout_config) {
-            // Ensure every block has an ID
-            loadedBlocks = (data.layout_config as any[]).map(b => ({
-                ...b,
-                id: b.id || crypto.randomUUID()
-            }));
+      // Fetch Home Page Layout for Header/Footer consistency
+      let homeHeader: any = null;
+      let homeFooter: any = null;
+
+      if (pageSlug !== 'home') {
+        const { data: homeData } = await supabase
+            .from("store_pages")
+            .select("layout_config")
+            .eq("store_id", storeId)
+            .eq("slug", "home")
+            .single();
+        
+        if (homeData?.layout_config) {
+            const rawHeader = (homeData.layout_config as any[]).find((b: any) => b.type === 'Header');
+            const rawFooter = (homeData.layout_config as any[]).find((b: any) => b.type === 'Footer');
+
+            if (rawHeader) {
+                const def = COMPONENT_DEFINITIONS['Header'];
+                homeHeader = { ...rawHeader, props: { ...def?.defaultProps, ...rawHeader.props } };
+            }
+            if (rawFooter) {
+                const def = COMPONENT_DEFINITIONS['Footer'];
+                homeFooter = { ...rawFooter, props: { ...def?.defaultProps, ...rawFooter.props } };
+            }
         }
-        if (data.name) setPageName(data.name);
       }
 
-      // Restore from autosave if available
+      // 1. Determine Base Blocks (DB or Autosave)
+      let baseBlocks: any[] = [];
+
       if (savedLocal) {
           try {
               const parsed = JSON.parse(savedLocal);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                  loadedBlocks = parsed;
+                  baseBlocks = parsed;
               }
           } catch (e) {
               console.error("Autosave parse error", e);
           }
+      }
+      
+      // If no autosave or invalid, use DB data
+      if (baseBlocks.length === 0 && data?.layout_config) {
+          baseBlocks = data.layout_config as any[];
+      } else if (baseBlocks.length === 0 && !data) {
+          // If no data found (e.g. missing page), use default template
+          if (pageSlug.startsWith('products/')) {
+              // Default Product Page Template
+              baseBlocks = [
+                  { type: 'Header', props: {} },
+                  { type: 'ProductDetail', props: {} },
+                  { type: 'ProductGrid', props: { title: 'You May Also Like', columns: 4 } },
+                  { type: 'Footer', props: {} }
+              ];
+          } else {
+              // Default Empty Page
+              baseBlocks = [
+                  { type: 'Header', props: {} },
+                  { type: 'TextContent', props: { title: 'Page Not Found', body: 'This page does not exist yet.' } },
+                  { type: 'Footer', props: {} }
+              ];
+          }
+      }
+
+      if (data?.name) setPageName(data.name);
+
+      // 2. Process Blocks: Merge Defaults & Inject Globals
+      loadedBlocks = baseBlocks.map(b => {
+            const def = COMPONENT_DEFINITIONS[b.type as keyof typeof COMPONENT_DEFINITIONS];
+            return {
+                ...b,
+                id: b.id || crypto.randomUUID(),
+                props: { ...def?.defaultProps, ...b.props }
+            };
+      });
+
+      // Inject Global Header/Footer if available and not on home page
+      if (pageSlug !== 'home') {
+            if (homeHeader) {
+                const currentHeaderIndex = loadedBlocks.findIndex(b => b.type === 'Header');
+                if (currentHeaderIndex !== -1) {
+                    // Keep local ID but use global props
+                    loadedBlocks[currentHeaderIndex] = { ...homeHeader, id: loadedBlocks[currentHeaderIndex].id };
+                } else {
+                    // Prepend header
+                    loadedBlocks.unshift({ ...homeHeader, id: crypto.randomUUID() });
+                }
+            }
+            if (homeFooter) {
+                const currentFooterIndex = loadedBlocks.findIndex(b => b.type === 'Footer');
+                if (currentFooterIndex !== -1) {
+                    loadedBlocks[currentFooterIndex] = { ...homeFooter, id: loadedBlocks[currentFooterIndex].id };
+                } else {
+                    // Append footer
+                    loadedBlocks.push({ ...homeFooter, id: crypto.randomUUID() });
+                }
+            }
       }
       
       setBlocks(loadedBlocks);
@@ -165,17 +257,73 @@ export default function EditorPage() {
 
   // 2. Deploy function
   const handleDeploy = async () => {
+    // 1. Save current page
     const { error } = await supabase
       .from("store_pages")
       .update({ layout_config: blocks })
       .eq("store_id", storeId)
       .eq("slug", pageSlug);
 
-    if (error) alert("Error deploying!");
-    else {
-        alert("Deployed successfully!");
-        localStorage.removeItem(`autosave_${storeId}_${pageSlug}`);
+    if (error) {
+        console.error("Error deploying!", error);
+        return;
     }
+
+    // 2. If Header/Footer changed, update Home Page (Global Source)
+    // Only if we are NOT on the home page (if we are on home page, step 1 already saved it)
+    if (pageSlug !== 'home') {
+        const currentHeader = blocks.find(b => b.type === 'Header');
+        const currentFooter = blocks.find(b => b.type === 'Footer');
+        
+        if (currentHeader || currentFooter) {
+             const { data: homeData } = await supabase
+                .from("store_pages")
+                .select("layout_config")
+                .eq("store_id", storeId)
+                .eq("slug", "home")
+                .single();
+             
+             if (homeData && homeData.layout_config) {
+                 let homeBlocks = [...(homeData.layout_config as any[])];
+                 let changed = false;
+                 
+                 if (currentHeader) {
+                     const homeHeaderIndex = homeBlocks.findIndex(b => b.type === 'Header');
+                     if (homeHeaderIndex !== -1) {
+                         // Check if props are different
+                         if (JSON.stringify(homeBlocks[homeHeaderIndex].props) !== JSON.stringify(currentHeader.props)) {
+                             homeBlocks[homeHeaderIndex] = { ...homeBlocks[homeHeaderIndex], props: currentHeader.props };
+                             changed = true;
+                         }
+                     }
+                 }
+                 
+                 if (currentFooter) {
+                     const homeFooterIndex = homeBlocks.findIndex(b => b.type === 'Footer');
+                     if (homeFooterIndex !== -1) {
+                         if (JSON.stringify(homeBlocks[homeFooterIndex].props) !== JSON.stringify(currentFooter.props)) {
+                             homeBlocks[homeFooterIndex] = { ...homeBlocks[homeFooterIndex], props: currentFooter.props };
+                             changed = true;
+                         }
+                     }
+                 }
+                 
+                 if (changed) {
+                     await supabase
+                        .from("store_pages")
+                        .update({ layout_config: homeBlocks })
+                        .eq("store_id", storeId)
+                        .eq("slug", "home");
+                 }
+             }
+        }
+    }
+
+    // alert("Deployed successfully!");
+    localStorage.removeItem(`autosave_${storeId}_${pageSlug}`);
+    
+    // Show success modal
+    setDeploySuccess(true);
   };
 
   const handleImageSelect = (url: string) => {
@@ -220,13 +368,14 @@ export default function EditorPage() {
       .single();
 
     if (error) {
-      alert("Error creating page: " + error.message);
+      console.error("Error creating page: " + error.message);
     } else {
       setAvailablePages([...availablePages, data]);
       setIsCreatePageOpen(false);
       setNewPageName("");
       setNewPageSlug("");
-      alert("Page created! You can now select it from the dropdown.");
+      setMissingPagePath(null);
+      // alert("Page created! You can now select it from the dropdown.");
     }
   };
 
@@ -325,6 +474,14 @@ export default function EditorPage() {
                 </button>
             </div>
             <div className="h-6 w-px bg-slate-700 mx-2"></div>
+            <a
+                href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${storeSubdomain}` : `//${storeSubdomain}.${baseDomain}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-slate-800 text-slate-300 border border-slate-700 px-3 py-2 rounded-md hover:bg-slate-700 hover:text-white transition text-sm font-medium"
+            >
+                <ExternalLink size={16} /> Preview
+            </a>
             <button 
                 onClick={handleDeploy}
                 className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition text-sm font-medium shadow-sm"
@@ -370,8 +527,15 @@ export default function EditorPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
+                <AnimatePresence mode="wait">
                 {activeSidebarTab === 'theme' && (
-                    <div className="flex flex-col gap-5">
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-col gap-5"
+                    >
                         <div className="pb-4 border-b border-slate-100">
                             <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded">
                                 Global Theme
@@ -404,11 +568,49 @@ export default function EditorPage() {
                                 <option value="none">None</option>
                             </select>
                         </div>
-                    </div>
+
+                        <div className="pt-4 border-t border-slate-100">
+                            <label className="block text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">
+                                Global Colors
+                            </label>
+                            <div className="space-y-3">
+                                {Object.entries(storeColors).map(([key, value]) => (
+                                    <div key={key} className="flex items-center justify-between">
+                                        <span className="text-sm capitalize text-slate-700">{key}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-slate-400 uppercase">{value}</span>
+                                            <input
+                                                type="color"
+                                                value={value}
+                                                onChange={(e) => {
+                                                    const newColors = { ...storeColors, [key]: e.target.value };
+                                                    setStoreColors(newColors, false);
+                                                }}
+                                                onBlur={async () => {
+                                                     setStoreColors(storeColors, true);
+                                                     await supabase
+                                                        .from("stores")
+                                                        .update({ colors: storeColors })
+                                                        .eq("id", storeId);
+                                                }}
+                                                className="h-8 w-8 rounded cursor-pointer border-0 p-0"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
                 )}
 
                 {activeSidebarTab === 'components' && (
-                    <div className="grid gap-3">
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.2 }}
+                        className="grid gap-3"
+                    >
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Drag & Drop</p>
                         {Object.entries(COMPONENT_DEFINITIONS)
                             .filter(([key]) => key !== 'Header' && key !== 'Footer')
@@ -440,11 +642,17 @@ export default function EditorPage() {
                             </div>
                             </button>
                         ))}
-                    </div>
+                    </motion.div>
                 )}
 
                 {activeSidebarTab === 'media' && (
-                    <div className="flex flex-col gap-4">
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-col gap-4"
+                    >
                         <button 
                             onClick={() => { setActivePropName(null); setIsMediaManagerOpen(true); }}
                             className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition text-sm font-medium flex items-center justify-center gap-2"
@@ -458,7 +666,13 @@ export default function EditorPage() {
                                     <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                                         <button 
-                                            onClick={() => { navigator.clipboard.writeText(img.url); alert("URL Copied!"); }}
+                                            onClick={(e) => { 
+                                                navigator.clipboard.writeText(img.url); 
+                                                const btn = e.currentTarget;
+                                                const originalText = btn.innerText;
+                                                btn.innerText = "Copied!";
+                                                setTimeout(() => btn.innerText = originalText, 1000);
+                                            }}
                                             className="text-xs bg-white text-slate-800 px-2 py-1 rounded shadow-sm font-medium"
                                         >
                                             Copy
@@ -467,11 +681,16 @@ export default function EditorPage() {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
                 )}
 
                 {activeSidebarTab === 'properties' && (
-                    <>
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.2 }}
+                    >
                         {selectedBlock && selectedDef ? (
                         <div className="flex flex-col gap-5">
                             <div className="pb-4 border-b border-slate-100">
@@ -480,157 +699,225 @@ export default function EditorPage() {
                                 </span>
                             </div>
 
-                            {selectedDef.fields.map((field) => (
-                            <div key={field.name}>
-                                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-                                {field.label}
-                                </label>
-                                
-                                {field.type === 'collection-select' ? (
-                                    <select
-                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                        value={selectedBlock.props[field.name] || "all"}
-                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                    >
-                                        <option value="all">All Products</option>
-                                        {collections.map(c => (
-                                            <option key={c.id} value={c.id}>{c.title}</option>
-                                        ))}
-                                    </select>
-                                ) : field.type === 'select' ? (
-                                    <select
-                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                        value={selectedBlock.props[field.name] || ""}
-                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                    >
-                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                        {(field as any).options?.map((opt: any) => (
-                                            <option key={opt.value} value={opt.value}>
-                                                {opt.value === 'theme' ? `Theme Default (${storeTheme})` : opt.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                ) : field.type === 'array' ? (
-                                    <div className="space-y-3">
-                                        {(selectedBlock.props[field.name] || []).map((item: any, index: number) => (
-                                            <div key={index} className="border border-slate-200 rounded p-3 bg-slate-50">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-xs font-bold text-slate-400">Item {index + 1}</span>
-                                                    <button onClick={() => {
-                                                        const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                        newItems.splice(index, 1);
-                                                        updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                    }} className="text-red-400 hover:text-red-600"><Trash size={12} /></button>
-                                                </div>
-                                                {/* Render sub-fields */}
-                                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                {(field as any).itemSchema?.map((subField: any) => (
-                                                    <div key={subField.name} className="mb-2">
-                                                        <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">{subField.label}</label>
-                                                        {subField.type === 'image' ? (
-                                                            <div className="flex gap-2">
+                            {/* Group fields by section */}
+                            {(() => {
+                                const fieldsBySection: Record<string, any[]> = {};
+                                selectedDef.fields.forEach((field: any) => {
+                                    const section = field.section || "Other";
+                                    if (!fieldsBySection[section]) fieldsBySection[section] = [];
+                                    fieldsBySection[section].push(field);
+                                });
+
+                                return Object.entries(fieldsBySection).map(([sectionName, fields]) => (
+                                    <div key={sectionName} className="border border-slate-200 rounded-lg overflow-hidden">
+                                        <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sectionName}</span>
+                                        </div>
+                                        <div className="p-3 space-y-4 bg-white">
+                                            {fields.map((field) => (
+                                                <div key={field.name}>
+                                                    <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                                                    {field.name === 'columns' && selectedBlock.props.layout === 'expandable' ? 'Products per row' : field.label}
+                                                    </label>
+                                                    
+                                                    {field.type === 'collection-select' ? (
+                                                        <select
+                                                            className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                                            value={selectedBlock.props[field.name] || "all"}
+                                                            onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                        >
+                                                            <option value="all">All Products</option>
+                                                            {collections.map(c => (
+                                                                <option key={c.id} value={c.id}>{c.title}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : field.type === 'select' ? (
+                                                        <select
+                                                            className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                                            value={selectedBlock.props[field.name] || ""}
+                                                            onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                        >
+                                                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                                            {(field as any).options?.map((opt: any) => (
+                                                                <option key={opt.value} value={opt.value}>
+                                                                    {opt.value === 'theme' ? `Theme Default (${storeTheme})` : opt.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : field.type === 'array' ? (
+                                                        <div className="space-y-3">
+                                                            {(selectedBlock.props[field.name] || []).map((item: any, index: number) => (
+                                                                <div key={index} className="border border-slate-200 rounded p-3 bg-slate-50">
+                                                                    <div className="flex justify-between items-center mb-2">
+                                                                        <span className="text-xs font-bold text-slate-400">Item {index + 1}</span>
+                                                                        <button onClick={() => {
+                                                                            const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                            newItems.splice(index, 1);
+                                                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                        }} className="text-red-400 hover:text-red-600"><Trash size={12} /></button>
+                                                                    </div>
+                                                                    {/* Render sub-fields */}
+                                                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                                                    {(field as any).itemSchema?.map((subField: any) => (
+                                                                        <div key={subField.name} className="mb-2">
+                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">{subField.label}</label>
+                                                                            {subField.type === 'image' ? (
+                                                                                <div className="flex gap-2">
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none"
+                                                                                        value={item[subField.name] || ""}
+                                                                                        onChange={(e) => {
+                                                                                            const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                            newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
+                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                        }}
+                                                                                    />
+                                                                                    <button 
+                                                                                        onClick={() => {
+                                                                                            openMediaManager(`${field.name}:${index}:${subField.name}`);
+                                                                                        }}
+                                                                                        className="bg-slate-100 border border-slate-300 rounded-md px-2 hover:bg-slate-200 text-slate-600"
+                                                                                    >
+                                                                                        <Upload size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                subField.type === 'number' ? (
+                                                                                    <CounterInput
+                                                                                        value={parseInt(item[subField.name] || "0")}
+                                                                                        onChange={(val) => {
+                                                                                            const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                            newItems[index] = { ...newItems[index], [subField.name]: val };
+                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                        }}
+                                                                                        min={(subField as any).min}
+                                                                                        className="w-full"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none focus:border-blue-500"
+                                                                                        value={item[subField.name] || ""}
+                                                                                        onChange={(e) => {
+                                                                                            const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                            newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
+                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                        }}
+                                                                                    />
+                                                                                )
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ))}
+                                                            <button onClick={() => {
+                                                                const newItems = [...(selectedBlock.props[field.name] || []), {}];
+                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                            }} className="w-full py-2 text-xs font-medium text-blue-600 border border-dashed border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center gap-1">
+                                                                <Plus size={12} /> Add Item
+                                                            </button>
+                                                        </div>
+                                                    ) : field.type === 'page-link' ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            <select
+                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                                                                value={selectedBlock.props[field.name] || ""}
+                                                                onChange={(e) => {
+                                                                    if (e.target.value === 'CREATE_NEW') {
+                                                                        setIsCreatePageOpen(true);
+                                                                    } else {
+                                                                        updateBlockProps(selectedBlock.id, { [field.name]: e.target.value });
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">Select a page...</option>
+                                                                {availablePages.map((page) => (
+                                                                    <option key={page.slug} value={`/${page.slug}`}>
+                                                                        {page.name || page.slug} (/{page.slug})
+                                                                    </option>
+                                                                ))}
+                                                                <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Page</option>
+                                                            </select>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Or type custom URL..."
+                                                                className="w-full border border-slate-300 rounded-md p-2 text-xs text-slate-500 focus:text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                                                value={selectedBlock.props[field.name] || ""}
+                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                            />
+                                                        </div>
+                                                    ) : field.type === 'image' ? (
+                                                    <div className="flex gap-2">
+                                                        <div className="relative flex-1">
+                                                            <input
+                                                                type="text"
+                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm pl-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                                                value={selectedBlock.props[field.name] || ""}
+                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                            />
+                                                            <div className="absolute left-2.5 top-2.5 text-slate-400">
+                                                                <ImageIcon size={14} />
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => openMediaManager(field.name)}
+                                                            className="bg-slate-100 border border-slate-300 rounded-md px-3 hover:bg-slate-200 text-slate-600 transition"
+                                                            title="Select Image"
+                                                        >
+                                                            <Upload size={16} />
+                                                        </button>
+                                                    </div>
+                                                    ) : field.type === 'number' ? (
+                                                        <CounterInput
+                                                            value={parseInt(selectedBlock.props[field.name] || "0")}
+                                                            onChange={(val) => updateBlockProps(selectedBlock.id, { [field.name]: val })}
+                                                            min={(field as any).min}
+                                                            className="w-full"
+                                                        />
+                                                    ) : field.type === 'color' ? (
+                                                        <div className="flex gap-2">
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="color"
+                                                                    className="h-9 w-9 rounded cursor-pointer border border-slate-300 p-0.5 overflow-hidden"
+                                                                    value={selectedBlock.props[field.name] || "#000000"}
+                                                                    onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 flex gap-1">
                                                                 <input
                                                                     type="text"
-                                                                    className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none"
-                                                                    value={item[subField.name] || ""}
-                                                                    onChange={(e) => {
-                                                                        const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                        newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                        updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                    }}
+                                                                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                                                    value={selectedBlock.props[field.name] || ""}
+                                                                    onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                    placeholder="Default (Global)"
                                                                 />
-                                                                <button 
-                                                                    onClick={() => {
-                                                                        openMediaManager(`${field.name}:${index}:${subField.name}`);
-                                                                    }}
-                                                                    className="bg-slate-100 border border-slate-300 rounded-md px-2 hover:bg-slate-200 text-slate-600"
-                                                                >
-                                                                    <Upload size={12} />
-                                                                </button>
+                                                                {selectedBlock.props[field.name] && (
+                                                                    <button 
+                                                                        onClick={() => updateBlockProps(selectedBlock.id, { [field.name]: undefined })}
+                                                                        className="p-2 text-slate-400 hover:text-red-500"
+                                                                        title="Reset to Global Default"
+                                                                    >
+                                                                        <Trash size={14} />
+                                                                    </button>
+                                                                )}
                                                             </div>
-                                                        ) : (
-                                                            <input
-                                                                type={subField.type === 'number' ? 'number' : 'text'}
-                                                                className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none focus:border-blue-500"
-                                                                value={item[subField.name] || ""}
-                                                                onChange={(e) => {
-                                                                    const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                    newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                    updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                }}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ))}
-                                        <button onClick={() => {
-                                            const newItems = [...(selectedBlock.props[field.name] || []), {}];
-                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                        }} className="w-full py-2 text-xs font-medium text-blue-600 border border-dashed border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center gap-1">
-                                            <Plus size={12} /> Add Item
-                                        </button>
-                                    </div>
-                                ) : field.type === 'page-link' ? (
-                                    <div className="flex flex-col gap-2">
-                                        <select
-                                            className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                                            value={selectedBlock.props[field.name] || ""}
-                                            onChange={(e) => {
-                                                if (e.target.value === 'CREATE_NEW') {
-                                                    setIsCreatePageOpen(true);
-                                                } else {
-                                                    updateBlockProps(selectedBlock.id, { [field.name]: e.target.value });
-                                                }
-                                            }}
-                                        >
-                                            <option value="">Select a page...</option>
-                                            {availablePages.map((page) => (
-                                                <option key={page.slug} value={`/${page.slug}`}>
-                                                    {page.name || page.slug} (/{page.slug})
-                                                </option>
+                                                        </div>
+                                                    ) : (
+                                                    <input
+                                                        type="text"
+                                                        className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                                        value={selectedBlock.props[field.name] || ""}
+                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                    />
+                                                    )}
+                                                </div>
                                             ))}
-                                            <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Page</option>
-                                        </select>
-                                        <input
-                                            type="text"
-                                            placeholder="Or type custom URL..."
-                                            className="w-full border border-slate-300 rounded-md p-2 text-xs text-slate-500 focus:text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                                            value={selectedBlock.props[field.name] || ""}
-                                            onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                        />
-                                    </div>
-                                ) : field.type === 'image' ? (
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <input
-                                            type="text"
-                                            className="w-full border border-slate-300 rounded-md p-2 text-sm pl-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                            value={selectedBlock.props[field.name] || ""}
-                                            onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                        />
-                                        <div className="absolute left-2.5 top-2.5 text-slate-400">
-                                            <ImageIcon size={14} />
                                         </div>
                                     </div>
-                                    <button 
-                                        onClick={() => openMediaManager(field.name)}
-                                        className="bg-slate-100 border border-slate-300 rounded-md px-3 hover:bg-slate-200 text-slate-600 transition"
-                                        title="Select Image"
-                                    >
-                                        <Upload size={16} />
-                                    </button>
-                                </div>
-                                ) : (
-                                <input
-                                    type={field.type === 'number' ? 'number' : 'text'}
-                                    className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                    value={selectedBlock.props[field.name] || ""}
-                                    onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                />
-                                )}
-                            </div>
-                            ))}
+                                ));
+                            })()}
                         </div>
                         ) : (
                         <div className="flex flex-col items-center justify-center h-64 text-slate-400 text-center p-4">
@@ -638,18 +925,28 @@ export default function EditorPage() {
                             <p className="text-sm">Select a block on the canvas to edit its properties.</p>
                         </div>
                         )}
-                    </>
+                    </motion.div>
                 )}
+                </AnimatePresence>
             </div>
         </div>
 
         {/* --- CENTER: CANVAS --- */}
         <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-100/50">
             <div className="flex-1 overflow-y-auto p-8">
-            <div className={`bg-white min-h-[800px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all duration-300 ${
+            <div className={`bg-slate-950 min-h-[800px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all duration-300 ${
                 viewMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-6xl'
             }`} 
-            style={{ transform: 'scale(1)' }}
+            style={{ 
+                transform: 'scale(1)',
+                '--color-primary': storeColors.primary,
+                '--color-secondary': storeColors.secondary,
+                '--color-accent': storeColors.accent,
+                '--color-background': storeColors.background,
+                '--color-text': storeColors.text,
+                backgroundColor: storeColors.background,
+                color: storeColors.text
+            } as React.CSSProperties}
             onClickCapture={(e) => {
                 const link = (e.target as HTMLElement).closest('a');
                 if (link) {
@@ -663,7 +960,7 @@ export default function EditorPage() {
                         if (pageExists) {
                             router.push(`/editor/${storeId}?slug=${slug}`);
                         } else {
-                            alert(`Page /${slug} does not exist yet.`);
+                            setMissingPagePath(href);
                         }
                     }
                 }
@@ -685,6 +982,13 @@ export default function EditorPage() {
                     
                     // Inject Preview Data
                     let previewProps = { ...block.props };
+
+                    // Inject showCart for Header in Editor
+                    if (isHeader) {
+                        const hasProducts = storeProducts.length > 0;
+                        const hasStaticAddToCart = blocks.some(b => b.type === 'ProductDetail' && (b.props?.buttonAction === 'addToCart' || !b.props?.buttonAction));
+                        previewProps.showCart = hasProducts || hasStaticAddToCart;
+                    }
                     
                     // Inject Global Theme (matches Storefront behavior)
                     if (previewProps.animationStyle === 'theme') {
@@ -783,6 +1087,110 @@ export default function EditorPage() {
         onSelect={handleImageSelect} 
       />
 
+      {/* Missing Page Dialog */}
+      {missingPagePath && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
+            <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+                {missingPagePath.includes('products/') ? (
+                    <>
+                        <h3 className="text-lg font-bold mb-2">Product Page Options</h3>
+                        <p className="text-slate-600 mb-6">
+                            This product currently uses the default product page, would you like to view the page or create a new one?
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <button 
+                                onClick={() => {
+                                    // Navigate to product template
+                                    // Assuming there is a way to edit the default product template
+                                    // For now, let's try to find a generic product page or just close
+                                    const productTemplate = availablePages.find(p => p.slug === 'product' || p.slug === 'products/[productId]');
+                                    if (productTemplate) {
+                                        router.push(`/editor/${storeId}?slug=${productTemplate.slug}`);
+                                    } else {
+                                        // If no template exists, we just navigate to the slug and let the editor handle it (it might show empty or default)
+                                        // The user wants to "View default page" even if not editable.
+                                        // We can just push the router to the slug.
+                                        // But wait, if we push to the slug, and it's not in availablePages, the "Missing Page" dialog will pop up again!
+                                        // We need to prevent that loop.
+                                        // We can add a query param ?force=true or similar, or just handle it in the useEffect.
+                                        // Or, we can just close the dialog and let the iframe load the URL?
+                                        // The iframe loads based on the editor state.
+                                        // If we want to VIEW the page, maybe we should open it in a new tab?
+                                        // "View default page should go back to the viewport and show the product page"
+                                        // This implies the editor canvas should show it.
+                                        // If the page is not in DB, the editor canvas (which renders `blocks`) will be empty.
+                                        // UNLESS we have a way to fetch the default layout for a product page dynamically.
+                                        // For now, let's just navigate to the slug. To prevent the dialog loop, we need to make sure we don't trigger setMissingPagePath again for this slug.
+                                        // But setMissingPagePath is triggered when we click a link in the canvas.
+                                        // If we manually navigate via router.push, the useEffect/onClickCapture won't trigger immediately unless we click a link again.
+                                        // However, the editor logic uses `pageSlug` to load data.
+                                        // If `pageSlug` is `products/123`, and no DB entry, `blocks` is empty.
+                                        // We need to make sure `blocks` gets populated with a default layout if it's a product page.
+                                        // But that logic is in `useEditorStore` or `useEffect`.
+                                        // Let's just navigate for now.
+                                        router.push(`/editor/${storeId}?slug=${missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath}`);
+                                    }
+                                    setMissingPagePath(null);
+                                }}
+                                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                                View Default Page
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
+                                    const name = slug.split('/').pop()?.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || "New Product Page";
+                                    setNewPageSlug(slug);
+                                    setNewPageName(name);
+                                    setMissingPagePath(null);
+                                    setIsCreatePageOpen(true);
+                                }}
+                                className="w-full px-4 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-50"
+                            >
+                                Create New Page
+                            </button>
+                            <button 
+                                onClick={() => setMissingPagePath(null)}
+                                className="w-full px-4 py-2 text-slate-500 hover:text-slate-700 text-sm"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <h3 className="text-lg font-bold mb-2">Page Not Found</h3>
+                        <p className="text-slate-600 mb-6">
+                            The page <code className="bg-slate-100 px-1 py-0.5 rounded text-sm">{missingPagePath}</code> hasn't been created yet.
+                            Would you like to create it now?
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <button 
+                                onClick={() => setMissingPagePath(null)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
+                                    const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                    setNewPageSlug(slug);
+                                    setNewPageName(name);
+                                    setMissingPagePath(null);
+                                    setIsCreatePageOpen(true);
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                                Create Page
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+      )}
+
       {/* Create Page Modal */}
       {isCreatePageOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
@@ -829,6 +1237,37 @@ export default function EditorPage() {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+
+      {/* Deploy Success Modal */}
+      {deploySuccess && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]">
+            <div className="bg-white rounded-lg p-8 w-96 shadow-2xl text-center">
+                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Rocket size={32} />
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-slate-900">Deployment Successful!</h3>
+                <p className="text-slate-500 mb-6">
+                    Your changes are now live. It may take a few moments for the cache to clear.
+                </p>
+                <div className="flex flex-col gap-3">
+                    <a 
+                        href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${storeSubdomain}` : `//${storeSubdomain}.${baseDomain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                    >
+                        <ExternalLink size={18} /> View Storefront
+                    </a>
+                    <button 
+                        onClick={() => setDeploySuccess(false)}
+                        className="w-full py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+                    >
+                        Continue Editing
+                    </button>
+                </div>
             </div>
         </div>
       )}

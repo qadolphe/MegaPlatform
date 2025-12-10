@@ -48,7 +48,7 @@
 .price {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #a855f7; /* Purple accent */
+    color: var(--color-accent, #a855f7); /* Purple accent */
     margin-bottom: 2rem;
 }
 
@@ -65,22 +65,38 @@
 }
 
 .addToCartBtn {
-    background: #fff;
-    color: #000;
+    background: var(--color-secondary, #fff);
+    color: var(--color-text, #000); /* Assuming text on secondary is primary text color or inverse */
     border: none;
     padding: 1rem 2.5rem;
     font-size: 1rem;
     font-weight: 700;
     border-radius: 9999px;
     cursor: pointer;
-    transition: box-shadow 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
 }
 
 .addToCartBtn:hover {
-    box-shadow: 0 10px 20px -5px rgba(255, 255, 255, 0.3);
+    background-color: var(--color-accent, #fff);
+    color: #fff;
+    box-shadow: 0 10px 20px -5px var(--color-accent, rgba(255, 255, 255, 0.3));
+    transform: translateY(-2px);
 }
 
 .addToCartBtn:active {
     transform: translateY(0);
+}
+
+.added {
+    background: #22c55e; /* Green-500 */
+    color: white;
+    transform: scale(1.05);
+}
+
+.added:hover {
+    background: #16a34a; /* Green-600 */
+    box-shadow: 0 10px 20px -5px rgba(34, 197, 94, 0.4);
 }

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, PlusCircle, Settings, LogOut, Store, ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -41,14 +42,23 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               title={isCollapsed ? item.name : ""}
-              className={`flex items-center ${isCollapsed ? "justify-center" : ""} gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              className={`relative flex items-center ${isCollapsed ? "justify-center" : ""} gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-blue-600 text-white"
+                  ? "text-white"
                   : "text-gray-400 hover:bg-gray-800 hover:text-white"
               }`}
             >
-              <item.icon className="h-5 w-5 min-w-[20px]" />
-              {!isCollapsed && <span>{item.name}</span>}
+              {isActive && (
+                  <motion.div
+                    layoutId="sidebarActive"
+                    className="absolute inset-0 bg-blue-600 rounded-md"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+              )}
+              <span className="relative z-10 flex items-center gap-3">
+                <item.icon className="h-5 w-5 min-w-[20px]" />
+                {!isCollapsed && <span>{item.name}</span>}
+              </span>
             </Link>
           );
         })}

@@ -12,6 +12,8 @@ interface ProductCardProps {
     overrideDescription?: string
     overrideButtonText?: string
     overrideLink?: string
+    variant?: 'standard' | 'expandable'
+    className?: string
 }
 
 export const ProductCard = ({
@@ -22,7 +24,9 @@ export const ProductCard = ({
     overrideTitle,
     overrideDescription,
     overrideButtonText,
-    overrideLink
+    overrideLink,
+    variant = 'standard',
+    className = ''
 }: ProductCardProps) => {
     const config = product.ui || {}
 
@@ -50,6 +54,8 @@ export const ProductCard = ({
             className={`
                 ${styles.card} 
                 ${isActive ? styles.focused : ''}
+                ${variant === 'expandable' ? styles.expandable : ''}
+                ${className}
             `}
         >
             <div className={styles.backgroundImageContainer}>

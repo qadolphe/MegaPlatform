@@ -1,6 +1,7 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid, InfoGrid, Header, Footer } from "@repo/ui-bricks";
+import { Hero, ProductGrid, InfoGrid, Header, Footer, TextContent, VideoGrid, ImageBox } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
+import { COMPONENT_DEFINITIONS } from "../../config/component-registry";
 
 // 1. The Registry: Map database strings to real Code
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,6 +12,9 @@ const COMPONENT_REGISTRY: Record<string, any> = {
   'ProductGrid': ProductGrid,
   'BenefitsGrid': InfoGrid,
   'InfoGrid': InfoGrid,
+  'TextContent': TextContent,
+  'VideoGrid': VideoGrid,
+  'ImageBox': ImageBox,
 };
 
 // Helper to parse the domain
@@ -79,6 +83,25 @@ export default async function DomainPage({
 
   if (error || !store) return notFound();
 
+  // Check if we should show the cart (if any product exists or any page has add-to-cart)
+  const { count: productCount } = await supabase
+    .from("products")
+    .select("*", { count: 'exact', head: true })
+    .eq("store_id", store.id)
+    .eq("published", true);
+
+  const hasProducts = productCount !== null && productCount > 0;
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hasStaticAddToCart = (store.store_pages as any[]).some(page => 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    page.layout_config?.some((b: any) => 
+      b.type === 'ProductDetail' && (b.props?.buttonAction === 'addToCart' || !b.props?.buttonAction)
+    )
+  );
+
+  const shouldShowCart = hasProducts || hasStaticAddToCart;
+
   // 3. Get the "Home" page layout
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pages = store.store_pages as any[] || [];
@@ -108,7 +131,15 @@ export default async function DomainPage({
       }
       // TODO: Add collection support
       
-      productsMap[collectionId] = fetchedProducts;
+      // Map to ProductCard format
+      productsMap[collectionId] = fetchedProducts.map((p: any) => ({
+            id: p.id,
+            name: p.title, // ProductCard expects 'name'
+            description: p.description,
+            base_price: p.price, // ProductCard expects 'base_price'
+            image_url: p.images?.[0] || p.image_url, // ProductCard expects 'image_url'
+            slug: p.slug
+      }));
   }
 
   return (
@@ -118,12 +149,20 @@ export default async function DomainPage({
         const Component = COMPONENT_REGISTRY[block.type];
         if (!Component) return null;
 
-        let props = { ...block.props };
+        // Merge defaults to ensure new features propagate to existing sites
+        const def = COMPONENT_DEFINITIONS[block.type as keyof typeof COMPONENT_DEFINITIONS];
+        const defaultProps = def ? def.defaultProps : {};
+        let props = { ...defaultProps, ...block.props };
         
         // Inject products if this is a ProductGrid
         if (block.type === 'ProductGrid') {
             const collectionId = props.collectionId || 'all';
             props.products = productsMap[collectionId] || [];
+        }
+
+        // Inject showCart if this is a Header
+        if (block.type === 'Header') {
+            props.showCart = shouldShowCart;
         }
 
         // Sanitize props (fix images)

@@ -4,12 +4,13 @@
     left: 0;
     right: 0;
     z-index: 50;
-    background: rgba(255, 255, 255, 0.8);
+    background: var(--header-bg, rgba(255, 255, 255, 0.8));
     backdrop-filter: blur(10px);
     border-bottom: 1px solid #e5e7eb; /* var(--border) fallback */
     height: 70px;
     display: flex;
     align-items: center;
+    color: var(--header-text, #000);
 }
 
 .container {
@@ -28,7 +29,7 @@
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #000; /* var(--foreground) fallback */
+    color: inherit;
     letter-spacing: -0.02em;
     text-decoration: none;
 }

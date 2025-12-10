@@ -19,6 +19,8 @@ interface InfoGridProps {
     benefits?: InfoItem[]; // Backward compatibility
     columns?: number;
     animationStyle?: AnimationTheme;
+    backgroundColor?: string;
+    titleColor?: string;
 }
 
 export const InfoGrid = ({
@@ -26,18 +28,23 @@ export const InfoGrid = ({
     items = [],
     benefits,
     columns = 3,
-    animationStyle = "simple"
+    animationStyle = "simple",
+    backgroundColor,
+    titleColor
 }: InfoGridProps) => {
     const gridItems = items.length > 0 ? items : (benefits || []);
 
+    const customStyles = {
+        '--grid-bg': backgroundColor,
+        '--grid-title-color': titleColor,
+        '--grid-cols': columns 
+    } as React.CSSProperties;
+
     return (
-        <section className={styles.section}>
+        <section className={styles.section} style={customStyles}>
             {title && <h2 className={styles.title}>{title}</h2>}
             <div 
                 className={styles.grid}
-                style={{ 
-                    '--grid-cols': columns 
-                } as React.CSSProperties}
             >
                 {gridItems.map((item, index) => (
                     <ScrollAnimation 

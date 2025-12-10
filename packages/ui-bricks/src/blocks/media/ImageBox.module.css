@@ -1,0 +1,30 @@
+.container {
+    padding: 4rem 1.5rem;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    background-color: var(--image-box-bg, transparent);
+}
+
+.imageWrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.image {
+    object-fit: cover;
+    width: 100%;
+    height: auto;
+}
+
+.caption {
+    margin-top: 1rem;
+    text-align: center;
+    color: var(--image-box-caption-color, #94a3b8);
+    font-size: 0.875rem;
+    font-style: italic;
+}

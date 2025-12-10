@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FileText, Package } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface PageSwitcherProps {
   storeId: string;
@@ -13,25 +14,43 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
     <div className="flex items-center bg-slate-100 p-1 rounded-lg mb-8 w-fit">
       <Link
         href={`/store/${storeId}/pages`}
-        className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+        className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
           activeTab === "pages"
-            ? "bg-white text-slate-900 shadow-sm"
+            ? "text-slate-900"
             : "text-slate-500 hover:text-slate-900"
         }`}
       >
-        <FileText size={16} />
-        Pages
+        {activeTab === "pages" && (
+            <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-white rounded-md shadow-sm"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            />
+        )}
+        <span className="relative z-10 flex items-center gap-2">
+            <FileText size={16} />
+            Pages
+        </span>
       </Link>
       <Link
         href={`/store/${storeId}/products`}
-        className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+        className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
           activeTab === "products"
-            ? "bg-white text-slate-900 shadow-sm"
+            ? "text-slate-900"
             : "text-slate-500 hover:text-slate-900"
         }`}
       >
-        <Package size={16} />
-        Products
+        {activeTab === "products" && (
+            <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-white rounded-md shadow-sm"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            />
+        )}
+        <span className="relative z-10 flex items-center gap-2">
+            <Package size={16} />
+            Products
+        </span>
       </Link>
     </div>
   );

@@ -15,6 +15,10 @@ interface HeroProps {
     secondaryCtaLink?: string
     backgroundImage?: string
     animationStyle?: AnimationTheme
+    titleColor?: string
+    subtitleColor?: string
+    buttonColor?: string
+    buttonTextColor?: string
 }
 
 export const Hero = ({
@@ -25,10 +29,21 @@ export const Hero = ({
     secondaryCtaText = "How Mail-In Works",
     secondaryCtaLink = "/services/mail-in-service",
     backgroundImage = "/images/essentials-kit.jpg",
-    animationStyle = "simple"
+    animationStyle = "simple",
+    titleColor,
+    subtitleColor,
+    buttonColor,
+    buttonTextColor
 }: HeroProps) => {
+    const customStyles = {
+        '--hero-title-color': titleColor,
+        '--hero-subtitle-color': subtitleColor,
+        '--hero-button-bg': buttonColor,
+        '--hero-button-text': buttonTextColor,
+    } as React.CSSProperties;
+
     return (
-        <section className={styles.hero}>
+        <section className={styles.hero} style={customStyles}>
             <div className={styles.heroBackground}>
                 {backgroundImage && (
                     <Image

@@ -5,28 +5,41 @@ import styles from './Header.module.css';
 import { ShoppingBag } from 'lucide-react';
 import ScrollAnimation from '../../components/ui/scroll-animation';
 import { AnimationTheme } from '../../lib/animation-config';
+import { useCart } from '../../hooks/use-cart';
 
 interface HeaderProps {
-  cartCount?: number;
-  onCartClick?: () => void;
+  cartCount?: number; // Deprecated in favor of internal hook
+  onCartClick?: () => void; // Deprecated
   links?: { href: string; label: string }[];
   logoText?: string;
   animationStyle?: AnimationTheme;
+  showCart?: boolean;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 export const Header = ({ 
-  cartCount = 0, 
-  onCartClick, 
   links = [
     { href: '/products', label: 'Shop' },
     { href: '/tutorials', label: 'Tutorials' },
     { href: '/about', label: 'About' }
   ],
   logoText = 'Satin Kits',
-  animationStyle = 'none'
+  animationStyle = 'none',
+  showCart = true,
+  backgroundColor,
+  textColor
 }: HeaderProps) => {
+    const { items, openCart } = useCart();
+    const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+    const customStyles = {
+        '--header-bg': backgroundColor,
+        '--header-text': textColor,
+    } as React.CSSProperties;
+
     return (
-        <header className={styles.header}>
+        <header className={styles.header} style={customStyles}>
             <div className={styles.container}>
                 <div className={styles.inner}>
                     <ScrollAnimation theme={animationStyle} hoverable={true}>
@@ -44,21 +57,23 @@ export const Header = ({
                     </nav>
 
                     <div className={styles.actions}>
-                        <ScrollAnimation theme={animationStyle} delay={0.3} hoverable={true}>
-                            <button 
-                                className={styles.cartBtn} 
-                                aria-label="Cart"
-                                onClick={onCartClick}
-                            >
-                                <ShoppingBag size={24} />
-                                {cartCount > 0 && (
-                                    <span className={styles.badge}>{cartCount}</span>
-                                )}
-                            </button>
-                        </ScrollAnimation>
+                        {showCart && (
+                            <ScrollAnimation theme={animationStyle} delay={0.3} hoverable={true}>
+                                <button 
+                                    className={styles.cartBtn} 
+                                    aria-label="Cart"
+                                    onClick={openCart}
+                                >
+                                    <ShoppingBag size={24} />
+                                    {cartCount > 0 && (
+                                        <span className={styles.badge}>{cartCount}</span>
+                                    )}
+                                </button>
+                            </ScrollAnimation>
+                        )}
                     </div>
                 </div>
             </div>
         </header>
-    )
-}
+    );
+};

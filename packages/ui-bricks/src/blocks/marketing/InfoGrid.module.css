@@ -1,6 +1,6 @@
 .section {
     padding: 6rem 1rem;
-    background: #000;
+    background: var(--grid-bg, #000);
     position: relative;
 }
 
@@ -9,7 +9,7 @@
     font-size: 3rem;
     font-weight: 800;
     margin-bottom: 4rem;
-    color: #fff;
+    color: var(--grid-title-color, #fff);
     letter-spacing: -0.025em;
 }
 

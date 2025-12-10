@@ -7,11 +7,18 @@ import { AnimationTheme } from '../../lib/animation-config';
 
 interface FooterProps {
     animationStyle?: AnimationTheme;
+    backgroundColor?: string;
+    textColor?: string;
 }
 
-export const Footer = ({ animationStyle = 'simple' }: FooterProps) => {
+export const Footer = ({ animationStyle = 'simple', backgroundColor, textColor }: FooterProps) => {
+    const customStyles = {
+        '--footer-bg': backgroundColor,
+        '--footer-text': textColor,
+    } as React.CSSProperties;
+
     return (
-        <footer className={styles.footer}>
+        <footer className={styles.footer} style={customStyles}>
             <div className="container mx-auto px-4 max-w-7xl">
                 <div className={styles.grid}>
                     <ScrollAnimation theme={animationStyle} variant="fadeUp" delay={0.1}>
