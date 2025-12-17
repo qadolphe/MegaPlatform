@@ -148,6 +148,10 @@ export const COMPONENT_DEFINITIONS = {
         ]
       },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "buttonColor", type: "color", label: "Button Color", section: SECTIONS.DESIGN },
+      { name: "buttonTextColor", type: "color", label: "Button Text Color", section: SECTIONS.DESIGN },
+      { name: "hoverColor", type: "color", label: "Hover Outline Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
     ]
   },
@@ -211,6 +215,40 @@ export const COMPONENT_DEFINITIONS = {
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
+    ]
+  },
+  Newsletter: {
+    label: "Newsletter Signup",
+    defaultProps: {
+      title: "Subscribe to our newsletter",
+      description: "Get the latest updates on new products and upcoming sales.",
+      buttonText: "Subscribe",
+      placeholder: "Enter your email",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "description", type: "text", label: "Description", section: SECTIONS.CONTENT },
+      { name: "buttonText", type: "text", label: "Button Text", section: SECTIONS.CONTENT },
+      { name: "placeholder", type: "text", label: "Placeholder", section: SECTIONS.CONTENT },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "buttonColor", type: "color", label: "Button Color", section: SECTIONS.DESIGN },
+      { name: "buttonTextColor", type: "color", label: "Button Text Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  CustomerProfile: {
+    label: "Customer Profile",
+    defaultProps: {
+      backgroundColor: "#ffffff",
+      textColor: "#0f172a",
+      accentColor: "#3b82f6"
+    },
+    fields: [
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN }
     ]
   },
   VideoGrid: {

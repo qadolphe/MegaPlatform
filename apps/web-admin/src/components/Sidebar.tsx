@@ -17,8 +17,10 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const supabase = createClient();
+
+  if (pathname === "/login") return null;
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -26,23 +28,33 @@ export function Sidebar() {
   };
 
   return (
-    <div className={`flex h-full flex-col bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? "w-20" : "w-64"}`}>
-      <div className={`flex h-16 items-center ${isCollapsed ? "justify-center" : "px-6"} font-bold text-xl tracking-wider border-b border-gray-800 overflow-hidden whitespace-nowrap`}>
-        <Store className={`h-6 w-6 text-blue-500 ${isCollapsed ? "" : "mr-2"}`} />
-        {!isCollapsed && (
-          <>MEGA<span className="text-blue-500">PLATFORM</span></>
+    <div 
+      className={`fixed left-0 top-0 bottom-0 z-[100] flex flex-col bg-gray-900 text-white transition-all duration-300 ${isHovered ? "w-64 shadow-2xl" : "w-16"}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className={`flex h-16 items-center ${isHovered ? "px-6" : "justify-center"} font-bold text-xl tracking-wider border-b border-gray-800 overflow-hidden whitespace-nowrap flex-shrink-0`}>
+        <Store className={`h-6 w-6 text-blue-500 ${isHovered ? "mr-2" : ""}`} />
+        {isHovered && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            MEGA<span className="text-blue-500">PLATFORM</span>
+          </motion.span>
         )}
       </div>
       
-      <div className="flex-1 flex flex-col gap-1 p-3">
+      <div className="flex-1 flex flex-col gap-1 p-3 overflow-x-hidden">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.name}
               href={item.href}
-              title={isCollapsed ? item.name : ""}
-              className={`relative flex items-center ${isCollapsed ? "justify-center" : ""} gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              title={!isHovered ? item.name : ""}
+              className={`relative flex items-center ${isHovered ? "" : "justify-center"} gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "text-white"
                   : "text-gray-400 hover:bg-gray-800 hover:text-white"
@@ -57,7 +69,15 @@ export function Sidebar() {
               )}
               <span className="relative z-10 flex items-center gap-3">
                 <item.icon className="h-5 w-5 min-w-[20px]" />
-                {!isCollapsed && <span>{item.name}</span>}
+                {isHovered && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {item.name}
+                  </motion.span>
+                )}
               </span>
             </Link>
           );
@@ -67,18 +87,19 @@ export function Sidebar() {
       <div className="p-3 border-t border-gray-800 flex flex-col gap-2">
         <button
           onClick={handleSignOut}
-          title={isCollapsed ? "Sign Out" : ""}
-          className={`flex w-full items-center ${isCollapsed ? "justify-center" : ""} gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors`}
+          title={!isHovered ? "Sign Out" : ""}
+          className={`flex w-full items-center ${isHovered ? "" : "justify-center"} gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors`}
         >
           <LogOut className="h-5 w-5 min-w-[20px]" />
-          {!isCollapsed && <span>Sign Out</span>}
-        </button>
-
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex w-full items-center justify-center rounded-md py-2 text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
-        >
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          {isHovered && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              Sign Out
+            </motion.span>
+          )}
         </button>
       </div>
     </div>

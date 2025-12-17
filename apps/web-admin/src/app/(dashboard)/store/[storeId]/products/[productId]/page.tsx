@@ -100,6 +100,26 @@ export default function ProductEditor() {
         return;
       }
       savedProductId = data.id;
+
+      // Create a corresponding page for the product
+      const { error: pageError } = await supabase
+        .from("store_pages")
+        .insert([
+          {
+            store_id: storeId,
+            name: `Product: ${title}`,
+            slug: `products/${slug}`,
+            layout_config: [
+              { id: crypto.randomUUID(), type: "Header", props: { logoText: "My Store" } },
+              { id: crypto.randomUUID(), type: "ProductDetail", props: { productId: savedProductId } },
+              { id: crypto.randomUUID(), type: "Footer", props: {} }
+            ]
+          }
+        ]);
+
+      if (pageError) {
+        console.error("Error creating product page:", pageError);
+      }
     } else {
       const { error } = await supabase
         .from("products")

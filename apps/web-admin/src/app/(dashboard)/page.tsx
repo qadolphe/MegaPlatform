@@ -20,9 +20,16 @@ export default function Dashboard() {
   const supabase = createClient();
 
   const handleDelete = async (storeId: string) => {
-    const { error } = await supabase.from("stores").delete().eq("id", storeId);
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log("Debug - Deleting Store:", { storeId, userId: user?.id });
+
+    const { error } = await supabase
+      .from("stores")
+      .update({ is_visible: false })
+      .eq("id", storeId);
+      
     if (error) {
-        console.error("Error deleting store:", error);
+        console.error("Error deleting store:", JSON.stringify(error, null, 2));
         // Use a toast or custom notification in real app, for now just log
     } else {
         setStores(stores.filter(s => s.id !== storeId));
@@ -46,7 +53,8 @@ export default function Dashboard() {
       const { data: stores, error } = await supabase
         .from("stores")
         .select("*")
-        .eq("owner_id", user.id);
+        .eq("owner_id", user.id)
+        .eq("is_visible", true);
 
       if (error) {
         console.error(error);

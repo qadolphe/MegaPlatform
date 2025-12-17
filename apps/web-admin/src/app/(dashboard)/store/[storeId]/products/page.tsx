@@ -50,62 +50,6 @@ export default function ProductsList() {
     setLoading(false);
   };
 
-  const handleCreateCustomPage = async (product: Product) => {
-    const slug = `products/${product.slug}`;
-    
-    // Check if page already exists
-    const { data: existingPage } = await supabase
-        .from("store_pages")
-        .select("id")
-        .eq("store_id", storeId)
-        .eq("slug", slug)
-        .single();
-
-    if (existingPage) {
-        if (confirm("A custom page for this product already exists. Do you want to edit it?")) {
-            router.push(`/editor/${storeId}?slug=${slug}`);
-        }
-        return;
-    }
-
-    if (!confirm(`Create a custom page for "${product.title}"? This will override the default product layout.`)) return;
-
-    // Create new page
-    const { error } = await supabase
-      .from("store_pages")
-      .insert([
-        {
-          store_id: storeId,
-          name: product.title,
-          slug: slug,
-          layout_config: [
-            { id: crypto.randomUUID(), type: "Header", props: { logoText: "Store" } },
-            { 
-                id: crypto.randomUUID(), 
-                type: "ProductDetail", 
-                props: { 
-                    product: {
-                        id: product.id,
-                        name: product.title,
-                        description: "Product Description",
-                        base_price: product.price,
-                        image_url: product.images?.[0] || "",
-                        slug: product.slug
-                    }
-                } 
-            },
-            { id: crypto.randomUUID(), type: "Footer", props: {} }
-          ]
-        }
-      ]);
-
-    if (error) {
-      alert("Error creating page: " + error.message);
-    } else {
-      router.push(`/editor/${storeId}?slug=${slug}`);
-    }
-  };
-
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     
@@ -188,13 +132,6 @@ export default function ProductsList() {
                         </td>
                         <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                                <button
-                                    onClick={() => handleCreateCustomPage(product)}
-                                    className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition"
-                                    title="Create Custom Page"
-                                >
-                                    <LayoutTemplate size={16} />
-                                </button>
                                 <Link 
                                     href={`/store/${storeId}/products/${product.id}`}
                                     className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"

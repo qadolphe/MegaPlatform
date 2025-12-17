@@ -24,6 +24,11 @@
     will-change: opacity;
 
     background-color: rgba(255, 255, 255, 0.03);
+    
+    /* Default Variables */
+    --card-hover-color: #a855f7;
+    --card-button-bg: #fff;
+    --card-button-text: #000;
 }
 
 /* EXPANDABLE VARIANT */
@@ -43,7 +48,7 @@
     
     /* Active State (Hovered) */
     .expandable:hover {
-        border-color: rgba(168, 85, 247, 0.4);
+        border-color: var(--card-hover-color);
     }
     
     .expandable:hover .cardTitle {
@@ -115,8 +120,8 @@
 }
 
 .productLink {
-    background: #fff;
-    color: #000;
+    background: var(--card-button-bg);
+    color: var(--card-button-text);
     padding: 0.8rem 2rem;
     border-radius: 9999px;
     font-weight: 700;
@@ -156,7 +161,7 @@
 }
 
 .checkIcon {
-    color: #a855f7;
+    color: var(--card-hover-color);
     flex-shrink: 0;
 }
 
@@ -199,7 +204,7 @@
     /* Hover Interaction (Accordion Effect) */
     .card:hover {
         flex: 3;
-        border-color: rgba(168, 85, 247, 0.4);
+        border-color: var(--card-hover-color);
     }
 
     .cardContent {
@@ -223,7 +228,7 @@
     }
 
     .card:hover .productPrice {
-        color: #c084fc;
+        color: var(--card-hover-color);
     }
 
     .card:not(:hover) .featureList {

@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox } from "@repo/ui-bricks"; // Import real components
+import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
 import { CounterInput } from "@/components/ui/counter-input";
@@ -23,7 +23,9 @@ const RENDER_MAP: Record<string, any> = {
   ProductDetail,
   TextContent,
   VideoGrid,
-  ImageBox
+  ImageBox,
+  Newsletter,
+  CustomerProfile
 };
 
 export default function EditorPage() {
@@ -45,7 +47,7 @@ export default function EditorPage() {
   const [isMediaManagerOpen, setIsMediaManagerOpen] = useState(false);
   const [activePropName, setActivePropName] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [insertIndex, setInsertIndex] = useState<number | null>(null);
   const [baseDomain, setBaseDomain] = useState("localhost:3000");
 
@@ -400,13 +402,14 @@ export default function EditorPage() {
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-900">
       {/* --- HEADER --- */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-50 shadow-md">
+      <header className="fixed top-0 left-16 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-50 shadow-md">
         <div className="flex items-center gap-4">
-            <Link href={`/store/${storeId}/pages`} className="text-slate-400 hover:text-white transition">
-                <ChevronLeft size={20} />
+            <Link href={`/store/${storeId}/pages`} className="text-slate-400 hover:text-white transition flex items-center gap-2 text-sm font-medium">
+                <ChevronLeft size={18} />
+                <span className="hidden md:inline">Back to Store</span>
             </Link>
-            <h1 className="font-semibold text-lg tracking-tight">Visual Editor</h1>
-            <div className="relative">
+            
+            <div className="relative ml-4">
                 <select 
                     value={pageSlug}
                     onChange={(e) => {
@@ -418,7 +421,7 @@ export default function EditorPage() {
                             router.push(`/editor/${storeId}?slug=${newSlug}`);
                         }
                     }}
-                    className="appearance-none bg-slate-800 text-white text-sm border border-slate-700 rounded pl-3 pr-8 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer hover:bg-slate-700 transition"
+                    className="appearance-none bg-slate-800 text-white text-sm border border-slate-700 rounded pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer hover:bg-slate-700 transition min-w-[200px]"
                 >
                     {availablePages.map(p => (
                         <option key={p.slug} value={p.slug}>{p.name} (/{p.slug})</option>
@@ -433,13 +436,6 @@ export default function EditorPage() {
         </div>
         
         <div className="flex items-center gap-3">
-            <button 
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className={`p-2 rounded transition ${!isSidebarOpen ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
-            >
-                {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-            </button>
             <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
                 <button 
                     onClick={undo}
@@ -491,38 +487,208 @@ export default function EditorPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 pt-16 w-full overflow-hidden">
-        {/* --- LEFT: SIDEBAR (Merged) --- */}
+      <div className="flex flex-1 pt-16 w-full overflow-hidden relative">
+        {/* --- CENTER: CANVAS --- */}
+        <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-100/50">
+            <div className="flex-1 overflow-y-auto p-8">
+            <div className={`bg-slate-950 min-h-[800px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all duration-300 ${
+                viewMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-6xl'
+            }`} 
+            style={{ 
+                transform: 'scale(1)',
+                '--color-primary': storeColors.primary,
+                '--color-secondary': storeColors.secondary,
+                '--color-accent': storeColors.accent,
+                '--color-background': storeColors.background,
+                '--color-text': storeColors.text,
+                backgroundColor: storeColors.background,
+                color: storeColors.text
+            } as React.CSSProperties}
+            onClickCapture={(e) => {
+                const link = (e.target as HTMLElement).closest('a');
+                if (link) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const href = link.getAttribute('href');
+                    if (href && href.startsWith('/')) {
+                        const slug = href === '/' ? 'home' : href.substring(1);
+                        
+                        // Special handling for product pages
+                        if (slug.startsWith('products/')) {
+                            // Always allow navigation to product pages, even if not in availablePages list yet
+                            // (because they might be dynamically generated or just created)
+                            router.push(`/editor/${storeId}?slug=${slug}`);
+                            return;
+                        }
+
+                        // Check if page exists
+                        const pageExists = availablePages.some(p => p.slug === slug);
+                        if (pageExists) {
+                            router.push(`/editor/${storeId}?slug=${slug}`);
+                        } else {
+                            setMissingPagePath(href);
+                        }
+                    }
+                }
+            }}
+            >
+                {blocks.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 p-20 gap-4">
+                    <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
+                        <Layers size={32} className="opacity-50" />
+                    </div>
+                    <p>Your canvas is empty. Add components from the left.</p>
+                </div>
+                ) : (
+                blocks.map((block, index) => {
+                    const Component = RENDER_MAP[block.type];
+                    const isSelected = block.id === selectedBlockId;
+                    const isHeader = block.type === 'Header';
+                    const isFooter = block.type === 'Footer';
+                    
+                    // Inject Preview Data
+                    let previewProps = { ...block.props };
+
+                    // Inject showCart for Header in Editor
+                    if (isHeader) {
+                        const hasProducts = storeProducts.length > 0;
+                        const hasStaticAddToCart = blocks.some(b => b.type === 'ProductDetail' && (b.props?.buttonAction === 'addToCart' || !b.props?.buttonAction));
+                        previewProps.showCart = hasProducts || hasStaticAddToCart;
+                    }
+                    
+                    // Inject Global Theme (matches Storefront behavior)
+                    if (previewProps.animationStyle === 'theme') {
+                        previewProps.animationStyle = storeTheme;
+                    }
+
+                    if (block.type === 'ProductGrid') {
+                        const collectionId = block.props.collectionId || 'all';
+                        let filtered = [];
+                        if (collectionId === 'all') {
+                            filtered = storeProducts;
+                        } else {
+                            filtered = storeProducts.filter(p => p.collectionIds.includes(collectionId));
+                        }
+                        
+                        if (filtered.length > 0) {
+                            previewProps.products = filtered.slice(0, 8);
+                        }
+                    }
+                    
+                    return (
+                    <div key={block.id}>
+                        {/* Insert Zone - Hide before Header */}
+                        {!isHeader && (
+                            <div className="h-4 -my-2 relative z-20 flex items-center justify-center group/insert opacity-0 hover:opacity-100 transition-all">
+                                <div className="w-full h-0.5 bg-blue-500 absolute top-1/2 left-0 right-0"></div>
+                                <button 
+                                    onClick={() => {
+                                        setInsertIndex(index);
+                                        setActiveSidebarTab('components');
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                    }}
+                                    className="relative z-10 bg-blue-600 text-white rounded-full p-1 shadow-sm transform hover:scale-110 transition"
+                                    title="Insert Component Here"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        )}
+
+                        <div 
+                            onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
+                            className={`relative group transition-all duration-200 ${
+                            isSelected 
+                                ? "ring-2 ring-blue-500 ring-inset z-10" 
+                                : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
+                            }`}
+                        >
+                            {/* Render the actual UI Block */}
+                            {Component ? <Component {...previewProps} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
+                            
+                            {/* Actions Overlay */}
+                            {isSelected && !isHeader && !isFooter && (
+                            <div className="absolute -top-3 -right-3 flex gap-1 z-50">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
+                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
+                                    title="Move Up"
+                                >
+                                    <ArrowUp size={14} />
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'down'); }}
+                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
+                                    title="Move Down"
+                                >
+                                    <ArrowDown size={14} />
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
+                                    className="bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition transform hover:scale-105"
+                                    title="Remove Block"
+                                >
+                                    <Trash size={14} />
+                                </button>
+                            </div>
+                            )}
+                        </div>
+                    </div>
+                    );
+                })
+                )}
+                
+                {/* Add at bottom button - Insert BEFORE Footer */}
+                {/* REMOVED as per user request */}
+            </div>
+            </div>
+        </div>
+
+        {/* --- RIGHT: SIDEBAR (Floating Card) --- */}
         <div 
-            className={`bg-white border-r border-slate-200 flex flex-col shadow-sm z-40 transition-all duration-300 ${
-                isSidebarOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0'
-            }`}
+            className="bg-white border border-slate-200 flex flex-col shadow-xl z-40 w-80 m-4 rounded-xl overflow-hidden"
         >
             {/* Tabs */}
             <div className="flex border-b border-slate-200">
                 <button 
                     onClick={() => setActiveSidebarTab('components')}
-                    className={`flex-1 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 ${activeSidebarTab === 'components' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'components' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    title="Components"
                 >
-                    <Layers size={16} /> Components
+                    <Layers size={20} />
+                    {activeSidebarTab === 'components' && (
+                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                    )}
                 </button>
                 <button 
                     onClick={() => setActiveSidebarTab('properties')}
-                    className={`flex-1 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 ${activeSidebarTab === 'properties' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'properties' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    title="Properties"
                 >
-                    <Settings size={16} /> Properties
+                    <Settings size={20} />
+                    {activeSidebarTab === 'properties' && (
+                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                    )}
                 </button>
                 <button 
                     onClick={() => setActiveSidebarTab('media')}
-                    className={`flex-1 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 ${activeSidebarTab === 'media' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'media' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    title="Media"
                 >
-                    <ImageIcon size={16} /> Media
+                    <ImageIcon size={20} />
+                    {activeSidebarTab === 'media' && (
+                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                    )}
                 </button>
                 <button 
                     onClick={() => setActiveSidebarTab('theme')}
-                    className={`flex-1 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 ${activeSidebarTab === 'theme' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'theme' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    title="Theme"
                 >
-                    <Palette size={16} /> Theme
+                    <Palette size={20} />
+                    {activeSidebarTab === 'theme' && (
+                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                    )}
                 </button>
             </div>
 
@@ -714,7 +880,13 @@ export default function EditorPage() {
                                             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sectionName}</span>
                                         </div>
                                         <div className="p-3 space-y-4 bg-white">
-                                            {fields.map((field) => (
+                                            {fields.map((field) => {
+                                                // Hide animation style for expandable cards
+                                                if (field.name === 'animationStyle' && selectedBlock.props.layout === 'expandable') {
+                                                    return null;
+                                                }
+
+                                                return (
                                                 <div key={field.name}>
                                                     <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
                                                     {field.name === 'columns' && selectedBlock.props.layout === 'expandable' ? 'Products per row' : field.label}
@@ -899,7 +1071,7 @@ export default function EditorPage() {
                                                                         className="p-2 text-slate-400 hover:text-red-500"
                                                                         title="Reset to Global Default"
                                                                     >
-                                                                        <Trash size={14} />
+                                                                        <Undo size={14} />
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -913,7 +1085,8 @@ export default function EditorPage() {
                                                     />
                                                     )}
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 ));
@@ -931,154 +1104,6 @@ export default function EditorPage() {
             </div>
         </div>
 
-        {/* --- CENTER: CANVAS --- */}
-        <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-100/50">
-            <div className="flex-1 overflow-y-auto p-8">
-            <div className={`bg-slate-950 min-h-[800px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all duration-300 ${
-                viewMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-6xl'
-            }`} 
-            style={{ 
-                transform: 'scale(1)',
-                '--color-primary': storeColors.primary,
-                '--color-secondary': storeColors.secondary,
-                '--color-accent': storeColors.accent,
-                '--color-background': storeColors.background,
-                '--color-text': storeColors.text,
-                backgroundColor: storeColors.background,
-                color: storeColors.text
-            } as React.CSSProperties}
-            onClickCapture={(e) => {
-                const link = (e.target as HTMLElement).closest('a');
-                if (link) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const href = link.getAttribute('href');
-                    if (href && href.startsWith('/')) {
-                        const slug = href === '/' ? 'home' : href.substring(1);
-                        // Check if page exists
-                        const pageExists = availablePages.some(p => p.slug === slug);
-                        if (pageExists) {
-                            router.push(`/editor/${storeId}?slug=${slug}`);
-                        } else {
-                            setMissingPagePath(href);
-                        }
-                    }
-                }
-            }}
-            >
-                {blocks.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 p-20 gap-4">
-                    <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
-                        <Layers size={32} className="opacity-50" />
-                    </div>
-                    <p>Your canvas is empty. Add components from the left.</p>
-                </div>
-                ) : (
-                blocks.map((block, index) => {
-                    const Component = RENDER_MAP[block.type];
-                    const isSelected = block.id === selectedBlockId;
-                    const isHeader = block.type === 'Header';
-                    const isFooter = block.type === 'Footer';
-                    
-                    // Inject Preview Data
-                    let previewProps = { ...block.props };
-
-                    // Inject showCart for Header in Editor
-                    if (isHeader) {
-                        const hasProducts = storeProducts.length > 0;
-                        const hasStaticAddToCart = blocks.some(b => b.type === 'ProductDetail' && (b.props?.buttonAction === 'addToCart' || !b.props?.buttonAction));
-                        previewProps.showCart = hasProducts || hasStaticAddToCart;
-                    }
-                    
-                    // Inject Global Theme (matches Storefront behavior)
-                    if (previewProps.animationStyle === 'theme') {
-                        previewProps.animationStyle = storeTheme;
-                    }
-
-                    if (block.type === 'ProductGrid') {
-                        const collectionId = block.props.collectionId || 'all';
-                        let filtered = [];
-                        if (collectionId === 'all') {
-                            filtered = storeProducts;
-                        } else {
-                            filtered = storeProducts.filter(p => p.collectionIds.includes(collectionId));
-                        }
-                        
-                        if (filtered.length > 0) {
-                            previewProps.products = filtered.slice(0, 8);
-                        }
-                    }
-                    
-                    return (
-                    <div key={block.id}>
-                        {/* Insert Zone - Hide before Header */}
-                        {!isHeader && (
-                            <div className="h-4 -my-2 relative z-20 flex items-center justify-center group/insert opacity-0 hover:opacity-100 transition-all">
-                                <div className="w-full h-0.5 bg-blue-500 absolute top-1/2 left-0 right-0"></div>
-                                <button 
-                                    onClick={() => {
-                                        setInsertIndex(index);
-                                        setActiveSidebarTab('components');
-                                        if (!isSidebarOpen) setIsSidebarOpen(true);
-                                    }}
-                                    className="relative z-10 bg-blue-600 text-white rounded-full p-1 shadow-sm transform hover:scale-110 transition"
-                                    title="Insert Component Here"
-                                >
-                                    <Plus size={14} />
-                                </button>
-                            </div>
-                        )}
-
-                        <div 
-                            onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
-                            className={`relative group transition-all duration-200 ${
-                            isSelected 
-                                ? "ring-2 ring-blue-500 ring-inset z-10" 
-                                : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
-                            }`}
-                        >
-                            {/* Render the actual UI Block */}
-                            {Component ? <Component {...previewProps} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
-                            
-                            {/* Actions Overlay */}
-                            {isSelected && !isHeader && !isFooter && (
-                            <div className="absolute -top-3 -right-3 flex gap-1 z-50">
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
-                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
-                                    title="Move Up"
-                                >
-                                    <ArrowUp size={14} />
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'down'); }}
-                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
-                                    title="Move Down"
-                                >
-                                    <ArrowDown size={14} />
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
-                                    className="bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition transform hover:scale-105"
-                                    title="Remove Block"
-                                >
-                                    <Trash size={14} />
-                                </button>
-                            </div>
-                            )}
-                        </div>
-                    </div>
-                    );
-                })
-                )}
-                
-                {/* Add at bottom button - Insert BEFORE Footer */}
-                {/* REMOVED as per user request */}
-            </div>
-            </div>
-        </div>
-
-
       </div>
 
       <MediaManager 
@@ -1091,102 +1116,32 @@ export default function EditorPage() {
       {missingPagePath && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
             <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-                {missingPagePath.includes('products/') ? (
-                    <>
-                        <h3 className="text-lg font-bold mb-2">Product Page Options</h3>
-                        <p className="text-slate-600 mb-6">
-                            This product currently uses the default product page, would you like to view the page or create a new one?
-                        </p>
-                        <div className="flex flex-col gap-2">
-                            <button 
-                                onClick={() => {
-                                    // Navigate to product template
-                                    // Assuming there is a way to edit the default product template
-                                    // For now, let's try to find a generic product page or just close
-                                    const productTemplate = availablePages.find(p => p.slug === 'product' || p.slug === 'products/[productId]');
-                                    if (productTemplate) {
-                                        router.push(`/editor/${storeId}?slug=${productTemplate.slug}`);
-                                    } else {
-                                        // If no template exists, we just navigate to the slug and let the editor handle it (it might show empty or default)
-                                        // The user wants to "View default page" even if not editable.
-                                        // We can just push the router to the slug.
-                                        // But wait, if we push to the slug, and it's not in availablePages, the "Missing Page" dialog will pop up again!
-                                        // We need to prevent that loop.
-                                        // We can add a query param ?force=true or similar, or just handle it in the useEffect.
-                                        // Or, we can just close the dialog and let the iframe load the URL?
-                                        // The iframe loads based on the editor state.
-                                        // If we want to VIEW the page, maybe we should open it in a new tab?
-                                        // "View default page should go back to the viewport and show the product page"
-                                        // This implies the editor canvas should show it.
-                                        // If the page is not in DB, the editor canvas (which renders `blocks`) will be empty.
-                                        // UNLESS we have a way to fetch the default layout for a product page dynamically.
-                                        // For now, let's just navigate to the slug. To prevent the dialog loop, we need to make sure we don't trigger setMissingPagePath again for this slug.
-                                        // But setMissingPagePath is triggered when we click a link in the canvas.
-                                        // If we manually navigate via router.push, the useEffect/onClickCapture won't trigger immediately unless we click a link again.
-                                        // However, the editor logic uses `pageSlug` to load data.
-                                        // If `pageSlug` is `products/123`, and no DB entry, `blocks` is empty.
-                                        // We need to make sure `blocks` gets populated with a default layout if it's a product page.
-                                        // But that logic is in `useEditorStore` or `useEffect`.
-                                        // Let's just navigate for now.
-                                        router.push(`/editor/${storeId}?slug=${missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath}`);
-                                    }
-                                    setMissingPagePath(null);
-                                }}
-                                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                            >
-                                View Default Page
-                            </button>
-                            <button 
-                                onClick={() => {
-                                    const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
-                                    const name = slug.split('/').pop()?.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || "New Product Page";
-                                    setNewPageSlug(slug);
-                                    setNewPageName(name);
-                                    setMissingPagePath(null);
-                                    setIsCreatePageOpen(true);
-                                }}
-                                className="w-full px-4 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-50"
-                            >
-                                Create New Page
-                            </button>
-                            <button 
-                                onClick={() => setMissingPagePath(null)}
-                                className="w-full px-4 py-2 text-slate-500 hover:text-slate-700 text-sm"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <h3 className="text-lg font-bold mb-2">Page Not Found</h3>
-                        <p className="text-slate-600 mb-6">
-                            The page <code className="bg-slate-100 px-1 py-0.5 rounded text-sm">{missingPagePath}</code> hasn't been created yet.
-                            Would you like to create it now?
-                        </p>
-                        <div className="flex justify-end gap-2">
-                            <button 
-                                onClick={() => setMissingPagePath(null)}
-                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={() => {
-                                    const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
-                                    const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                    setNewPageSlug(slug);
-                                    setNewPageName(name);
-                                    setMissingPagePath(null);
-                                    setIsCreatePageOpen(true);
-                                }}
-                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                            >
-                                Create Page
-                            </button>
-                        </div>
-                    </>
-                )}
+                <h3 className="text-lg font-bold mb-2">Page Not Found</h3>
+                <p className="text-slate-600 mb-6">
+                    The page <code className="bg-slate-100 px-1 py-0.5 rounded text-sm">{missingPagePath}</code> hasn't been created yet.
+                    Would you like to create it now?
+                </p>
+                <div className="flex justify-end gap-2">
+                    <button 
+                        onClick={() => setMissingPagePath(null)}
+                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={() => {
+                            const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
+                            const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                            setNewPageSlug(slug);
+                            setNewPageName(name);
+                            setMissingPagePath(null);
+                            setIsCreatePageOpen(true);
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                        Create Page
+                    </button>
+                </div>
             </div>
         </div>
       )}

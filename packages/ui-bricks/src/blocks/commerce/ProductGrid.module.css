@@ -69,3 +69,43 @@
         transition: opacity 0.3s ease;
     }
 }
+
+/* --- EXPANDABLE LAYOUT STYLES (Ported from page.module.css) --- */
+.expandableCard {
+    /* Base State */
+    flex: 1;
+    height: 100%;
+    min-height: 500px; /* Mobile height */
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: flex 0.6s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.5s ease;
+    background-color: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+}
+
+/* Desktop: Flex Expansion */
+@media (min-width: 768px) {
+    .expandableCard {
+        min-height: auto;
+    }
+    
+    /* Hover on container triggers expansion */
+    .cardContainer:hover .expandableCard {
+        flex: 1; /* Reset others */
+        opacity: 0.6; /* Dim inactive */
+    }
+
+    .cardContainer:hover .expandableCard:hover {
+        flex: 3; /* Expand active */
+        opacity: 1;
+        border-color: rgba(168, 85, 247, 0.4);
+    }
+    
+    /* Optional: If you want the focused state to persist without hover (like mobile) */
+    .expandableCard.active {
+       opacity: 1;
+       border-color: rgba(255, 255, 255, 0.4);
+    }
+}

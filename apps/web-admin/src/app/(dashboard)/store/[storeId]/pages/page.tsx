@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, Edit, Trash, FileText, ArrowLeft, Star } from "lucide-react";
+import { Plus, Edit, Trash, FileText, ArrowLeft, Star, Package } from "lucide-react";
 import Link from "next/link";
 
 type Page = {
@@ -21,6 +21,7 @@ export default function PagesList() {
   const storeId = params.storeId as string;
   const router = useRouter();
   const [pages, setPages] = useState<Page[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newPageName, setNewPageName] = useState("");
@@ -41,8 +42,20 @@ export default function PagesList() {
     if (error) {
       console.error("Error fetching pages:", error);
     } else {
-      setPages(data || []);
+      // Filter out product pages (slug starts with 'products/')
+      const filteredPages = (data || []).filter((p: Page) => !p.slug.startsWith('products/'));
+      setPages(filteredPages);
     }
+
+    // Fetch products
+    const { data: productsData } = await supabase
+      .from("products")
+      .select("id, title, slug")
+      .eq("store_id", storeId)
+      .order("title");
+    
+    setProducts(productsData || []);
+
     setLoading(false);
   };
 
@@ -230,6 +243,87 @@ export default function PagesList() {
                 )}
             </tbody>
         </table>
+      </div>
+
+      {/* Product Pages Section */}
+      <div className="mt-12">
+        <h2 className="text-lg font-bold text-slate-900 mb-4">Product Pages</h2>
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Product Name</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">URL Slug</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                    {products.map((product) => (
+                        <tr key={product.id} className="hover:bg-slate-50 transition">
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded bg-purple-50 text-purple-600 flex items-center justify-center">
+                                        <Package size={16} />
+                                    </div>
+                                    <span className="font-medium text-slate-900">{product.title}</span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-slate-500 font-mono text-sm">/products/{product.slug}</td>
+                            <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    <button 
+                                        onClick={async () => {
+                                            const slug = `products/${product.slug}`;
+                                            // Check if page exists
+                                            const { data: existingPage } = await supabase
+                                                .from("store_pages")
+                                                .select("id")
+                                                .eq("store_id", storeId)
+                                                .eq("slug", slug)
+                                                .single();
+
+                                            if (!existingPage) {
+                                                // Create it on the fly (Backwards compatibility)
+                                                const { error } = await supabase
+                                                .from("store_pages")
+                                                .insert([
+                                                    {
+                                                    store_id: storeId,
+                                                    name: `Product: ${product.title}`,
+                                                    slug: slug,
+                                                    layout_config: [
+                                                        { id: crypto.randomUUID(), type: "Header", props: { logoText: "Store" } },
+                                                        { id: crypto.randomUUID(), type: "ProductDetail", props: {} },
+                                                        { id: crypto.randomUUID(), type: "Footer", props: {} }
+                                                    ]
+                                                    }
+                                                ]);
+                                                
+                                                if (error) {
+                                                    alert("Error creating page: " + error.message);
+                                                    return;
+                                                }
+                                            }
+                                            router.push(`/editor/${storeId}?slug=${slug}`);
+                                        }}
+                                        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded transition"
+                                    >
+                                        <Edit size={14} /> Edit
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                    {products.length === 0 && (
+                        <tr>
+                            <td colSpan={3} className="px-6 py-12 text-center text-slate-500">
+                                No products found.
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
       </div>
     </div>
   );

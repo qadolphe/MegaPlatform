@@ -1,10 +1,12 @@
 export * from "./blocks/marketing/Hero";
 export * from "./blocks/marketing/InfoGrid";
+export * from "./blocks/marketing/Newsletter";
 export * from "./blocks/content/TextContent";
 export * from "./blocks/media/VideoGrid";
 export * from "./blocks/media/ImageBox";
 export * from "./blocks/commerce/ProductGrid";
 export * from "./blocks/commerce/ProductDetail";
+export * from "./blocks/commerce/CustomerProfile";
 export * from "./blocks/layout/Header";
 export * from "./blocks/layout/Footer";
 

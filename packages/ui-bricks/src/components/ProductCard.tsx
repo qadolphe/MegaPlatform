@@ -14,6 +14,9 @@ interface ProductCardProps {
     overrideLink?: string
     variant?: 'standard' | 'expandable'
     className?: string
+    buttonColor?: string
+    buttonTextColor?: string
+    hoverColor?: string
 }
 
 export const ProductCard = ({
@@ -26,7 +29,10 @@ export const ProductCard = ({
     overrideButtonText,
     overrideLink,
     variant = 'standard',
-    className = ''
+    className = '',
+    buttonColor,
+    buttonTextColor,
+    hoverColor
 }: ProductCardProps) => {
     const config = product.ui || {}
 
@@ -57,6 +63,11 @@ export const ProductCard = ({
                 ${variant === 'expandable' ? styles.expandable : ''}
                 ${className}
             `}
+            style={{
+                '--card-hover-color': hoverColor,
+                '--card-button-bg': buttonColor,
+                '--card-button-text': buttonTextColor
+            } as React.CSSProperties}
         >
             <div className={styles.backgroundImageContainer}>
                 {product.image_url && (

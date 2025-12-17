@@ -45,7 +45,8 @@ export const HoldToConfirmButton: React.FC<HoldToConfirmButtonProps> = ({
     } else {
       // Completed
       onConfirm();
-      reset();
+      // Don't reset immediately so the user sees the full bar for a split second
+      setTimeout(() => reset(), 100);
     }
   };
 
@@ -79,6 +80,18 @@ export const HoldToConfirmButton: React.FC<HoldToConfirmButtonProps> = ({
     handleMouseDown();
   };
 
+  const handleTouchCancel = () => {
+    reset();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
+    };
+  }, []);
+
   return (
     <button
       className={`relative overflow-hidden select-none group ${className}`}
@@ -87,16 +100,17 @@ export const HoldToConfirmButton: React.FC<HoldToConfirmButtonProps> = ({
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleMouseUp}
+      onTouchCancel={handleTouchCancel}
       type="button"
     >
       {/* Background fill */}
       <div 
-        className="absolute inset-0 bg-red-600 transition-all duration-75 ease-linear"
+        className="absolute inset-0 bg-red-100/50 transition-none"
         style={{ width: `${progress}%` }}
       />
       
       {/* Content */}
-      <div className="relative z-10 flex items-center justify-center gap-2 w-full h-full">
+      <div className={`relative z-10 flex items-center justify-center gap-2 w-full h-full transition-colors ${isHolding ? 'text-red-700' : ''}`}>
         <Trash2 size={16} />
         <span>{isHolding && progress > 0 ? confirmLabel : label}</span>
       </div>
