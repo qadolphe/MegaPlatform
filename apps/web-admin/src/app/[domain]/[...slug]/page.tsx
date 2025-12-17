@@ -67,7 +67,7 @@ export default async function DynamicPage({
   // My admin currently creates flat slugs like "about-us", so we just join them just in case
   const targetSlug = slugArray.join('/');
 
-  const query = supabase.from("stores").select("id, name, theme, store_pages(layout_config, slug, is_home)");
+  const query = supabase.from("stores").select("id, name, theme, colors, store_pages(layout_config, slug, is_home)");
   
   if (subdomain) {
     query.eq('subdomain', subdomain);
@@ -186,10 +186,12 @@ export default async function DynamicPage({
   // If we loaded from DB, the ProductDetail block might be empty.
   let productDetailData: any = null;
   const hasProductDetail = layout.some((b: any) => b.type === 'ProductDetail');
+  const productDetailBlock = layout.find((b: any) => b.type === 'ProductDetail');
   
-  if (hasProductDetail && !layout.find((b: any) => b.type === 'ProductDetail')?.props?.product) {
+  // We fetch if there is a ProductDetail block AND it doesn't have a valid product prop.
+  if (hasProductDetail && (!productDetailBlock?.props?.product || !productDetailBlock.props.product.id)) {
        if (slugArray.length === 2 && slugArray[0] === 'products') {
-          const productSlug = slugArray[1];
+          const productSlug = slugArray[1].toLowerCase();
           const { data: product } = await supabase
             .from("products")
             .select("*")
@@ -246,7 +248,16 @@ export default async function DynamicPage({
   }
 
   return (
-    <main>
+    <main style={{
+        '--color-primary': (store as any).colors?.primary || '#000000',
+        '--color-secondary': (store as any).colors?.secondary || '#ffffff',
+        '--color-accent': (store as any).colors?.accent || '#3b82f6',
+        '--color-background': (store as any).colors?.background || '#ffffff',
+        '--color-text': (store as any).colors?.text || '#000000',
+        backgroundColor: 'var(--color-background)',
+        color: 'var(--color-text)',
+        minHeight: '100vh'
+    } as React.CSSProperties}>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {layout.map((block: any, index: number) => {
         const Component = COMPONENT_REGISTRY[block.type];

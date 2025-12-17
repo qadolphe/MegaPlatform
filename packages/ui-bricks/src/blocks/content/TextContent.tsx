@@ -42,8 +42,8 @@ export const TextContent = ({
         <section 
             className={styles.section}
             style={{
-                '--text-content-bg': backgroundColor,
-                '--text-content-color': textColor
+                '--text-content-bg': backgroundColor || 'var(--color-background)',
+                '--text-content-color': textColor || 'var(--color-text)'
             } as React.CSSProperties}
         >
             <div className={`${containerClass}`}>

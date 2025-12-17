@@ -608,27 +608,27 @@ export default function EditorPage() {
                             
                             {/* Actions Overlay */}
                             {isSelected && !isHeader && !isFooter && (
-                            <div className="absolute -top-3 -right-3 flex gap-1 z-50">
+                            <div className="absolute top-4 right-4 flex gap-1.5 z-50">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
-                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
+                                    className="bg-slate-900/80 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-slate-800 transition"
                                     title="Move Up"
                                 >
-                                    <ArrowUp size={14} />
+                                    <ArrowUp size={16} />
                                 </button>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'down'); }}
-                                    className="bg-white text-slate-600 border border-slate-200 p-1.5 rounded-full shadow-sm hover:bg-slate-50 hover:text-blue-600 transition"
+                                    className="bg-slate-900/80 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-slate-800 transition"
                                     title="Move Down"
                                 >
-                                    <ArrowDown size={14} />
+                                    <ArrowDown size={16} />
                                 </button>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
-                                    className="bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition transform hover:scale-105"
+                                    className="bg-red-600/90 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-red-500 transition"
                                     title="Remove Block"
                                 >
-                                    <Trash size={14} />
+                                    <Trash size={16} />
                                 </button>
                             </div>
                             )}
@@ -780,6 +780,7 @@ export default function EditorPage() {
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Drag & Drop</p>
                         {Object.entries(COMPONENT_DEFINITIONS)
                             .filter(([key]) => key !== 'Header' && key !== 'Footer')
+                            .sort((a, b) => a[1].label.localeCompare(b[1].label))
                             .map(([key, def]) => (
                             <button
                             key={key}

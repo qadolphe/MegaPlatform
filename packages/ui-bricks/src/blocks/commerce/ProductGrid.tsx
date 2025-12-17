@@ -12,6 +12,7 @@ export const ProductGrid = ({
   animationStyle = 'simple',
   layout = 'grid',
   backgroundColor,
+  titleColor,
   buttonColor,
   buttonTextColor,
   hoverColor
@@ -22,6 +23,7 @@ export const ProductGrid = ({
   animationStyle?: AnimationTheme,
   layout?: 'grid' | 'expandable',
   backgroundColor?: string,
+  titleColor?: string,
   buttonColor?: string,
   buttonTextColor?: string,
   hoverColor?: string
@@ -63,9 +65,9 @@ export const ProductGrid = ({
   return (
     <section 
       className={styles.productsSection}
-      style={{ '--product-grid-bg': backgroundColor } as React.CSSProperties}
+      style={{ '--product-grid-bg': backgroundColor || 'var(--color-background)' } as React.CSSProperties}
     >
-      <h2 className={styles.sectionTitle}>{title}</h2>
+      <h2 className={styles.sectionTitle} style={{ color: titleColor || 'var(--color-text)' }}>{title}</h2>
       
       <div 
         className={`${styles.cardContainer} product-card-container`}

@@ -47,8 +47,8 @@ export const VideoGrid = ({
         <section 
             className={styles.section}
             style={{
-                '--video-grid-bg': backgroundColor,
-                '--video-grid-title-color': titleColor
+                '--video-grid-bg': backgroundColor || 'var(--color-background)',
+                '--video-grid-title-color': titleColor || 'var(--color-text)'
             } as React.CSSProperties}
         >
             <div className={styles.header}>

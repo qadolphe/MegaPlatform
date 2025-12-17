@@ -11,7 +11,7 @@ dist/
 # SST
 .sst/
 .open-next/
-sst-env.d.ts
+**/sst-env.d.ts
 .sst.config.mjs
 
 # Environment Variables
@@ -40,3 +40,14 @@ Thumbs.db
 *.swp
 *.swo
 
+# Package manager
+package-lock.json
+pnpm-lock.yaml
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.local
+*.log

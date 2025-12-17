@@ -49,8 +49,8 @@ export const ImageBox = ({
         <section 
             className={styles.container}
             style={{
-                '--image-box-bg': backgroundColor,
-                '--image-box-caption-color': captionColor
+                '--image-box-bg': backgroundColor || 'var(--color-background)',
+                '--image-box-caption-color': captionColor || 'var(--color-text)'
             } as React.CSSProperties}
         >
             <div style={{ width: '100%', maxWidth, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

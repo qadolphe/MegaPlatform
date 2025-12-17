@@ -43,10 +43,10 @@ export const Newsletter = ({
     };
 
     const customStyles = {
-        '--newsletter-bg': backgroundColor,
-        '--newsletter-text': textColor,
-        '--newsletter-btn-bg': buttonColor,
-        '--newsletter-btn-text': buttonTextColor,
+        '--newsletter-bg': backgroundColor || 'var(--color-background)',
+        '--newsletter-text': textColor || 'var(--color-text)',
+        '--newsletter-btn-bg': buttonColor || 'var(--color-primary)',
+        '--newsletter-btn-text': buttonTextColor || '#ffffff',
     } as React.CSSProperties;
 
     return (

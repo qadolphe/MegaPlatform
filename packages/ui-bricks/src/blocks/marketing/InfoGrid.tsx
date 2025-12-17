@@ -35,8 +35,8 @@ export const InfoGrid = ({
     const gridItems = items.length > 0 ? items : (benefits || []);
 
     const customStyles = {
-        '--grid-bg': backgroundColor,
-        '--grid-title-color': titleColor,
+        '--grid-bg': backgroundColor || 'var(--color-background)',
+        '--grid-title-color': titleColor || 'var(--color-text)',
         '--grid-cols': columns 
     } as React.CSSProperties;
 
