@@ -26,7 +26,7 @@
     background-color: rgba(255, 255, 255, 0.03);
     
     /* Default Variables */
-    --card-hover-color: #a855f7;
+    --card-hover-color: var(--color-accent, #a855f7);
     --card-button-bg: #fff;
     --card-button-text: #000;
 }

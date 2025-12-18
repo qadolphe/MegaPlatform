@@ -30,7 +30,7 @@ export const ProductGrid = ({
 }) => {
   const isExpandable = layout === 'expandable';
 
-  // --- SOURCE CODE LOGIC: Observer & State ---
+  // --- OBSERVER STATE ---
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
   const observerRefs = useRef<(HTMLElement | null)[]>([]);
 
@@ -52,7 +52,7 @@ export const ProductGrid = ({
       });
     }, options);
 
-    // Small timeout to ensure refs are attached
+    // Initialize observer
     setTimeout(() => {
       observerRefs.current.forEach((ref) => {
         if (ref) observer.observe(ref);
@@ -62,6 +62,18 @@ export const ProductGrid = ({
     return () => observer.disconnect();
   }, [isExpandable, products]);
 
+  // --- CHUNK LOGIC FOR EXPANDABLE ROWS ---
+  // We split products into groups (rows) so each row acts as an isolated flex container.
+  // This prevents the "snap below" issue because separate rows never interact.
+  const productRows = isExpandable 
+    ? products.reduce((rows, product, index) => {
+        const chunkIndex = Math.floor(index / (columns || 4));
+        if (!rows[chunkIndex]) rows[chunkIndex] = [];
+        rows[chunkIndex].push({ product, originalIndex: index });
+        return rows;
+      }, [] as { product: any, originalIndex: number }[][])
+    : [];
+
   return (
     <section 
       className={styles.productsSection}
@@ -69,44 +81,43 @@ export const ProductGrid = ({
     >
       <h2 className={styles.sectionTitle} style={{ color: titleColor || 'var(--color-text)' }}>{title}</h2>
       
-      <div 
-        className={`${styles.cardContainer} product-card-container`}
-        style={isExpandable ? { minHeight: '500px' } : {
-            display: 'grid',
-            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-            gap: '1rem',
-            minHeight: 'auto'
-        }}
-      >
-        {products.map((product, index) => {
-          
-          // --- EXPANDABLE LAYOUT ---
-          // Replicates page.tsx structure: Direct child, no wrapper, passes refs/active state
-          if (isExpandable) {
-            return (
-              <ProductCard 
-                key={product.id}
-                product={product}
-                // Pass the ref for the observer
-                innerRef={(el) => { observerRefs.current[index] = el }}
-                // Pass active state for internal styling
-                isActive={focusedCardId === product.id}
-                // Pass variant for internal content layout
-                variant="expandable"
-                // Pass styling props
-                buttonColor={buttonColor}
-                buttonTextColor={buttonTextColor}
-                hoverColor={hoverColor}
-                // Apply the CSS class that handles the flex transition
-                className={`${styles.expandableCard} ${focusedCardId === product.id ? styles.active : ''}`}
-                // Data attribute for the observer to read
-                data-id={product.id} 
-              />
-            );
-          }
-
-          // --- STANDARD GRID LAYOUT ---
-          return (
+      {/* --- EXPANDABLE LAYOUT --- */}
+      {isExpandable ? (
+        <div className={styles.expandableGridContainer}>
+          {productRows.map((row, rowIndex) => (
+            <div key={rowIndex} className={styles.expandableRow}>
+              {row.map(({ product, originalIndex }) => (
+                <div 
+                  key={product.id}
+                  ref={(el) => { observerRefs.current[originalIndex] = el }}
+                  className={styles.expandableWrapper}
+                  data-id={product.id}
+                >
+                  <ProductCard 
+                      product={product}
+                      isActive={focusedCardId === product.id}
+                      variant="expandable"
+                      buttonColor={buttonColor}
+                      buttonTextColor={buttonTextColor}
+                      hoverColor={hoverColor}
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* --- STANDARD GRID LAYOUT --- */
+        <div 
+          className={`${styles.cardContainer} product-card-container`}
+          style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+              gap: '1rem',
+              minHeight: 'auto'
+          }}
+        >
+          {products.map((product, index) => (
             <ScrollAnimation 
               key={product.id} 
               theme={animationStyle} 
@@ -121,9 +132,9 @@ export const ProductGrid = ({
                   hoverColor={hoverColor}
               />
             </ScrollAnimation>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

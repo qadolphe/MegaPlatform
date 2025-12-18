@@ -1,3 +1,6 @@
+-- Enable pgvector for embeddings
+create extension if not exists vector;
+
 -- 1. Stores: Who owns what?
 create table stores (
   id uuid default gen_random_uuid() primary key,
@@ -291,3 +294,127 @@ using (
     and stores.owner_id = auth.uid()
   )
 );
+
+-- 9. Knowledge Base (AI)
+create table knowledge_items (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references stores(id) on delete cascade not null,
+  content text not null,           -- The actual text chunk
+  metadata jsonb default '{}',     -- Source url, page number, etc.
+  embedding vector(768),           -- Gemini embedding dimension (text-embedding-004)
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create index on knowledge_items using ivfflat (embedding vector_cosine_ops)
+with (lists = 100);
+
+create or replace function match_knowledge (
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int,
+  filter_store_id uuid
+)
+returns table (
+  id uuid,
+  content text,
+  similarity float
+)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    knowledge_items.id,
+    knowledge_items.content,
+    1 - (knowledge_items.embedding <=> query_embedding) as similarity
+  from knowledge_items
+  where 1 - (knowledge_items.embedding <=> query_embedding) > match_threshold
+  and knowledge_items.store_id = filter_store_id
+  order by knowledge_items.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+
+alter table knowledge_items enable row level security;
+
+create policy "Users can view their own store knowledge"
+  on knowledge_items for select
+  using ( store_id in (select id from stores where owner_id = auth.uid()) );
+
+create policy "Users can insert their own store knowledge"
+  on knowledge_items for insert
+  with check ( store_id in (select id from stores where owner_id = auth.uid()) );
+
+create policy "Users can update their own store knowledge"
+  on knowledge_items for update
+  using ( store_id in (select id from stores where owner_id = auth.uid()) );
+
+create policy "Users can delete their own store knowledge"
+  on knowledge_items for delete
+  using ( store_id in (select id from stores where owner_id = auth.uid()) );
+
+-- 10. Store Collaborators
+create table public.store_collaborators (
+  id uuid not null default gen_random_uuid (),
+  store_id uuid not null references public.stores (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  role text not null default 'editor', -- 'owner', 'editor', 'viewer'
+  created_at timestamp with time zone not null default now(),
+  primary key (id),
+  unique (store_id, user_id)
+);
+
+alter table public.store_collaborators enable row level security;
+
+create policy "Owners can view collaborators"
+  on public.store_collaborators
+  for select
+  using (
+    exists (
+      select 1 from public.stores
+      where id = store_collaborators.store_id
+      and user_id = auth.uid()
+    )
+    or user_id = auth.uid()
+  );
+
+create policy "Owners can add collaborators"
+  on public.store_collaborators
+  for insert
+  with check (
+    exists (
+      select 1 from public.stores
+      where id = store_collaborators.store_id
+      and user_id = auth.uid()
+    )
+  );
+
+create policy "Owners can remove collaborators"
+  on public.store_collaborators
+  for delete
+  using (
+    exists (
+      select 1 from public.stores
+      where id = store_collaborators.store_id
+      and user_id = auth.uid()
+    )
+  );
+
+-- 11. Storage Setup (Images)
+insert into storage.buckets (id, name, public)
+values ('site-assets', 'site-assets', true)
+on conflict (id) do nothing;
+
+create policy "Public Access"
+  on storage.objects for select
+  using ( bucket_id = 'site-assets' );
+
+create policy "Authenticated Upload"
+  on storage.objects for insert
+  to authenticated
+  with check ( bucket_id = 'site-assets' );
+
+create policy "Authenticated Delete"
+  on storage.objects for delete
+  to authenticated
+  using ( bucket_id = 'site-assets' );

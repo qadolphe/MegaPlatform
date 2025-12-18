@@ -14,8 +14,6 @@ type Page = {
   is_home: boolean;
 };
 
-import { PageSwitcher } from "@/components/PageSwitcher";
-
 export default function PagesList() {
   const params = useParams();
   const storeId = params.storeId as string;
@@ -130,7 +128,7 @@ export default function PagesList() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
-        <PageSwitcher storeId={storeId} activeTab="pages" />
+        <h1 className="text-2xl font-bold text-slate-900">Pages</h1>
         <button 
             onClick={() => setIsCreating(true)}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium"

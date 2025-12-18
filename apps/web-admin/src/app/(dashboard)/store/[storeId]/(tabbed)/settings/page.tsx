@@ -142,12 +142,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             <div className="bg-white border-b border-slate-200">
                 <div className="max-w-6xl mx-auto px-6 py-4">
                     <div className="flex items-center gap-4">
-                        <Link 
-                            href={`/store/${storeId}/pages`}
-                            className="text-slate-400 hover:text-slate-600 transition"
-                        >
-                            <ArrowLeft size={20} />
-                        </Link>
                         <div>
                             <h1 className="text-xl font-bold text-slate-900">Store Settings</h1>
                             <p className="text-sm text-slate-500">{settings.name}</p>

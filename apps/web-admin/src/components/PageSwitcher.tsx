@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 interface PageSwitcherProps {
   storeId: string;
-  activeTab: "pages" | "products" | "settings";
+  activeTab: "pages" | "products" | "settings" | "knowledge";
 }
 
 export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
@@ -50,6 +50,26 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
         <span className="relative z-10 flex items-center gap-2">
             <Package size={16} />
             Products
+        </span>
+      </Link>
+      <Link
+        href={`/store/${storeId}/knowledge`}
+        className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          activeTab === "knowledge"
+            ? "text-slate-900"
+            : "text-slate-500 hover:text-slate-900"
+        }`}
+      >
+        {activeTab === "knowledge" && (
+            <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-white rounded-md shadow-sm"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            />
+        )}
+        <span className="relative z-10 flex items-center gap-2">
+            <FileText size={16} />
+            Knowledge
         </span>
       </Link>
       <Link

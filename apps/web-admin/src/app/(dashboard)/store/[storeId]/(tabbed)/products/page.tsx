@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Plus, Search, Package, Edit, Trash, ArrowLeft, LayoutTemplate } from "lucide-react";
 import Link from "next/link";
-import { PageSwitcher } from "@/components/PageSwitcher";
 
 type Product = {
   id: string;
@@ -67,7 +66,7 @@ export default function ProductsList() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
-        <PageSwitcher storeId={storeId} activeTab="products" />
+        <h1 className="text-2xl font-bold text-slate-900">Products</h1>
         <Link 
             href={`/store/${storeId}/products/new`}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium"

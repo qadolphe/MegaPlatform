@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard, Sparkles, Wand2, Loader2, Bot } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
 import { CounterInput } from "@/components/ui/counter-input";
@@ -63,6 +63,116 @@ export default function EditorPage() {
 
   const [storeSubdomain, setStoreSubdomain] = useState<string>("");
   const [deploySuccess, setDeploySuccess] = useState(false);
+
+  // AI Chat State
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([
+    { role: 'assistant', content: "Hi! I'm your AI assistant. I can help you build your store, edit components, or change the theme. What would you like to do?" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  const handleAiChat = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput;
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setChatInput("");
+    setIsChatLoading(true);
+
+    try {
+        // Prepare Context
+        const selectedBlock = blocks.find(b => b.id === selectedBlockId);
+        
+        const response = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: userMessage,
+                context: {
+                    storeId,
+                    selectedBlock: selectedBlock ? { type: selectedBlock.type, props: selectedBlock.props } : null,
+                    allBlocks: blocks.map(b => ({ type: b.type, props: b.props })),
+                    storeTheme,
+                    storeColors,
+                    availableImages: mediaPreview.map(m => m.url)
+                }
+            })
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch AI response");
+
+        const result = await response.json();
+        
+        let assistantMessage = "";
+
+        switch (result.action) {
+            case 'CREATE_COMPONENT':
+                if (result.data?.type && result.data?.props) {
+                    // Insert before Footer if exists
+                    const footerIndex = blocks.findIndex(b => b.type === 'Footer');
+                    if (footerIndex !== -1) {
+                        insertBlock(footerIndex, result.data.type, result.data.props);
+                    } else {
+                        addBlock(result.data.type, result.data.props);
+                    }
+                    assistantMessage = `I've added a new ${result.data.type} section for you.`;
+                } else {
+                    assistantMessage = "I tried to create a component but something went wrong.";
+                }
+                break;
+
+            case 'UPDATE_COMPONENT':
+                if (selectedBlockId && result.data?.props) {
+                    updateBlockProps(selectedBlockId, result.data.props);
+                    assistantMessage = "I've updated the component properties.";
+                } else {
+                    assistantMessage = "Please select a component first to update it.";
+                }
+                break;
+
+            case 'UPDATE_LAYOUT':
+                if (result.data?.blocks && Array.isArray(result.data.blocks)) {
+                    const newBlocks = result.data.blocks.map((b: any) => ({
+                        ...b,
+                        id: crypto.randomUUID()
+                    }));
+                    setBlocks(newBlocks);
+                    assistantMessage = "I've updated the page layout as requested.";
+                } else {
+                    assistantMessage = "I couldn't generate the new layout.";
+                }
+                break;
+
+            case 'SET_THEME':
+                if (result.data?.theme) {
+                    setStoreTheme(result.data.theme);
+                    await supabase.from("stores").update({ theme: result.data.theme }).eq("id", storeId);
+                }
+                if (result.data?.colors) {
+                    setStoreColors(result.data.colors, true);
+                    await supabase.from("stores").update({ colors: result.data.colors }).eq("id", storeId);
+                }
+                assistantMessage = "I've updated the store theme and colors.";
+                break;
+
+            case 'GENERAL_CHAT':
+                assistantMessage = result.data?.message || "I'm not sure how to help with that.";
+                break;
+            
+            default:
+                assistantMessage = "I didn't understand that request.";
+        }
+
+        setChatMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+
+    } catch (error) {
+        console.error("AI Chat Error:", error);
+        setChatMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error processing your request." }]);
+    } finally {
+        setIsChatLoading(false);
+    }
+  };
 
   // 1. Load initial data
   useEffect(() => {
@@ -400,7 +510,7 @@ export default function EditorPage() {
   const selectedDef = selectedBlock ? COMPONENT_DEFINITIONS[selectedBlock.type as keyof typeof COMPONENT_DEFINITIONS] : null;
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-900">
+    <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-900 pl-16">
       {/* --- HEADER --- */}
       <header className="fixed top-0 left-16 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-50 shadow-md">
         <div className="flex items-center gap-4">
@@ -610,6 +720,18 @@ export default function EditorPage() {
                             {isSelected && !isHeader && !isFooter && (
                             <div className="absolute top-4 right-4 flex gap-1.5 z-50">
                                 <button 
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setActiveSidebarTab('ai');
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                        setChatInput(`I want to edit the ${block.type} section. `);
+                                    }}
+                                    className="bg-purple-600/90 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-purple-500 transition"
+                                    title="Edit with AI"
+                                >
+                                    <Sparkles size={16} />
+                                </button>
+                                <button 
                                     onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
                                     className="bg-slate-900/80 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-slate-800 transition"
                                     title="Move Up"
@@ -690,6 +812,16 @@ export default function EditorPage() {
                         <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
                     )}
                 </button>
+                <button 
+                    onClick={() => setActiveSidebarTab('ai')}
+                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'ai' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    title="AI Assistant"
+                >
+                    <Bot size={20} />
+                    {activeSidebarTab === 'ai' && (
+                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                    )}
+                </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -765,6 +897,73 @@ export default function EditorPage() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeSidebarTab === 'ai' && (
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-col h-full"
+                    >
+                        <div className="pb-4 border-b border-slate-100 mb-4">
+                            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded">
+                                Smart Assistant
+                            </span>
+                        </div>
+
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                            <div className="flex-1 overflow-y-auto space-y-4 p-1 mb-4">
+                                {chatMessages.map((msg, i) => (
+                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] p-3 rounded-lg text-sm ${
+                                            msg.role === 'user' 
+                                                ? 'bg-blue-600 text-white rounded-br-none' 
+                                                : 'bg-slate-100 text-slate-800 rounded-bl-none'
+                                        }`}>
+                                            {msg.content}
+                                        </div>
+                                    </div>
+                                ))}
+                                {isChatLoading && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-slate-100 text-slate-500 p-3 rounded-lg rounded-bl-none text-sm flex items-center gap-2">
+                                            <Loader2 size={14} className="animate-spin" /> Thinking...
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <form onSubmit={handleAiChat} className="border-t border-slate-100 pt-4">
+                                <div className="relative">
+                                    <textarea
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleAiChat();
+                                            }
+                                        }}
+                                        placeholder="Ask me to add a section, change colors, or edit a block..."
+                                        className="w-full p-3 pr-10 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24"
+                                        disabled={isChatLoading}
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={isChatLoading || !chatInput.trim()}
+                                        className="absolute bottom-2 right-2 p-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <Sparkles size={16} />
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-2 text-center">
+                                    AI can make mistakes. Review generated changes.
+                                </p>
+                            </form>
                         </div>
                     </motion.div>
                 )}
@@ -1196,6 +1395,8 @@ export default function EditorPage() {
             </div>
         </div>
       )}
+
+
 
       {/* Deploy Success Modal */}
       {deploySuccess && (
