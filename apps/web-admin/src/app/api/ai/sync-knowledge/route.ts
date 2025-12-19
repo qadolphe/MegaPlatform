@@ -55,9 +55,21 @@ export async function POST(req: Request) {
       .select("id, title, description, price, slug")
       .eq("store_id", storeId);
 
-    if (products) {
+    if (products && products.length > 0) {
+      // 3a. Create a "Product Catalog Summary" chunk
+      // This helps the AI answer "What products do I have?" by providing a single consolidated list
+      const productList = products.map(p => p.title).join(", ");
+      const summaryContent = `Product Catalog Summary: This store sells ${products.length} products: ${productList}.`;
+      newItems.push({
+        store_id: storeId,
+        content: summaryContent,
+        metadata: { source: "system", type: "product-summary" },
+        embedding: await generateEmbedding(summaryContent)
+      });
+
+      // 3b. Create individual product chunks
       for (const p of products) {
-        const content = `Product: ${p.title}. Description: ${p.description || "No description"}. Price: $${(p.price / 100).toFixed(2)}. Slug: ${p.slug}`;
+        const content = `Product Details: ${p.title}. Description: ${p.description || "No description"}. Price: $${(p.price / 100).toFixed(2)}. Slug: ${p.slug}`;
         newItems.push({
           store_id: storeId,
           content,

@@ -20,8 +20,8 @@ export async function POST(req: Request) {
             // Search for relevant knowledge
             const { data: documents } = await supabase.rpc('match_knowledge', {
                 query_embedding: embedding,
-                match_threshold: 0.5,
-                match_count: 3,
+                match_threshold: 0.3, // Lower threshold to catch more potential matches
+                match_count: 10,      // Increase count to ensure we get all relevant products
                 filter_store_id: context.storeId
             });
 

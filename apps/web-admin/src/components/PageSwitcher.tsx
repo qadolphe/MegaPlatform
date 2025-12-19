@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Package, Settings } from "lucide-react";
+import { FileText, Package, Settings, Bot } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface PageSwitcherProps {
@@ -68,8 +68,8 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
             />
         )}
         <span className="relative z-10 flex items-center gap-2">
-            <FileText size={16} />
-            Knowledge
+            <Bot size={16} />
+            AI Bot
         </span>
       </Link>
       <Link
