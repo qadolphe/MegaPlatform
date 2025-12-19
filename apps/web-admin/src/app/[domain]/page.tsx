@@ -71,7 +71,7 @@ export default async function DomainPage({
   const host = decodeURIComponent(rawDomain);
   const subdomain = getSubdomain(host);
 
-  const query = supabase.from("stores").select("id, name, theme, store_pages(layout_config, slug, is_home)");
+  const query = supabase.from("stores").select("id, name, theme, colors, store_pages(layout_config, slug, is_home)");
   
   if (subdomain) {
     query.eq('subdomain', subdomain);
@@ -142,8 +142,28 @@ export default async function DomainPage({
       }));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const colors = (store as any).colors || {
+    primary: "#000000",
+    secondary: "#ffffff",
+    accent: "#3b82f6",
+    background: "#ffffff",
+    text: "#000000"
+  };
+
   return (
-    <div className="min-h-screen bg-white">
+    <div 
+      className="min-h-screen"
+      style={{
+        '--color-primary': colors.primary,
+        '--color-secondary': colors.secondary,
+        '--color-accent': colors.accent,
+        '--color-background': colors.background,
+        '--color-text': colors.text,
+        backgroundColor: colors.background,
+        color: colors.text
+      } as React.CSSProperties}
+    >
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {layout.map((block: any, i: number) => {
         const Component = COMPONENT_REGISTRY[block.type];
@@ -163,6 +183,11 @@ export default async function DomainPage({
         // Inject showCart if this is a Header
         if (block.type === 'Header') {
             props.showCart = shouldShowCart;
+        }
+
+        // Inject Global Theme if requested
+        if (props.animationStyle === 'theme') {
+            props.animationStyle = (store as any).theme || 'simple';
         }
 
         // Sanitize props (fix images)
