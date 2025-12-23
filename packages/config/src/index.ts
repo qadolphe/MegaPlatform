@@ -1,1 +1,1 @@
-export const APP_NAME = "MegaPlatform";
+export const APP_NAME = "SwatBloc";

@@ -33,7 +33,7 @@ export function Sidebar() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`flex h-16 items-center ${isHovered ? "px-6" : "justify-center"} font-bold text-xl tracking-wider border-b border-gray-800 overflow-hidden whitespace-nowrap flex-shrink-0`}>
+      <Link href="/" className={`flex h-16 items-center ${isHovered ? "px-6" : "justify-center"} font-bold text-xl tracking-wider border-b border-gray-800 overflow-hidden whitespace-nowrap flex-shrink-0 hover:bg-gray-800 transition-colors`}>
         <Store className={`h-6 w-6 text-blue-500 ${isHovered ? "mr-2" : ""}`} />
         {isHovered && (
           <motion.span
@@ -41,10 +41,10 @@ export function Sidebar() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            MEGA<span className="text-blue-500">PLATFORM</span>
+            SWAT<span className="text-blue-500">BLOC</span>
           </motion.span>
         )}
-      </div>
+      </Link>
       
       <div className="flex-1 flex flex-col gap-1 p-3 overflow-x-hidden">
         {navigation.map((item) => {

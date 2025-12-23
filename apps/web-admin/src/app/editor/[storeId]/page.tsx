@@ -42,7 +42,7 @@ export default function EditorPage() {
   const [pageName, setPageName] = useState("");
   const [storeTheme, setStoreTheme] = useState("simple");
   const [availablePages, setAvailablePages] = useState<{name: string, slug: string}[]>([]);
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media' | 'properties' | 'theme'>('components');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media' | 'properties' | 'theme' | 'ai'>('components');
   const [mediaPreview, setMediaPreview] = useState<{name: string, url: string}[]>([]);
   const [isMediaManagerOpen, setIsMediaManagerOpen] = useState(false);
   const [activePropName, setActivePropName] = useState<string | null>(null);
@@ -718,7 +718,7 @@ export default function EditorPage() {
                             
                             {/* Actions Overlay */}
                             {isSelected && !isHeader && !isFooter && (
-                            <div className="absolute top-4 right-4 flex gap-1.5 z-50">
+                            <div className="absolute top-4 right-4 flex gap-1.5 z-[60]">
                                 <button 
                                     onClick={(e) => { 
                                         e.stopPropagation(); 

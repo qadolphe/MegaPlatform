@@ -39,9 +39,49 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     const [customDomain, setCustomDomain] = useState("");
     const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'pending' | 'error'>('idle');
 
+    // Email Domain state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [emailDomains, setEmailDomains] = useState<any[]>([]);
+    const [newEmailDomain, setNewEmailDomain] = useState("");
+    const [addingEmailDomain, setAddingEmailDomain] = useState(false);
+
     useEffect(() => {
         fetchSettings();
+        fetchEmailDomains();
     }, [storeId]);
+
+    const fetchEmailDomains = async () => {
+        const { data } = await supabase
+            .from("store_email_domains")
+            .select("*")
+            .eq("store_id", storeId);
+        if (data) setEmailDomains(data);
+    };
+
+    const handleAddEmailDomain = async () => {
+        if (!newEmailDomain) return;
+        setAddingEmailDomain(true);
+        try {
+            const res = await fetch('/api/domains', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domain: newEmailDomain, storeId }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setNewEmailDomain("");
+                fetchEmailDomains();
+                setMessage({ type: 'success', text: 'Domain added successfully!' });
+            } else {
+                setMessage({ type: 'error', text: data.error || 'Failed to add domain' });
+            }
+        } catch (error) {
+            console.error(error);
+            setMessage({ type: 'error', text: 'Failed to add domain' });
+        } finally {
+            setAddingEmailDomain(false);
+        }
+    };
 
     const fetchSettings = async () => {
         const { data, error } = await supabase
@@ -331,6 +371,75 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Email Sending Domains */}
+                                        <div className="pt-6 border-t border-slate-200">
+                                            <h3 className="text-md font-medium text-slate-900 mb-4">Email Sending Domains</h3>
+                                            <p className="text-sm text-slate-500 mb-4">
+                                                Verify domains to send emails (like order confirmations) from your own brand.
+                                            </p>
+                                            
+                                            {/* List existing domains */}
+                                            <div className="space-y-4 mb-6">
+                                                {emailDomains.map((domain) => (
+                                                    <div key={domain.id} className="border border-slate-200 rounded-lg p-4">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="font-medium text-slate-900">{domain.domain}</div>
+                                                            <div className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                                domain.status === 'verified' ? 'bg-green-100 text-green-700' : 
+                                                                domain.status === 'failed' ? 'bg-red-100 text-red-700' : 
+                                                                'bg-amber-100 text-amber-700'
+                                                            }`}>
+                                                                {domain.status.charAt(0).toUpperCase() + domain.status.slice(1)}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {domain.status !== 'verified' && domain.dns_records && (
+                                                            <div className="bg-slate-50 p-3 rounded text-xs font-mono overflow-x-auto">
+                                                                <table className="w-full text-left">
+                                                                    <thead>
+                                                                        <tr className="text-slate-500">
+                                                                            <th className="pb-2">Type</th>
+                                                                            <th className="pb-2">Name</th>
+                                                                            <th className="pb-2">Value</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                                                        {domain.dns_records.map((record: any, i: number) => (
+                                                                            <tr key={i} className="border-t border-slate-200">
+                                                                                <td className="py-2 pr-4">{record.record_type || record.type}</td>
+                                                                                <td className="py-2 pr-4">{record.name}</td>
+                                                                                <td className="py-2 break-all">{record.value}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Add new domain */}
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newEmailDomain}
+                                                    onChange={(e) => setNewEmailDomain(e.target.value)}
+                                                    placeholder="marketing.mystore.com"
+                                                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                                />
+                                                <button
+                                                    onClick={handleAddEmailDomain}
+                                                    disabled={addingEmailDomain || !newEmailDomain}
+                                                    className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 flex items-center gap-2"
+                                                >
+                                                    {addingEmailDomain && <Loader2 className="animate-spin" size={16} />}
+                                                    Add Domain
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}

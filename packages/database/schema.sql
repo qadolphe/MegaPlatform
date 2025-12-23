@@ -136,6 +136,16 @@ create table order_items (
   image_url text
 );
 
+create table store_email_domains (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references stores(id) on delete cascade not null,
+  domain text not null,           -- 'bob-hoodies.com'
+  resend_domain_id text not null, -- ID from Resend API
+  status text default 'pending',  -- 'pending', 'verified', 'failed'
+  dns_records jsonb,              -- Store the SPF/DKIM records here to show in UI
+  created_at timestamp with time zone default now()
+);
+
 -- 10. Enable RLS
 alter table stores enable row level security;
 alter table store_pages enable row level security;
@@ -146,6 +156,7 @@ alter table product_collections enable row level security;
 alter table customers enable row level security;
 alter table orders enable row level security;
 alter table order_items enable row level security;
+alter table store_email_domains enable row level security;
 
 -- 11. Policies
 
@@ -418,3 +429,14 @@ create policy "Authenticated Delete"
   on storage.objects for delete
   to authenticated
   using ( bucket_id = 'site-assets' );
+
+create policy "Owners can manage email domains"
+  on store_email_domains for all
+  to authenticated
+  using (
+    exists (
+      select 1 from stores
+      where stores.id = store_email_domains.store_id
+      and stores.owner_id = auth.uid()
+    )
+  );

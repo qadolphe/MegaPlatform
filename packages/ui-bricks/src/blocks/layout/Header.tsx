@@ -15,6 +15,7 @@ interface HeaderProps {
   animationStyle?: AnimationTheme;
   showCart?: boolean;
   backgroundColor?: string;
+  backgroundOpacity?: number;
   textColor?: string;
 }
 
@@ -28,6 +29,7 @@ export const Header = ({
   animationStyle = 'none',
   showCart = true,
   backgroundColor,
+  backgroundOpacity = 100,
   textColor
 }: HeaderProps) => {
     const { items, openCart } = useCart();
@@ -35,6 +37,7 @@ export const Header = ({
 
     const customStyles = {
         '--header-bg': backgroundColor,
+        '--header-opacity': backgroundOpacity / 100,
         '--header-text': textColor,
     } as React.CSSProperties;
 

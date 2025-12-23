@@ -25,7 +25,7 @@ const getSubdomain = (host: string) => {
     if (parts.length === 1 || parts[0] === "localhost") return null;
     return parts[0]; 
   }
-  if (host.includes("hoodieplatform.com")) {
+  if (host.includes("hoodieplatform.com") || host.includes("swatbloc.com")) {
     return host.split(".")[0];
   }
   return null;

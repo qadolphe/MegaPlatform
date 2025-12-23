@@ -19,6 +19,7 @@ interface HeroProps {
     subtitleColor?: string
     buttonColor?: string
     buttonTextColor?: string
+    overlayColor?: string
 }
 
 export const Hero = ({
@@ -33,13 +34,15 @@ export const Hero = ({
     titleColor,
     subtitleColor,
     buttonColor,
-    buttonTextColor
+    buttonTextColor,
+    overlayColor
 }: HeroProps) => {
     const customStyles = {
         '--hero-title-color': titleColor,
         '--hero-subtitle-color': subtitleColor,
         '--hero-button-bg': buttonColor,
         '--hero-button-text': buttonTextColor,
+        '--hero-overlay-color': overlayColor,
     } as React.CSSProperties;
 
     return (

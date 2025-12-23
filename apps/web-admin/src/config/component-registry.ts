@@ -46,6 +46,7 @@ export const COMPONENT_DEFINITIONS = {
         ]
       },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "backgroundOpacity", type: "number", label: "Background Opacity (%)", min: 0, max: 100, section: SECTIONS.DESIGN },
       { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
     ]
@@ -57,6 +58,7 @@ export const COMPONENT_DEFINITIONS = {
     },
     fields: [
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "backgroundOpacity", type: "number", label: "Background Opacity (%)", min: 0, max: 100, section: SECTIONS.DESIGN },
       { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
     ]
@@ -81,6 +83,7 @@ export const COMPONENT_DEFINITIONS = {
       { name: "subtitleColor", type: "color", label: "Subtitle Color", section: SECTIONS.DESIGN },
       { name: "buttonColor", type: "color", label: "Button Color", section: SECTIONS.DESIGN },
       { name: "buttonTextColor", type: "color", label: "Button Text Color", section: SECTIONS.DESIGN },
+      { name: "overlayColor", type: "color", label: "Gradient Overlay Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
     ]
   },

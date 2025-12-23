@@ -4,13 +4,22 @@
     left: 0;
     right: 0;
     z-index: 50;
-    background: var(--header-bg, rgba(255, 255, 255, 0.8));
+    background: transparent;
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid #e5e7eb; /* var(--border) fallback */
+    border-bottom: 1px solid rgba(0,0,0,0.1);
     height: 70px;
     display: flex;
     align-items: center;
-    color: var(--header-text, #000);
+    color: var(--header-text, var(--color-text, #000));
+}
+
+.header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--header-bg, var(--color-background, rgba(255, 255, 255, 0.8)));
+    opacity: var(--header-opacity, 1);
+    z-index: -1;
 }
 
 .container {
@@ -56,7 +65,7 @@
 .link {
     font-size: 0.95rem;
     font-weight: 500;
-    color: #000; /* var(--foreground) fallback */
+    color: inherit;
     opacity: 0.8;
     transition: opacity 0.2s;
     text-decoration: none;
@@ -75,7 +84,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: #000; /* var(--foreground) fallback */
+    color: inherit;
     padding: 0.5rem;
     display: flex;
     align-items: center;
@@ -100,7 +109,8 @@
     transform: translate(25%, -25%);
 }
 
-@media (prefers-color-scheme: dark) {
+/* Removed hardcoded dark mode override to respect theme */
+/* @media (prefers-color-scheme: dark) {
     .header {
         background: rgba(10, 10, 10, 0.8);
         border-bottom-color: #333;
@@ -108,4 +118,4 @@
     .logo, .link, .cartBtn {
         color: #fff;
     }
-}
+} */

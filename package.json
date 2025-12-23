@@ -1,5 +1,5 @@
 {
-  "name": "mega-platform-monorepo",
+  "name": "swatbloc-monorepo",
   "private": true,
   "workspaces": [
     "apps/*",

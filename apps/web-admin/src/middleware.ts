@@ -3,19 +3,36 @@ import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl;
-  const hostname = request.headers.get("host") || "";
+  let hostname = request.headers.get("host") || "";
+  
+  // Remove port if present for consistent domain checking
+  hostname = hostname.split(':')[0];
+
   const searchParams = request.nextUrl.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""}`;
   
   // List of domains that serve the Admin App
   const adminDomains = [
-    "localhost:3000", 
+    "localhost", 
     "hoodieplatform.com", 
     "www.hoodieplatform.com",
+    "swatbloc.com",
+    "www.swatbloc.com",
   ];
   
   // Check if it's an admin domain OR the default CloudFront URL
-  const isAdmin = adminDomains.includes(hostname) || hostname.endsWith(".cloudfront.net");
+  let isAdmin = adminDomains.includes(hostname) || hostname.endsWith(".cloudfront.net");
+
+  // Explicitly treat subdomains of swatbloc.com as Storefronts (NOT admin)
+  // e.g. "store.swatbloc.com" -> isAdmin = false
+  if (hostname.endsWith(".swatbloc.com") && !adminDomains.includes(hostname)) {
+    isAdmin = false;
+  }
+
+  // Explicitly treat subdomains of hoodieplatform.com as Storefronts (NOT admin)
+  if (hostname.endsWith(".hoodieplatform.com") && !adminDomains.includes(hostname)) {
+    isAdmin = false;
+  }
 
   if (isAdmin) {
     // 1. Check for Preview Mode Cookie
@@ -51,6 +68,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // It's a Storefront (Subdomain or Custom Domain)
+
+  // Redirect /login to the main admin login (helpful if users try to access admin from storefront)
+  if (url.pathname === '/login') {
+    // Use the appropriate protocol and domain
+    const targetDomain = process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'swatbloc.com';
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    return NextResponse.redirect(new URL(`${protocol}://${targetDomain}/login`, request.url));
+  }
+
   // Rewrite to the dynamic route
   return NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
 }

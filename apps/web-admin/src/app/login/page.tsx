@@ -77,7 +77,7 @@ function LoginForm() {
             <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200">
               <Store className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">MegaPlatform</span>
+            <span className="text-2xl font-bold text-gray-900">SwatBloc</span>
           </div>
 
           <div>

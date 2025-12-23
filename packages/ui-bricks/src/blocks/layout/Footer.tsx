@@ -8,12 +8,14 @@ import { AnimationTheme } from '../../lib/animation-config';
 interface FooterProps {
     animationStyle?: AnimationTheme;
     backgroundColor?: string;
+    backgroundOpacity?: number;
     textColor?: string;
 }
 
-export const Footer = ({ animationStyle = 'simple', backgroundColor, textColor }: FooterProps) => {
+export const Footer = ({ animationStyle = 'simple', backgroundColor, backgroundOpacity = 100, textColor }: FooterProps) => {
     const customStyles = {
         '--footer-bg': backgroundColor,
+        '--footer-opacity': backgroundOpacity / 100,
         '--footer-text': textColor,
     } as React.CSSProperties;
 

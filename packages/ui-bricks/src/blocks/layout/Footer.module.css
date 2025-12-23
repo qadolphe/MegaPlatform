@@ -1,17 +1,29 @@
 .footer {
-    background: var(--footer-bg, #f9f9f9);
+    position: relative;
+    background: transparent;
     padding: 6rem 0 2rem;
     margin-top: auto;
     border-top: 1px solid rgba(0, 0, 0, 0.05);
-    color: var(--footer-text, inherit);
+    color: var(--footer-text, var(--color-text, inherit));
+    isolation: isolate;
 }
 
-@media (prefers-color-scheme: dark) {
+.footer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--footer-bg, var(--color-background, #f9f9f9));
+    opacity: var(--footer-opacity, 1);
+    z-index: -1;
+}
+
+/* Removed hardcoded dark mode override to respect theme */
+/* @media (prefers-color-scheme: dark) {
     .footer {
         background: #000;
         border-color: #333;
     }
-}
+} */
 
 .grid {
     display: grid;

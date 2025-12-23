@@ -140,26 +140,26 @@ export default function Dashboard() {
                   {store.subdomain}.hoodieplatform.com
                 </p>
               </div>
-              <div className="border-t border-gray-100 p-4 bg-gray-50 rounded-b-lg grid grid-cols-2 gap-3">
+              <div className="border-t border-gray-100 p-4 bg-gray-50 rounded-b-lg grid grid-cols-2 gap-2">
                 <Link
                   href={`/store/${store.id}/pages`}
                   className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50 text-sm font-medium transition-colors"
                 >
                   <FileText className="h-4 w-4" />
-                  Pages
+                  Edit Site
                 </Link>
-                <Link
+                {/* <Link
                   href={`/store/${store.id}/products`}
                   className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50 text-sm font-medium transition-colors"
                 >
                   <Package className="h-4 w-4" />
                   Products
-                </Link>
+                </Link> */}
                 <a
                   href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${store.subdomain}` : `//${store.subdomain}.${baseDomain}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="col-span-2 flex items-center justify-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 py-2 rounded-md hover:bg-blue-100 text-sm font-medium transition-colors"
+                  className="col-span-1 flex items-center justify-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 py-2 rounded-md hover:bg-blue-100 text-sm font-medium transition-colors"
                 >
                   <ExternalLink className="h-4 w-4" />
                   View Storefront

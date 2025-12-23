@@ -27,7 +27,10 @@ export default function PagesList() {
   const supabase = createClient();
 
   useEffect(() => {
-    fetchPages();
+    console.log("Fetching pages for store:", storeId);
+    if (storeId) {
+      fetchPages();
+    }
   }, [storeId]);
 
   const fetchPages = async () => {

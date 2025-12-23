@@ -84,7 +84,7 @@ export const ProductGrid = ({
       {/* --- EXPANDABLE LAYOUT --- */}
       {isExpandable ? (
         <div className={styles.expandableGridContainer}>
-          {productRows.map((row, rowIndex) => (
+          {productRows.map((row: { product: any, originalIndex: number }[], rowIndex: number) => (
             <div key={rowIndex} className={styles.expandableRow}>
               {row.map(({ product, originalIndex }) => (
                 <div 

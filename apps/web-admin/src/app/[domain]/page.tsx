@@ -27,8 +27,8 @@ const getSubdomain = (host: string) => {
     return parts[0]; 
   }
   
-  // 2. Production Support (e.g. "bob.hoodieplatform.com")
-  if (host.includes("hoodieplatform.com")) {
+  // 2. Production Support (e.g. "bob.hoodieplatform.com" or "bob.swatbloc.com")
+  if (host.includes("hoodieplatform.com") || host.includes("swatbloc.com")) {
     return host.split(".")[0];
   }
   
