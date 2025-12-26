@@ -12,25 +12,25 @@ export async function middleware(request: NextRequest) {
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""}`;
   
   // List of domains that serve the Admin App
-  const adminDomains = [
+  const adminDomains = new Set([
     "localhost", 
     "hoodieplatform.com", 
     "www.hoodieplatform.com",
     "swatbloc.com",
     "www.swatbloc.com",
-  ];
+  ]);
   
   // Check if it's an admin domain OR the default CloudFront URL
-  let isAdmin = adminDomains.includes(hostname) || hostname.endsWith(".cloudfront.net");
+  let isAdmin = adminDomains.has(hostname) || hostname.endsWith(".cloudfront.net");
 
   // Explicitly treat subdomains of swatbloc.com as Storefronts (NOT admin)
   // e.g. "store.swatbloc.com" -> isAdmin = false
-  if (hostname.endsWith(".swatbloc.com") && !adminDomains.includes(hostname)) {
+  if (hostname.endsWith(".swatbloc.com") && !adminDomains.has(hostname)) {
     isAdmin = false;
   }
 
   // Explicitly treat subdomains of hoodieplatform.com as Storefronts (NOT admin)
-  if (hostname.endsWith(".hoodieplatform.com") && !adminDomains.includes(hostname)) {
+  if (hostname.endsWith(".hoodieplatform.com") && !adminDomains.has(hostname)) {
     isAdmin = false;
   }
 
@@ -64,7 +64,10 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    return await updateSession(request)
+    const response = await updateSession(request);
+    response.headers.set('x-debug-hostname', hostname);
+    response.headers.set('x-debug-is-admin', 'true');
+    return response;
   }
 
   // It's a Storefront (Subdomain or Custom Domain)
@@ -78,7 +81,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Rewrite to the dynamic route
-  return NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
+  const response = NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
+  response.headers.set('x-debug-hostname', hostname);
+  response.headers.set('x-debug-is-admin', 'false');
+  return response;
 }
 
 export const config = {

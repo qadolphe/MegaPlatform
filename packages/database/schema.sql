@@ -11,6 +11,8 @@ create table stores (
   name text not null,
   theme text default 'simple',                  -- Global animation theme
   colors jsonb default '{"primary": "#000000", "secondary": "#ffffff", "accent": "#3b82f6", "background": "#ffffff", "text": "#000000"}'::jsonb, -- Global color scheme
+  logo_url text,                                -- Store Logo URL
+  favicon_url text,                             -- Store Favicon URL
   is_visible boolean default true,              -- Soft delete flag
   stripe_account_id text,                       -- Stripe Connect Account ID
   stripe_details_submitted boolean default false,

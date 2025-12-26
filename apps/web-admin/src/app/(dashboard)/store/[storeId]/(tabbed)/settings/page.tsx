@@ -2,8 +2,9 @@
 
 import { useState, useEffect, use } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle, Loader2, ExternalLink, Copy, RefreshCw } from "lucide-react";
+import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle, Loader2, ExternalLink, Copy, RefreshCw, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
+import { MediaManager } from "@/components/media-manager";
 
 interface StoreSettings {
     id: string;
@@ -18,6 +19,8 @@ interface StoreSettings {
         background: string;
         text: string;
     };
+    logo_url: string | null;
+    favicon_url: string | null;
     stripe_account_id: string | null;
     stripe_details_submitted: boolean;
     currency: string;
@@ -35,6 +38,10 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     
+    // Media Manager State
+    const [isMediaOpen, setIsMediaOpen] = useState(false);
+    const [mediaTarget, setMediaTarget] = useState<'logo' | 'favicon' | null>(null);
+
     // Domain verification state
     const [customDomain, setCustomDomain] = useState("");
     const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'pending' | 'error'>('idle');
@@ -80,6 +87,28 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             setMessage({ type: 'error', text: 'Failed to add domain' });
         } finally {
             setAddingEmailDomain(false);
+        }
+    };
+
+    const handleConnectStripe = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch('/api/stripe/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storeId }),
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                setMessage({ type: 'error', text: data.error || 'Failed to connect Stripe' });
+                setSaving(false);
+            }
+        } catch (error) {
+            console.error(error);
+            setMessage({ type: 'error', text: 'Failed to connect Stripe' });
+            setSaving(false);
         }
     };
 
@@ -243,6 +272,67 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                 onChange={(e) => setSettings(prev => prev ? { ...prev, name: e.target.value } : null)}
                                                 className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                                             />
+                                            <p className="text-xs text-slate-500 mt-1">This will be used as the browser title.</p>
+                                        </div>
+
+                                        {/* Logo & Favicon */}
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Store Logo
+                                                </label>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-20 w-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden relative group">
+                                                        {settings.logo_url ? (
+                                                            <img src={settings.logo_url} alt="Logo" className="h-full w-full object-contain p-2" />
+                                                        ) : (
+                                                            <ImageIcon className="text-slate-300" size={24} />
+                                                        )}
+                                                        <button 
+                                                            onClick={() => { setMediaTarget('logo'); setIsMediaOpen(true); }}
+                                                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <span className="text-white text-xs font-medium">Change</span>
+                                                        </button>
+                                                    </div>
+                                                    {settings.logo_url && (
+                                                        <button 
+                                                            onClick={() => setSettings(prev => prev ? { ...prev, logo_url: null } : null)}
+                                                            className="text-sm text-red-600 hover:text-red-700"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Favicon
+                                                </label>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-20 w-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden relative group">
+                                                        {settings.favicon_url ? (
+                                                            <img src={settings.favicon_url} alt="Favicon" className="h-8 w-8 object-contain" />
+                                                        ) : (
+                                                            <Globe className="text-slate-300" size={24} />
+                                                        )}
+                                                        <button 
+                                                            onClick={() => { setMediaTarget('favicon'); setIsMediaOpen(true); }}
+                                                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <span className="text-white text-xs font-medium">Change</span>
+                                                        </button>
+                                                    </div>
+                                                    {settings.favicon_url && (
+                                                        <button 
+                                                            onClick={() => setSettings(prev => prev ? { ...prev, favicon_url: null } : null)}
+                                                            className="text-sm text-red-600 hover:text-red-700"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div>
@@ -264,7 +354,12 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
                                         <div className="pt-4 border-t border-slate-200">
                                             <button
-                                                onClick={() => saveSettings({ name: settings.name, currency: settings.currency })}
+                                                onClick={() => saveSettings({ 
+                                                    name: settings.name, 
+                                                    currency: settings.currency,
+                                                    logo_url: settings.logo_url,
+                                                    favicon_url: settings.favicon_url
+                                                })}
                                                 disabled={saving}
                                                 className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 flex items-center gap-2"
                                             >
@@ -518,18 +613,43 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                 <div>
                                                     <h3 className="font-medium text-slate-900">Stripe Connect</h3>
                                                     <p className="text-sm text-slate-500 mt-1">
-                                                        {settings.stripe_account_id 
-                                                            ? "Your Stripe account is connected. You can accept payments."
-                                                            : "Connect your Stripe account to accept payments from customers."
+                                                        {settings.stripe_details_submitted
+                                                            ? "Your Stripe account is active and ready to accept payments."
+                                                            : settings.stripe_account_id 
+                                                                ? "Your Stripe account is created but setup is incomplete."
+                                                                : "Connect your Stripe account to accept payments from customers."
                                                         }
                                                     </p>
                                                 </div>
-                                                {settings.stripe_account_id ? (
-                                                    <span className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium flex items-center gap-1">
-                                                        <Check size={14} /> Connected
-                                                    </span>
+                                                {settings.stripe_details_submitted ? (
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium flex items-center gap-1">
+                                                            <Check size={14} /> Active
+                                                        </span>
+                                                        <button 
+                                                            onClick={handleConnectStripe}
+                                                            disabled={saving}
+                                                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                                        >
+                                                            Manage Account
+                                                        </button>
+                                                    </div>
+                                                ) : settings.stripe_account_id ? (
+                                                    <button 
+                                                        onClick={handleConnectStripe}
+                                                        disabled={saving}
+                                                        className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition font-medium text-sm flex items-center gap-2"
+                                                    >
+                                                        {saving && <Loader2 className="animate-spin" size={14} />}
+                                                        Continue Setup
+                                                    </button>
                                                 ) : (
-                                                    <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm">
+                                                    <button 
+                                                        onClick={handleConnectStripe}
+                                                        disabled={saving}
+                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm flex items-center gap-2"
+                                                    >
+                                                        {saving && <Loader2 className="animate-spin" size={14} />}
                                                         Connect Stripe
                                                     </button>
                                                 )}
@@ -562,6 +682,19 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                     </div>
                 </div>
             </div>
+
+            <MediaManager
+                isOpen={isMediaOpen}
+                onClose={() => setIsMediaOpen(false)}
+                onSelect={(url) => {
+                    if (mediaTarget === 'logo') {
+                        setSettings(prev => prev ? { ...prev, logo_url: url } : null);
+                    } else if (mediaTarget === 'favicon') {
+                        setSettings(prev => prev ? { ...prev, favicon_url: url } : null);
+                    }
+                    setIsMediaOpen(false);
+                }}
+            />
         </div>
     );
 }

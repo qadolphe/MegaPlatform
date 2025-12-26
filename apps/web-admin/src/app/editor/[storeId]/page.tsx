@@ -684,6 +684,19 @@ export default function EditorPage() {
                             previewProps.products = filtered.slice(0, 8);
                         }
                     }
+
+                    if (block.type === 'ProductDetail') {
+                        if (pageSlug.startsWith('products/')) {
+                            const productSlug = pageSlug.replace('products/', '');
+                            const product = storeProducts.find(p => p.slug === productSlug);
+                            if (product) {
+                                previewProps.product = product;
+                            }
+                        } else if (storeProducts.length > 0) {
+                            // Fallback: Show first product if not on a specific product page
+                            previewProps.product = storeProducts[0];
+                        }
+                    }
                     
                     return (
                     <div key={block.id}>
