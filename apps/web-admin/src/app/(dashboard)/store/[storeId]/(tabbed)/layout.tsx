@@ -12,16 +12,19 @@ export default function StoreTabsLayout({
   const pathname = usePathname();
   const storeId = params.storeId as string;
 
-  let activeTab: "pages" | "products" | "settings" | "knowledge" = "pages";
+  let activeTab: "pages" | "products" | "orders" | "settings" | "knowledge" = "pages";
   if (pathname.includes("/products")) activeTab = "products";
+  if (pathname.includes("/orders")) activeTab = "orders";
   if (pathname.includes("/settings")) activeTab = "settings";
   if (pathname.includes("/knowledge")) activeTab = "knowledge";
 
   return (
     <div className="flex flex-col h-full">
       <PageSwitcher storeId={storeId} activeTab={activeTab} />
-      {/* The template (and page) will be rendered here */}
-      {children} 
+      {/* Content area with padding below tabs */}
+      <div className="flex-1 pb-8">
+        {children}
+      </div>
     </div>
   );
 }

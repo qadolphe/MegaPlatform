@@ -1,5 +1,5 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid, InfoGrid, Header, Footer, TextContent, VideoGrid, ImageBox } from "@repo/ui-bricks";
+import { Hero, ProductGrid, InfoGrid, Header, Footer, TextContent, VideoGrid, ImageBox, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, Newsletter } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
 import { COMPONENT_DEFINITIONS } from "../../config/component-registry";
 
@@ -15,6 +15,13 @@ const COMPONENT_REGISTRY: Record<string, any> = {
   'TextContent': TextContent,
   'VideoGrid': VideoGrid,
   'ImageBox': ImageBox,
+  'Testimonials': Testimonials,
+  'FAQ': FAQ,
+  'Banner': Banner,
+  'LogoCloud': LogoCloud,
+  'Countdown': Countdown,
+  'Features': Features,
+  'Newsletter': Newsletter,
 };
 
 // Helper to parse the domain
@@ -138,7 +145,8 @@ export default async function DomainPage({
             description: p.description,
             base_price: p.price, // ProductCard expects 'base_price'
             image_url: p.images?.[0] || p.image_url, // ProductCard expects 'image_url'
-            slug: p.slug
+            slug: p.slug,
+            metafields: p.metafields || [] // Pass through metafields for display
       }));
   }
 

@@ -3,6 +3,16 @@ import Image from 'next/image'
 import { Check } from 'lucide-react'
 import styles from './ProductCard.module.css'
 
+interface Metafield {
+    key: string;
+    label: string;
+    value: string;
+    type: 'text' | 'number' | 'boolean';
+    showOnCard?: boolean;
+    showOnDetail?: boolean;
+    position?: 'above' | 'below';
+}
+
 interface ProductCardProps {
     product: any
     isActive?: boolean
@@ -86,6 +96,17 @@ export const ProductCard = ({
             <div className={styles.cardContent}>
                 <h3 className={styles.cardTitle}>{displayTitle}</h3>
                 <p className={styles.productDesc}>{displayDesc}</p>
+                
+                {/* Metafields shown on card */}
+                {product.metafields && product.metafields.filter((m: Metafield) => m.showOnCard && m.value).length > 0 && (
+                    <div className={styles.metafieldsContainer}>
+                        {product.metafields.filter((m: Metafield) => m.showOnCard && m.value).map((field: Metafield) => (
+                            <span key={field.key} className={styles.metafieldTag}>
+                                {field.label}: {field.type === 'boolean' ? (field.value === 'true' ? 'Yes' : 'No') : field.value}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
                 <div className={styles.expandedContent}>
                     <ul className={styles.featureList}>

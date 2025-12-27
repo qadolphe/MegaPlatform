@@ -45,3 +45,37 @@ export const ANIMATION_THEMES: Record<AnimationTheme, ThemeConfig> = {
 export const getAnimationConfig = (theme: string) => {
   return ANIMATION_THEMES[theme as AnimationTheme] || ANIMATION_THEMES.simple;
 };
+
+export const getAnimation = (style: string = 'theme', theme: string = 'simple') => {
+  const effectiveTheme = style === 'theme' ? theme : style;
+  const config = getAnimationConfig(effectiveTheme);
+  
+  if (effectiveTheme === 'none') return {};
+
+  const variants = {
+      hidden: {
+          opacity: 0,
+          y: config.variant === "fadeUp" ? 30 : 0,
+          x: config.variant === "slideRight" ? -50 : config.variant === "slideLeft" ? 50 : 0,
+          scale: config.variant === "scaleUp" ? 0.9 : 1,
+      },
+      visible: {
+          opacity: 1,
+          y: 0,
+          x: 0,
+          scale: 1,
+          transition: {
+              duration: config.duration,
+              ...config.transition
+          }
+      }
+  };
+
+  return {
+      initial: "hidden",
+      whileInView: "visible",
+      viewport: { once: true, margin: "-50px" },
+      variants: variants,
+      transition: { duration: config.duration }
+  };
+};

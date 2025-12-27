@@ -69,7 +69,7 @@ export default function ProductsList() {
         <h1 className="text-2xl font-bold text-slate-900">Products</h1>
         <Link 
             href={`/store/${storeId}/products/new`}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium"
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-md hover:shadow-lg"
         >
             <Plus size={18} /> Add Product
         </Link>

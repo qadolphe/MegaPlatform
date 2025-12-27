@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile } from "@repo/ui-bricks"; // Import real components
+import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
 import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard, Sparkles, Wand2, Loader2, Bot } from "lucide-react";
@@ -25,7 +25,13 @@ const RENDER_MAP: Record<string, any> = {
   VideoGrid,
   ImageBox,
   Newsletter,
-  CustomerProfile
+  CustomerProfile,
+  Testimonials,
+  FAQ,
+  Banner,
+  LogoCloud,
+  Countdown,
+  Features
 };
 
 export default function EditorPage() {

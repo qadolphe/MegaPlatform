@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Store, Mail, ArrowRight, Loader2, CheckCircle2, LayoutDashboard, ShoppingBag, BarChart3 } from "lucide-react";
+import { Store, Mail, ArrowRight, Loader2, CheckCircle2, Sparkles, Zap, Shield } from "lucide-react";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -24,10 +24,13 @@ function LoginForm() {
 
   if (isRedirecting) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Completing sign in...</p>
+          <div className="relative">
+            <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
+            <Loader2 className="h-12 w-12 animate-spin text-blue-400 mx-auto relative" />
+          </div>
+          <p className="mt-6 text-slate-300 font-medium">Completing sign in...</p>
         </div>
       </div>
     );
@@ -69,35 +72,99 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
-      {/* Left Side - Login Form */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 bg-white z-10">
-        <div className="mx-auto w-full max-w-sm lg:w-96">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
+      {/* Left Side - Features */}
+      <div className="hidden lg:flex flex-1 flex-col justify-center px-16 relative">
+        <div className="max-w-md">
+          <div className="flex items-center gap-3 mb-12">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+              <Store className="h-7 w-7" />
+            </div>
+            <span className="text-3xl font-bold text-white">SwatBloc</span>
+          </div>
+          
+          <h1 className="text-4xl font-bold text-white mb-6 leading-tight">
+            Build beautiful stores in minutes
+          </h1>
+          <p className="text-lg text-slate-400 mb-12">
+            The all-in-one platform to create, customize, and scale your e-commerce business.
+          </p>
+
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/20">
+                <Sparkles className="h-5 w-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold mb-1">AI-Powered Editor</h3>
+                <p className="text-slate-400 text-sm">
+                  Use natural language to design and customize your storefront instantly.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/20">
+                <Zap className="h-5 w-5 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold mb-1">Lightning Fast</h3>
+                <p className="text-slate-400 text-sm">
+                  Optimized for speed with global CDN delivery and edge functions.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/20">
+                <Shield className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold mb-1">Secure Payments</h3>
+                <p className="text-slate-400 text-sm">
+                  Built-in Stripe integration with automatic split payments.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Login Form */}
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-16 relative">
+        <div className="w-full max-w-md mx-auto">
+          {/* Mobile Logo */}
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
               <Store className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">SwatBloc</span>
+            <span className="text-2xl font-bold text-white">SwatBloc</span>
           </div>
 
-          <div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-              Welcome back
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Sign in to your dashboard to manage your stores.
-            </p>
-          </div>
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Welcome back
+              </h2>
+              <p className="text-slate-400">
+                Sign in to manage your stores
+              </p>
+            </div>
 
-          <div className="mt-8">
             <div className="space-y-4">
               <button
                 onClick={handleGoogleLogin}
                 disabled={googleLoading || loading}
-                className="w-full flex justify-center items-center gap-3 py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center gap-3 py-3 px-4 bg-white hover:bg-slate-100 rounded-xl text-sm font-semibold text-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-black/10"
               >
                 {googleLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
                 ) : (
                   <svg className="h-5 w-5" viewBox="0 0 24 24">
                     <path
@@ -121,35 +188,35 @@ function LoginForm() {
                 <span>Continue with Google</span>
               </button>
 
-              <div className="relative">
+              <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
+                  <div className="w-full border-t border-slate-600/50" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+                  <span className="px-3 bg-slate-800/50 text-slate-400">or</span>
                 </div>
               </div>
 
               {sent ? (
-                <div className="rounded-lg bg-green-50 p-4 border border-green-200">
-                  <div className="flex">
+                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-5">
+                  <div className="flex gap-4">
                     <div className="flex-shrink-0">
-                      <CheckCircle2 className="h-5 w-5 text-green-400" aria-hidden="true" />
+                      <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                      </div>
                     </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-green-800">Check your email</h3>
-                      <div className="mt-2 text-sm text-green-700">
-                        <p>We sent a magic link to <span className="font-semibold">{email}</span>. Click the link to sign in.</p>
-                      </div>
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={() => setSent(false)}
-                          className="text-sm font-medium text-green-800 hover:text-green-900 underline"
-                        >
-                          Use a different email
-                        </button>
-                      </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-emerald-400 mb-1">Check your email</h3>
+                      <p className="text-sm text-slate-300">
+                        We sent a magic link to <span className="font-semibold text-white">{email}</span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setSent(false)}
+                        className="mt-3 text-sm text-emerald-400 hover:text-emerald-300 font-medium"
+                      >
+                        Use a different email →
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -159,9 +226,9 @@ function LoginForm() {
                     <label htmlFor="email" className="sr-only">
                       Email address
                     </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-gray-400" />
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Mail className="h-5 w-5 text-slate-500" />
                       </div>
                       <input
                         id="email"
@@ -171,7 +238,7 @@ function LoginForm() {
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-lg py-2.5"
+                        className="w-full bg-slate-700/50 border border-slate-600/50 text-white placeholder-slate-400 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         placeholder="name@company.com"
                       />
                     </div>
@@ -180,7 +247,7 @@ function LoginForm() {
                   <button
                     type="submit"
                     disabled={loading || googleLoading}
-                    className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex justify-center items-center py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25"
                   >
                     {loading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -194,56 +261,10 @@ function LoginForm() {
                 </form>
               )}
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Right Side - Feature Showcase */}
-      <div className="hidden lg:block relative flex-1 bg-gray-50">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-900 opacity-90" />
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80')] bg-cover bg-center mix-blend-overlay" />
-        
-        <div className="relative h-full flex flex-col justify-center px-12 text-white">
-          <div className="max-w-lg mx-auto">
-            <h2 className="text-4xl font-bold mb-8">Build your commerce empire</h2>
-            
-            <div className="space-y-8">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-white/10 backdrop-blur-sm">
-                  <LayoutDashboard className="h-6 w-6 text-blue-200" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Powerful Dashboard</h3>
-                  <p className="text-blue-100 leading-relaxed">
-                    Manage multiple stores, products, and orders from a single centralized interface designed for efficiency.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-white/10 backdrop-blur-sm">
-                  <ShoppingBag className="h-6 w-6 text-blue-200" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Visual Editor</h3>
-                  <p className="text-blue-100 leading-relaxed">
-                    Customize your storefronts with our intuitive drag-and-drop editor. No coding required.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-white/10 backdrop-blur-sm">
-                  <BarChart3 className="h-6 w-6 text-blue-200" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Real-time Analytics</h3>
-                  <p className="text-blue-100 leading-relaxed">
-                    Track your sales, visitor traffic, and conversion rates in real-time to make data-driven decisions.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <p className="mt-6 text-center text-xs text-slate-500">
+              By signing in, you agree to our Terms of Service and Privacy Policy
+            </p>
           </div>
         </div>
       </div>
@@ -253,7 +274,11 @@ function LoginForm() {
 
 export default function Login() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+      </div>
+    }>
       <LoginForm />
     </Suspense>
   );

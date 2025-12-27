@@ -44,6 +44,7 @@ create table products (
   compare_at_price integer,         -- Original price for sales
   images text[] default '{}',       -- Array of image URLs
   options jsonb default '[]'::jsonb,-- e.g. [{"name": "Size", "values": ["S", "M"]}]
+  metafields jsonb default '[]'::jsonb, -- Custom fields e.g. [{"key": "cpu_speed", "label": "CPU Speed", "value": "3.5GHz", "type": "text"}]
   published boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now()),
@@ -88,6 +89,7 @@ create table customers (
   first_name text,
   last_name text,
   phone text,
+  metafields jsonb default '[]'::jsonb, -- Custom fields e.g. [{"key": "loyalty_tier", "label": "Loyalty Tier", "value": "Gold", "type": "text"}]
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now()),
   unique(store_id, email)
@@ -118,6 +120,7 @@ create table orders (
   -- Data Snapshots
   shipping_address jsonb,
   billing_address jsonb,
+  metafields jsonb default '[]'::jsonb, -- Custom fields e.g. [{"key": "gift_message", "label": "Gift Message", "value": "Happy Birthday!", "type": "text"}]
   
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
@@ -176,8 +179,7 @@ with check (auth.uid() = owner_id);
 create policy "Users can update their own stores"
 on stores for update
 to authenticated
-using (auth.uid() = owner_id)
-with check (auth.uid() = owner_id);
+using (has_store_access(id, 'editor'));
 
 create policy "Users can delete their own stores"
 on stores for delete
@@ -193,13 +195,7 @@ using (true);
 create policy "Users can manage pages for their stores"
 on store_pages for all
 to authenticated
-using (
-  exists (
-    select 1 from stores
-    where stores.id = store_pages.store_id
-    and stores.owner_id = auth.uid()
-  )
-);
+using (has_store_access(store_id, 'editor'));
 
 -- Products
 create policy "Public products are viewable by everyone"
@@ -210,13 +206,7 @@ using (true);
 create policy "Users can manage products for their stores"
 on products for all
 to authenticated
-using (
-  exists (
-    select 1 from stores
-    where stores.id = products.store_id
-    and stores.owner_id = auth.uid()
-  )
-);
+using (has_store_access(store_id, 'editor'));
 
 -- Product Variants
 create policy "Public variants are viewable by everyone"
@@ -230,9 +220,8 @@ to authenticated
 using (
   exists (
     select 1 from products
-    join stores on products.store_id = stores.id
     where products.id = product_variants.product_id
-    and stores.owner_id = auth.uid()
+    and has_store_access(products.store_id, 'editor')
   )
 );
 
@@ -245,13 +234,7 @@ using (true);
 create policy "Users can manage collections for their stores"
 on collections for all
 to authenticated
-using (
-  exists (
-    select 1 from stores
-    where stores.id = collections.store_id
-    and stores.owner_id = auth.uid()
-  )
-);
+using (has_store_access(store_id, 'editor'));
 
 -- Product Collections
 create policy "Public product collections are viewable by everyone"
@@ -265,9 +248,8 @@ to authenticated
 using (
   exists (
     select 1 from products
-    join stores on products.store_id = stores.id
     where products.id = product_collections.product_id
-    and stores.owner_id = auth.uid()
+    and has_store_access(products.store_id, 'editor')
   )
 );
 
@@ -275,25 +257,13 @@ using (
 create policy "Store owners can manage their customers"
 on customers for all
 to authenticated
-using (
-  exists (
-    select 1 from stores
-    where stores.id = customers.store_id
-    and stores.owner_id = auth.uid()
-  )
-);
+using (has_store_access(store_id, 'editor'));
 
 -- Orders
 create policy "Store owners can manage their orders"
 on orders for all
 to authenticated
-using (
-  exists (
-    select 1 from stores
-    where stores.id = orders.store_id
-    and stores.owner_id = auth.uid()
-  )
-);
+using (has_store_access(store_id, 'editor'));
 
 -- Order Items
 create policy "Store owners can manage their order items"
@@ -302,9 +272,8 @@ to authenticated
 using (
   exists (
     select 1 from orders
-    join stores on orders.store_id = stores.id
     where orders.id = order_items.order_id
-    and stores.owner_id = auth.uid()
+    and has_store_access(orders.store_id, 'editor')
   )
 );
 
@@ -352,19 +321,19 @@ alter table knowledge_items enable row level security;
 
 create policy "Users can view their own store knowledge"
   on knowledge_items for select
-  using ( store_id in (select id from stores where owner_id = auth.uid()) );
+  using (has_store_access(store_id, 'viewer'));
 
 create policy "Users can insert their own store knowledge"
   on knowledge_items for insert
-  with check ( store_id in (select id from stores where owner_id = auth.uid()) );
+  with check (has_store_access(store_id, 'editor'));
 
 create policy "Users can update their own store knowledge"
   on knowledge_items for update
-  using ( store_id in (select id from stores where owner_id = auth.uid()) );
+  using (has_store_access(store_id, 'editor'));
 
 create policy "Users can delete their own store knowledge"
   on knowledge_items for delete
-  using ( store_id in (select id from stores where owner_id = auth.uid()) );
+  using (has_store_access(store_id, 'editor'));
 
 -- 10. Store Collaborators
 create table public.store_collaborators (
@@ -413,7 +382,48 @@ create policy "Owners can remove collaborators"
     )
   );
 
--- 11. Storage Setup (Images)
+-- 12. Helper Functions for Collaboration
+create or replace function public.get_user_id_by_email(email_param text)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  ret_id uuid;
+begin
+  select id into ret_id from auth.users where email = email_param;
+  return ret_id;
+end;
+$$;
+
+create or replace function public.has_store_access(check_store_id uuid, required_role text default 'viewer')
+returns boolean
+language plpgsql
+security definer
+as $$
+begin
+  -- Check if owner
+  if exists (select 1 from public.stores where id = check_store_id and owner_id = auth.uid()) then
+    return true;
+  end if;
+
+  -- Check if collaborator
+  if exists (
+    select 1 from public.store_collaborators 
+    where store_id = check_store_id 
+    and user_id = auth.uid()
+    and (
+      required_role = 'viewer' -- viewer role allows access if user has any role
+      or (required_role = 'editor' and role = 'editor')
+    )
+  ) then
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
 insert into storage.buckets (id, name, public)
 values ('site-assets', 'site-assets', true)
 on conflict (id) do nothing;
@@ -435,10 +445,4 @@ create policy "Authenticated Delete"
 create policy "Owners can manage email domains"
   on store_email_domains for all
   to authenticated
-  using (
-    exists (
-      select 1 from stores
-      where stores.id = store_email_domains.store_id
-      and stores.owner_id = auth.uid()
-    )
-  );
+  using (has_store_access(store_id, 'editor'));

@@ -1,12 +1,10 @@
 import { cookies } from "next/headers";
-import { X } from "lucide-react";
 import { CartDrawer } from "@repo/ui-bricks";
-import { createClient } from "@/lib/supabase/server";
+import { supabase } from "@repo/database";
 
 export async function generateMetadata({ params }: { params: Promise<{ domain: string }> }) {
     const { domain: rawDomain } = await params;
     const host = decodeURIComponent(rawDomain);
-    const supabase = await createClient();
 
     // Helper to parse the domain (duplicated from page.tsx, ideally shared)
     const getSubdomain = (host: string) => {

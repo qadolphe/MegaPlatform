@@ -7,6 +7,16 @@ import styles from './ProductDetail.module.css';
 import ScrollAnimation from '../../components/ui/scroll-animation';
 import { AnimationTheme } from '../../lib/animation-config';
 
+interface Metafield {
+    key: string;
+    label: string;
+    value: string;
+    type: 'text' | 'number' | 'boolean';
+    showOnCard?: boolean;
+    showOnDetail?: boolean;
+    position?: 'above' | 'below';
+}
+
 interface ProductDetailProps {
     product: {
         id: string;
@@ -16,6 +26,7 @@ interface ProductDetailProps {
         image_url: string;
         slug: string;
         type?: 'kit' | 'service';
+        metafields?: Metafield[];
     };
     animationStyle?: AnimationTheme;
     buttonAction?: 'addToCart' | 'buyNow' | 'contact';
@@ -56,6 +67,23 @@ export const ProductDetail = ({ product, animationStyle = 'simple', buttonAction
         currency: 'USD',
     }).format((product.base_price || 0) / 100);
 
+    // Filter metafields for display
+    const metafieldsAbove = (product.metafields || []).filter(m => m.showOnDetail !== false && m.position === 'above' && m.value);
+    const metafieldsBelow = (product.metafields || []).filter(m => m.showOnDetail !== false && m.position !== 'above' && m.value);
+
+    const renderMetafield = (field: Metafield) => {
+        let displayValue = field.value;
+        if (field.type === 'boolean') {
+            displayValue = field.value === 'true' ? 'Yes' : 'No';
+        }
+        return (
+            <div key={field.key} className={styles.metafield}>
+                <span className={styles.metafieldLabel}>{field.label}:</span>
+                <span className={styles.metafieldValue}>{displayValue}</span>
+            </div>
+        );
+    };
+
     return (
         <div className={styles.container}>
             <ScrollAnimation theme={animationStyle} className={styles.imageContainer} hoverable={true}>
@@ -73,9 +101,25 @@ export const ProductDetail = ({ product, animationStyle = 'simple', buttonAction
             <ScrollAnimation theme={animationStyle} delay={0.2} className={styles.details}>
                 <h1 className={styles.title}>{product.name}</h1>
                 <p className={styles.price}>{formattedPrice}</p>
+                
+                {/* Custom fields above description */}
+                {metafieldsAbove.length > 0 && (
+                    <div className={styles.metafieldsContainer}>
+                        {metafieldsAbove.map(renderMetafield)}
+                    </div>
+                )}
+                
                 <div className={styles.description}>
                     {product.description}
                 </div>
+                
+                {/* Custom fields below description */}
+                {metafieldsBelow.length > 0 && (
+                    <div className={styles.metafieldsContainer}>
+                        {metafieldsBelow.map(renderMetafield)}
+                    </div>
+                )}
+                
                 <button 
                     onClick={handleAction}
                     className={`${styles.addToCartBtn} ${isAdded ? styles.added : ''}`}

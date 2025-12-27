@@ -80,6 +80,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`${protocol}://${targetDomain}/login`, request.url));
   }
 
+  // Don't rewrite API routes - let them be handled by the global API handlers
+  if (url.pathname.startsWith('/api')) {
+      return NextResponse.next();
+  }
+
   // Rewrite to the dynamic route
   const response = NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
   response.headers.set('x-debug-hostname', hostname);

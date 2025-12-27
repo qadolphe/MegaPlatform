@@ -327,5 +327,227 @@ export const COMPONENT_DEFINITIONS = {
       { name: "captionColor", type: "color", label: "Caption Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
     ]
+  },
+  Testimonials: {
+    label: "Testimonials",
+    defaultProps: {
+      title: "What Our Customers Say",
+      subtitle: "Real reviews from real customers",
+      testimonials: [
+        { name: "Sarah J.", role: "Verified Buyer", content: "Absolutely love the quality! Will definitely be ordering again.", rating: 5 },
+        { name: "Mike R.", role: "Repeat Customer", content: "Best purchase I've made this year. Fast shipping and great customer service.", rating: 5 },
+        { name: "Emily K.", role: "Verified Buyer", content: "The attention to detail is incredible. Highly recommend!", rating: 4 },
+      ],
+      columns: 3,
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "columns", type: "number", label: "Columns", min: 1, max: 4, section: SECTIONS.SETTINGS },
+      {
+        name: "testimonials",
+        type: "array",
+        label: "Testimonials",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          { name: "name", type: "text", label: "Name" },
+          { name: "role", type: "text", label: "Role" },
+          { name: "content", type: "textarea", label: "Review" },
+          { name: "rating", type: "number", label: "Rating (1-5)", min: 1, max: 5 },
+          { name: "avatar", type: "image", label: "Avatar" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  FAQ: {
+    label: "FAQ",
+    defaultProps: {
+      title: "Frequently Asked Questions",
+      subtitle: "Everything you need to know",
+      items: [
+        { question: "What is your return policy?", answer: "We offer a 30-day return policy on all items. Simply contact our support team to initiate a return." },
+        { question: "How long does shipping take?", answer: "Standard shipping takes 3-5 business days. Express shipping is available for 1-2 business day delivery." },
+        { question: "Do you ship internationally?", answer: "Yes! We ship to over 50 countries worldwide. Shipping rates and times vary by location." },
+        { question: "How can I track my order?", answer: "Once your order ships, you'll receive a tracking number via email to monitor your package's journey." },
+      ],
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      {
+        name: "items",
+        type: "array",
+        label: "Questions",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          { name: "question", type: "text", label: "Question" },
+          { name: "answer", type: "textarea", label: "Answer" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  Banner: {
+    label: "Banner",
+    defaultProps: {
+      text: "🎉 Free shipping on orders over $50!",
+      linkText: "Shop Now",
+      linkUrl: "/products",
+      icon: "tag",
+      dismissible: true,
+      backgroundColor: "#0f172a",
+      textColor: "#ffffff",
+      accentColor: "#fbbf24",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "text", type: "text", label: "Banner Text", section: SECTIONS.CONTENT },
+      { name: "linkText", type: "text", label: "Link Text", section: SECTIONS.CONTENT },
+      { name: "linkUrl", type: "page-link", label: "Link URL", section: SECTIONS.CONTENT },
+      {
+        name: "icon",
+        type: "select",
+        label: "Icon",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Tag", value: "tag" },
+          { label: "Zap", value: "zap" },
+          { label: "None", value: "none" }
+        ]
+      },
+      { name: "dismissible", type: "boolean", label: "Can Dismiss", section: SECTIONS.SETTINGS },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  LogoCloud: {
+    label: "Logo Cloud",
+    defaultProps: {
+      title: "Trusted by leading brands",
+      logos: [
+        { name: "Company 1", image: "https://via.placeholder.com/150x50?text=Logo+1" },
+        { name: "Company 2", image: "https://via.placeholder.com/150x50?text=Logo+2" },
+        { name: "Company 3", image: "https://via.placeholder.com/150x50?text=Logo+3" },
+        { name: "Company 4", image: "https://via.placeholder.com/150x50?text=Logo+4" },
+        { name: "Company 5", image: "https://via.placeholder.com/150x50?text=Logo+5" },
+      ],
+      grayscale: true,
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      {
+        name: "logos",
+        type: "array",
+        label: "Logos",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          { name: "name", type: "text", label: "Company Name" },
+          { name: "image", type: "image", label: "Logo Image" },
+          { name: "url", type: "text", label: "Website URL" }
+        ]
+      },
+      { name: "grayscale", type: "boolean", label: "Grayscale Logos", section: SECTIONS.SETTINGS },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  Countdown: {
+    label: "Countdown Timer",
+    defaultProps: {
+      title: "Sale Ends In",
+      subtitle: "Don't miss out on these amazing deals!",
+      endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+      linkText: "Shop Sale",
+      linkUrl: "/products",
+      accentColor: "#ef4444",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "endDate", type: "text", label: "End Date (ISO format)", section: SECTIONS.SETTINGS },
+      { name: "linkText", type: "text", label: "Button Text", section: SECTIONS.CONTENT },
+      { name: "linkUrl", type: "page-link", label: "Button Link", section: SECTIONS.CONTENT },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Timer Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  Features: {
+    label: "Features",
+    defaultProps: {
+      features: [
+        { title: "Free Shipping", description: "On orders over $50", icon: "truck" },
+        { title: "Secure Payment", description: "100% secure checkout", icon: "shield" },
+        { title: "Fast Delivery", description: "2-3 business days", icon: "clock" },
+        { title: "Easy Returns", description: "30-day return policy", icon: "creditCard" },
+      ],
+      layout: "horizontal",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Section Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      {
+        name: "features",
+        type: "array",
+        label: "Features",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          { name: "title", type: "text", label: "Title" },
+          { name: "description", type: "text", label: "Description" },
+          { name: "value", type: "text", label: "Stat Value (optional)" },
+          { 
+            name: "icon", 
+            type: "select", 
+            label: "Icon",
+            options: [
+              { label: "Truck", value: "truck" },
+              { label: "Shield", value: "shield" },
+              { label: "Clock", value: "clock" },
+              { label: "Credit Card", value: "creditCard" },
+              { label: "Heart", value: "heart" },
+              { label: "Star", value: "star" },
+              { label: "Award", value: "award" },
+              { label: "Zap", value: "zap" }
+            ]
+          }
+        ]
+      },
+      {
+        name: "layout",
+        type: "select",
+        label: "Layout",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Horizontal Row", value: "horizontal" },
+          { label: "2-Column Grid", value: "grid" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
   }
 };

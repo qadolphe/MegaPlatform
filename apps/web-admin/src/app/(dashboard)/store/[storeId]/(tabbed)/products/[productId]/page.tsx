@@ -32,6 +32,9 @@ export default function ProductEditor() {
     { id: crypto.randomUUID(), title: "Default", price: 0, inventory_quantity: 0, options: {} }
   ]);
   const [options, setOptions] = useState<{name: string, values: string[]}[]>([]);
+  
+  // Metafields State
+  const [metafields, setMetafields] = useState<{key: string, label: string, value: string, type: 'text' | 'number' | 'boolean', showOnCard?: boolean, showOnDetail?: boolean, position?: 'above' | 'below'}[]>([]);
 
   useEffect(() => {
     if (!isNew) {
@@ -59,6 +62,7 @@ export default function ProductEditor() {
     setImages(product.images || []);
     setPublished(product.published);
     setOptions(product.options || []);
+    setMetafields(product.metafields || []);
     
     if (product.product_variants && product.product_variants.length > 0) {
       setVariants(product.product_variants);
@@ -82,6 +86,7 @@ export default function ProductEditor() {
       compare_at_price: comparePrice,
       images,
       options,
+      metafields,
       published
     };
 
@@ -363,6 +368,141 @@ export default function ProductEditor() {
                 >
                     + Add Variant
                 </button>
+            </div>
+
+            {/* Custom Fields / Metafields */}
+            <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-slate-900">Custom Fields</h3>
+                    <button 
+                        onClick={() => {
+                            const key = prompt("Enter field key (e.g. cpu_speed, fabric_origin)");
+                            if (key) {
+                                const label = prompt("Enter display label (e.g. CPU Speed, Fabric Origin)") || key;
+                                setMetafields([...metafields, { 
+                                    key: key.toLowerCase().replace(/\s+/g, '_'), 
+                                    label, 
+                                    value: '', 
+                                    type: 'text',
+                                    showOnCard: false,
+                                    showOnDetail: true,
+                                    position: 'below'
+                                }]);
+                            }
+                        }}
+                        className="text-sm text-blue-600 hover:underline"
+                    >
+                        + Add Field
+                    </button>
+                </div>
+                
+                {metafields.length === 0 ? (
+                    <p className="text-sm text-slate-400">No custom fields. Add fields like &quot;CPU Speed&quot; or &quot;Fabric Origin&quot; to store extra product data.</p>
+                ) : (
+                    <div className="space-y-4">
+                        {metafields.map((field, idx) => (
+                            <div key={idx} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <span className="font-medium text-slate-700">{field.label}</span>
+                                        <span className="text-xs text-slate-400 ml-2">({field.key})</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => setMetafields(metafields.filter((_, i) => i !== idx))}
+                                        className="text-slate-400 hover:text-red-500"
+                                    >
+                                        <Trash size={14} />
+                                    </button>
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                    <select
+                                        value={field.type}
+                                        onChange={(e) => {
+                                            const newFields = [...metafields];
+                                            newFields[idx].type = e.target.value as 'text' | 'number' | 'boolean';
+                                            setMetafields(newFields);
+                                        }}
+                                        className="border border-slate-300 rounded px-2 py-1 text-sm"
+                                    >
+                                        <option value="text">Text</option>
+                                        <option value="number">Number</option>
+                                        <option value="boolean">Yes/No</option>
+                                    </select>
+                                    
+                                    {field.type === 'boolean' ? (
+                                        <select
+                                            value={field.value}
+                                            onChange={(e) => {
+                                                const newFields = [...metafields];
+                                                newFields[idx].value = e.target.value;
+                                                setMetafields(newFields);
+                                            }}
+                                            className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm"
+                                        >
+                                            <option value="">Select...</option>
+                                            <option value="true">Yes</option>
+                                            <option value="false">No</option>
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type={field.type === 'number' ? 'number' : 'text'}
+                                            value={field.value}
+                                            onChange={(e) => {
+                                                const newFields = [...metafields];
+                                                newFields[idx].value = e.target.value;
+                                                setMetafields(newFields);
+                                            }}
+                                            placeholder="Enter value..."
+                                            className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm"
+                                        />
+                                    )}
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-4 text-xs">
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={field.showOnCard || false}
+                                            onChange={(e) => {
+                                                const newFields = [...metafields];
+                                                newFields[idx].showOnCard = e.target.checked;
+                                                setMetafields(newFields);
+                                            }}
+                                            className="rounded border-slate-300"
+                                        />
+                                        <span className="text-slate-600">Show on Card</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={field.showOnDetail !== false}
+                                            onChange={(e) => {
+                                                const newFields = [...metafields];
+                                                newFields[idx].showOnDetail = e.target.checked;
+                                                setMetafields(newFields);
+                                            }}
+                                            className="rounded border-slate-300"
+                                        />
+                                        <span className="text-slate-600">Show on Detail</span>
+                                    </label>
+                                    <select
+                                        value={field.position || 'below'}
+                                        onChange={(e) => {
+                                            const newFields = [...metafields];
+                                            newFields[idx].position = e.target.value as 'above' | 'below';
+                                            setMetafields(newFields);
+                                        }}
+                                        className="border border-slate-300 rounded px-2 py-0.5 text-xs"
+                                    >
+                                        <option value="above">Above Description</option>
+                                        <option value="below">Below Description</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
 

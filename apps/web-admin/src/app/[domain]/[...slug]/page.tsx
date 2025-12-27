@@ -1,5 +1,5 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid, InfoGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox } from "@repo/ui-bricks";
+import { Hero, ProductGrid, InfoGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, Newsletter, CustomerProfile } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
 import { COMPONENT_DEFINITIONS } from "../../../config/component-registry";
 
@@ -16,6 +16,14 @@ const COMPONENT_REGISTRY: Record<string, any> = {
   'TextContent': TextContent,
   'VideoGrid': VideoGrid,
   'ImageBox': ImageBox,
+  'Testimonials': Testimonials,
+  'FAQ': FAQ,
+  'Banner': Banner,
+  'LogoCloud': LogoCloud,
+  'Countdown': Countdown,
+  'Features': Features,
+  'Newsletter': Newsletter,
+  'CustomerProfile': CustomerProfile,
 };
 
 // Helper to parse the domain

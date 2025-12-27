@@ -1,0 +1,77 @@
+.logoCloud {
+  padding: 3rem 2rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #94a3b8;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+}
+
+.logoWrapper {
+  flex-shrink: 0;
+}
+
+.logoLink {
+  display: block;
+  transition: opacity 0.2s;
+}
+
+.logoLink:hover {
+  opacity: 0.8;
+}
+
+.logo {
+  max-height: 40px;
+  max-width: 150px;
+  width: auto;
+  object-fit: contain;
+  transition: filter 0.3s ease;
+}
+
+.logo.grayscale {
+  filter: grayscale(100%);
+  opacity: 0.6;
+}
+
+.logo.grayscale:hover {
+  filter: grayscale(0%);
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    gap: 2rem;
+  }
+  
+  .logo {
+    max-height: 32px;
+    max-width: 120px;
+  }
+}

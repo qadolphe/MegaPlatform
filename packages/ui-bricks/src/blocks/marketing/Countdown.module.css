@@ -1,0 +1,110 @@
+.countdown {
+  padding: 4rem 2rem;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.icon {
+  margin: 0 auto 1rem;
+  display: block;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  color: #64748b;
+}
+
+.timer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.timeBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  min-width: 80px;
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.separator {
+  font-size: 2.5rem;
+  font-weight: 700;
+  padding-top: 1rem;
+}
+
+.cta {
+  display: inline-block;
+  padding: 0.875rem 2rem;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.cta:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.expired {
+  padding: 2rem;
+}
+
+.expiredText {
+  font-size: 1.25rem;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .timer {
+    gap: 0.25rem;
+  }
+  
+  .value {
+    font-size: 1.5rem;
+    padding: 0.75rem 1rem;
+    min-width: 60px;
+  }
+  
+  .separator {
+    font-size: 1.5rem;
+    padding-top: 0.75rem;
+  }
+}
