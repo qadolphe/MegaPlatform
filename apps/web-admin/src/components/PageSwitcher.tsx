@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Package, Settings, Bot, ShoppingCart, Calendar } from "lucide-react";
+import { FileText, Package, Settings, Bot, ShoppingCart, Calendar, Library } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface PageSwitcherProps {
   storeId: string;
-  activeTab: "pages" | "products" | "orders" | "settings" | "knowledge" | "planner";
+  activeTab: "pages" | "products" | "content" | "orders" | "settings" | "knowledge" | "planner";
 }
 
 export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
@@ -15,8 +15,8 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
       <Link
         href={`/store/${storeId}/pages`}
         className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "pages"
-            ? "text-slate-900"
-            : "text-slate-500 hover:text-slate-900"
+          ? "text-slate-900"
+          : "text-slate-500 hover:text-slate-900"
           }`}
       >
         {activeTab === "pages" && (
@@ -34,8 +34,8 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
       <Link
         href={`/store/${storeId}/products`}
         className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "products"
-            ? "text-slate-900"
-            : "text-slate-500 hover:text-slate-900"
+          ? "text-slate-900"
+          : "text-slate-500 hover:text-slate-900"
           }`}
       >
         {activeTab === "products" && (
@@ -51,10 +51,29 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
         </span>
       </Link>
       <Link
+        href={`/store/${storeId}/content`}
+        className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "content"
+          ? "text-slate-900"
+          : "text-slate-500 hover:text-slate-900"
+          }`}
+      >
+        {activeTab === "content" && (
+          <motion.div
+            layoutId="activeTab"
+            className="absolute inset-0 bg-white rounded-md shadow-sm"
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+          />
+        )}
+        <span className="relative z-10 flex items-center gap-2">
+          <Library size={16} />
+          Content
+        </span>
+      </Link>
+      <Link
         href={`/store/${storeId}/orders`}
         className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "orders"
-            ? "text-slate-900"
-            : "text-slate-500 hover:text-slate-900"
+          ? "text-slate-900"
+          : "text-slate-500 hover:text-slate-900"
           }`}
       >
         {activeTab === "orders" && (
@@ -72,8 +91,8 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
       <Link
         href={`/store/${storeId}/knowledge`}
         className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "knowledge"
-            ? "text-slate-900"
-            : "text-slate-500 hover:text-slate-900"
+          ? "text-slate-900"
+          : "text-slate-500 hover:text-slate-900"
           }`}
       >
         {activeTab === "knowledge" && (
@@ -91,8 +110,8 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
       <Link
         href={`/store/${storeId}/planner`}
         className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "planner"
-            ? "text-slate-900"
-            : "text-slate-500 hover:text-slate-900"
+          ? "text-slate-900"
+          : "text-slate-500 hover:text-slate-900"
           }`}
       >
         {activeTab === "planner" && (
@@ -110,8 +129,8 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
       <Link
         href={`/store/${storeId}/settings`}
         className={`relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "settings"
-            ? "text-slate-900"
-            : "text-slate-500 hover:text-slate-900"
+          ? "text-slate-900"
+          : "text-slate-500 hover:text-slate-900"
           }`}
       >
         {activeTab === "settings" && (

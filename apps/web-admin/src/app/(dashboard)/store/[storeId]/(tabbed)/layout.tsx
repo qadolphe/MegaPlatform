@@ -12,8 +12,9 @@ export default function StoreTabsLayout({
   const pathname = usePathname();
   const storeId = params.storeId as string;
 
-  let activeTab: "pages" | "products" | "orders" | "settings" | "knowledge" | "planner" = "pages";
+  let activeTab: "pages" | "products" | "content" | "orders" | "settings" | "knowledge" | "planner" = "pages";
   if (pathname.includes("/products")) activeTab = "products";
+  if (pathname.includes("/content")) activeTab = "content";
   if (pathname.includes("/orders")) activeTab = "orders";
   if (pathname.includes("/settings")) activeTab = "settings";
   if (pathname.includes("/knowledge")) activeTab = "knowledge";
