@@ -15,6 +15,7 @@ export * from "./blocks/commerce/ProductDetail";
 export * from "./blocks/commerce/CustomerProfile";
 export * from "./blocks/layout/Header";
 export * from "./blocks/layout/Footer";
+export * from "./blocks/layout/UniversalGrid";
 
 // Components
 export * from "./components/ProductCard";

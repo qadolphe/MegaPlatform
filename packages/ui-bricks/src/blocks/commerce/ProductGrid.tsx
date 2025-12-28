@@ -74,6 +74,11 @@ export const ProductGrid = ({
       }, [] as { product: any, originalIndex: number }[][])
     : [];
 
+  // Dynamic grid columns style for standard layout
+  const gridStyle = !isExpandable && columns ? {
+    gridTemplateColumns: `repeat(${columns}, 1fr)`
+  } : {};
+
   return (
     <section 
       className={styles.productsSection}
@@ -85,7 +90,7 @@ export const ProductGrid = ({
       {isExpandable ? (
         <div className={styles.expandableGridContainer}>
           {productRows.map((row: { product: any, originalIndex: number }[], rowIndex: number) => (
-            <div key={rowIndex} className={styles.expandableRow}>
+            <div key={rowIndex} className={`${styles.expandableRow} expandable-row`}>
               {row.map(({ product, originalIndex }) => (
                 <div 
                   key={product.id}
@@ -109,20 +114,16 @@ export const ProductGrid = ({
       ) : (
         /* --- STANDARD GRID LAYOUT --- */
         <div 
-          className={`${styles.cardContainer} product-card-container`}
-          style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-              gap: '1rem',
-              minHeight: 'auto'
-          }}
+          className={`${styles.standardGridContainer} product-card-container`}
+          style={gridStyle as React.CSSProperties}
         >
           {products.map((product, index) => (
             <ScrollAnimation 
               key={product.id} 
               theme={animationStyle} 
               delay={index * 0.05}
-              hoverable={true} 
+              hoverable={true}
+              className={styles.standardGridItem}
             >
               <ProductCard 
                   product={product} 

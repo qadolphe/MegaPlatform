@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
-import { aiModel, generateEmbedding } from "@repo/ai";
+import { chat, generateEmbedding, AIModelConfig } from "@repo/ai";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { prompt, context } = body;
+    const { prompt, context, modelConfig } = body;
     // context: { storeId, selectedBlock, allBlocks, availableImages, storeTheme, storeColors }
+    // modelConfig: { provider: 'gemini' | 'openai' | 'anthropic', model: string }
+
+    const aiConfig: AIModelConfig = modelConfig || { provider: 'gemini', model: 'gemini-2.0-flash' };
 
     // 1. RAG: Retrieve relevant knowledge
     let knowledgeContext = "";
@@ -124,10 +127,11 @@ export async function POST(req: Request) {
       }
     `;
 
-    const result = await aiModel.generateContent(systemPrompt);
-    const response = result.response;
-    let text = response.text();
-    text = text.replace(/```json\n?|```/g, "").trim();
+    const result = await chat(
+      [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
+      aiConfig
+    );
+    let text = result.replace(/```json\n?|```/g, "").trim();
 
     try {
       const data = JSON.parse(text);

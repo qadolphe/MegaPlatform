@@ -6,6 +6,14 @@ import { Trash2, Plus, Send, Bot, Database, RefreshCw, Package, FileText, Settin
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 
+const AVAILABLE_MODELS = [
+  { id: 'gemini-3.0-pro', name: 'Gemini 3.0 Pro' },
+  { id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash' },
+  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+];
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -18,6 +26,7 @@ export default function KnowledgeView({ storeId }: { storeId: string }) {
   const [ingesting, setIngesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [showKnowledge, setShowKnowledge] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash-exp");
   
   // Chat state
   const [chats, setChats] = useState<{id: string, title: string, messages: ChatMessage[]}[]>([
@@ -140,7 +149,8 @@ export default function KnowledgeView({ storeId }: { storeId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: userMsg,
-          context: { storeId } // Only passing storeId to trigger RAG
+          context: { storeId }, // Only passing storeId to trigger RAG
+          modelConfig: { provider: 'gemini', model: selectedModel }
         })
       });
       
@@ -250,10 +260,21 @@ export default function KnowledgeView({ storeId }: { storeId: string }) {
       <div className="flex-1 flex flex-col relative">
         {/* Chat Header */}
         <div className="h-14 border-b border-slate-200 flex items-center justify-between px-6 bg-white">
-            <div className="flex items-center gap-2">
-                <Bot className="text-purple-600" size={20} />
-                <span className="font-semibold text-slate-900">AI Assistant</span>
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">Beta</span>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <Bot className="text-purple-600" size={20} />
+                    <span className="font-semibold text-slate-900">AI Assistant</span>
+                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">Beta</span>
+                </div>
+                <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="text-xs border-slate-200 rounded-md py-1 pl-2 pr-8 bg-slate-50 focus:ring-purple-500 focus:border-purple-500"
+                >
+                    {AVAILABLE_MODELS.map(model => (
+                        <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                </select>
             </div>
             {/* Mobile Toggle for Knowledge */}
             <button 

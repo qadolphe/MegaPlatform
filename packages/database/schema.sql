@@ -446,3 +446,35 @@ create policy "Owners can manage email domains"
   on store_email_domains for all
   to authenticated
   using (has_store_access(store_id, 'editor'));
+-- 7. Planner Tasks
+create table planner_tasks (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references stores(id) on delete cascade not null,
+  title text not null,
+  description text,
+  status text default 'todo', -- 'todo', 'in-progress', 'done'
+  priority text default 'medium', -- 'low', 'medium', 'high'
+  assignee_id uuid references auth.users,
+  due_date timestamp with time zone,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- RLS for Planner
+alter table planner_tasks enable row level security;
+
+create policy "Store owners can view planner tasks"
+  on planner_tasks for select
+  using ( has_store_access(store_id) );
+
+create policy "Store owners can insert planner tasks"
+  on planner_tasks for insert
+  with check ( has_store_access(store_id) );
+
+create policy "Store owners can update planner tasks"
+  on planner_tasks for update
+  using ( has_store_access(store_id) );
+
+create policy "Store owners can delete planner tasks"
+  on planner_tasks for delete
+  using ( has_store_access(store_id) );

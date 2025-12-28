@@ -35,12 +35,27 @@ export default function ProductEditor() {
   
   // Metafields State
   const [metafields, setMetafields] = useState<{key: string, label: string, value: string, type: 'text' | 'number' | 'boolean', showOnCard?: boolean, showOnDetail?: boolean, position?: 'above' | 'below'}[]>([]);
+  
+  // Collections State
+  const [availableCollections, setAvailableCollections] = useState<{id: string, title: string}[]>([]);
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isNew) {
       fetchProduct();
     }
+    fetchCollections();
   }, [productId]);
+
+  const fetchCollections = async () => {
+    const { data } = await supabase
+      .from("collections")
+      .select("id, title")
+      .eq("store_id", storeId)
+      .order("title");
+    
+    if (data) setAvailableCollections(data);
+  };
 
   const fetchProduct = async () => {
     const { data: product, error } = await supabase
@@ -66,6 +81,16 @@ export default function ProductEditor() {
     
     if (product.product_variants && product.product_variants.length > 0) {
       setVariants(product.product_variants);
+    }
+    
+    // Load product collections
+    const { data: productCollections } = await supabase
+      .from("product_collections")
+      .select("collection_id")
+      .eq("product_id", productId);
+    
+    if (productCollections) {
+      setSelectedCollectionIds(productCollections.map(pc => pc.collection_id));
     }
     
     setLoading(false);
@@ -154,6 +179,19 @@ export default function ProductEditor() {
     }));
 
     const { error: varError } = await supabase.from("product_variants").insert(variantsToInsert);
+    
+    // Handle Collections
+    // 1. Delete existing associations
+    await supabase.from("product_collections").delete().eq("product_id", savedProductId);
+    
+    // 2. Insert new associations
+    if (selectedCollectionIds.length > 0) {
+        const collectionsToInsert = selectedCollectionIds.map(cId => ({
+            product_id: savedProductId,
+            collection_id: cId
+        }));
+        await supabase.from("product_collections").insert(collectionsToInsert);
+    }
     
     if (varError) {
         alert("Product saved but variants failed: " + varError.message);
@@ -544,6 +582,34 @@ export default function ProductEditor() {
                         />
                     </div>
                 </div>
+            </div>
+
+            {/* Collections */}
+            <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                <h3 className="font-semibold text-slate-900 mb-4">Collections</h3>
+                {availableCollections.length === 0 ? (
+                    <p className="text-sm text-slate-400">No collections yet. Create collections in your store settings.</p>
+                ) : (
+                    <div className="space-y-2">
+                        {availableCollections.map(col => (
+                            <label key={col.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 transition">
+                                <input 
+                                    type="checkbox" 
+                                    checked={selectedCollectionIds.includes(col.id)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setSelectedCollectionIds([...selectedCollectionIds, col.id]);
+                                        } else {
+                                            setSelectedCollectionIds(selectedCollectionIds.filter(id => id !== col.id));
+                                        }
+                                    }}
+                                    className="rounded border-slate-300 text-blue-600"
+                                />
+                                <span className="text-slate-700">{col.title}</span>
+                            </label>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
       </div>

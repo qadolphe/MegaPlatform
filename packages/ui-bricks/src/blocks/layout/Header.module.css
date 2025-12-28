@@ -13,6 +13,14 @@
     color: var(--header-text, var(--color-text, #000));
 }
 
+.header:not(.sticky) {
+    position: relative;
+}
+
+.sticky {
+    position: fixed;
+}
+
 .header::before {
     content: "";
     position: absolute;
@@ -35,12 +43,31 @@
     justify-content: space-between;
 }
 
+.inner.centered {
+    justify-content: center;
+    gap: 3rem;
+}
+
+.inner.centered .nav {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
     color: inherit;
     letter-spacing: -0.02em;
     text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+.logoImage {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
 }
 
 .nav {
@@ -50,13 +77,9 @@
 
 @media (max-width: 768px) {
     .nav {
-        gap: 1rem;
+        display: none;
     }
     
-    .link {
-        font-size: 0.85rem;
-    }
-
     .logo {
         font-size: 1.2rem;
     }
@@ -78,6 +101,29 @@
 .actions {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+}
+
+.ctaButton {
+    display: none;
+    padding: 0.5rem 1rem;
+    background: var(--header-text, #000);
+    color: var(--header-bg, #fff);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+@media (min-width: 768px) {
+    .ctaButton {
+        display: inline-block;
+    }
+}
+
+.ctaButton:hover {
+    opacity: 0.9;
 }
 
 .cartBtn {
@@ -90,6 +136,59 @@
     align-items: center;
     justify-content: center;
     position: relative;
+}
+
+.mobileMenuBtn {
+    display: flex;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    padding: 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .mobileMenuBtn {
+        display: none;
+    }
+}
+
+.mobileMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--header-bg, #fff);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mobileLink {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: background 0.2s;
+}
+
+.mobileLink:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.mobileCta {
+    margin-top: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--header-text, #000);
+    color: var(--header-bg, #fff);
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
 }
 
 .badge {

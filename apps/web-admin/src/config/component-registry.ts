@@ -6,6 +6,16 @@ const SECTIONS = {
   SETTINGS: "Settings"
 };
 
+// Component Categories for Editor Sidebar
+export const COMPONENT_CATEGORIES = {
+  LAYOUT: { label: "Layout", order: 1 },
+  COMMERCE: { label: "Commerce", order: 2 },
+  MARKETING: { label: "Marketing", order: 3 },
+  CONTENT: { label: "Content", order: 4 },
+  MEDIA: { label: "Media", order: 5 },
+  SOCIAL: { label: "Social Proof", order: 6 },
+};
+
 const ANIMATION_FIELD = {
   name: "animationStyle",
   type: "select",
@@ -21,9 +31,10 @@ const ANIMATION_FIELD = {
   ]
 };
 
-export const COMPONENT_DEFINITIONS = {
+export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: string; defaultProps: any; fields: any[] }> = {
   Header: {
     label: "Header",
+    category: "LAYOUT",
     defaultProps: {
       logoText: "My Store",
       links: [
@@ -31,10 +42,13 @@ export const COMPONENT_DEFINITIONS = {
         { label: "Shop", href: "/products" },
         { label: "About", href: "/about" }
       ],
+      sticky: true,
+      centered: false,
       animationStyle: "theme"
     },
     fields: [
       { name: "logoText", type: "text", label: "Logo Text", section: SECTIONS.CONTENT },
+      { name: "logoImage", type: "image", label: "Logo Image (overrides text)", section: SECTIONS.CONTENT },
       { 
         name: "links", 
         type: "array", 
@@ -45,6 +59,10 @@ export const COMPONENT_DEFINITIONS = {
           { name: "href", type: "page-link", label: "Link" }
         ]
       },
+      { name: "ctaText", type: "text", label: "CTA Button Text", section: SECTIONS.CONTENT },
+      { name: "ctaLink", type: "page-link", label: "CTA Button Link", section: SECTIONS.CONTENT },
+      { name: "sticky", type: "boolean", label: "Sticky Header", section: SECTIONS.SETTINGS },
+      { name: "centered", type: "boolean", label: "Center Navigation", section: SECTIONS.SETTINGS },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "backgroundOpacity", type: "number", label: "Background Opacity (%)", min: 0, max: 100, section: SECTIONS.DESIGN },
       { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
@@ -53,10 +71,69 @@ export const COMPONENT_DEFINITIONS = {
   },
   Footer: {
     label: "Footer",
+    category: "LAYOUT",
     defaultProps: {
+      storeName: "My Store",
+      storeDescription: "Quality products for everyone.",
+      columns: [
+        { title: "Shop", links: [{ label: "All Products", href: "/products" }, { label: "New Arrivals", href: "/new" }] },
+        { title: "Support", links: [{ label: "About Us", href: "/about" }, { label: "FAQ", href: "/faq" }] }
+      ],
+      showNewsletter: true,
+      newsletterTitle: "Stay Updated",
+      newsletterDescription: "Subscribe for updates and offers.",
       animationStyle: "theme"
     },
     fields: [
+      { name: "storeName", type: "text", label: "Store Name", section: SECTIONS.CONTENT },
+      { name: "storeDescription", type: "textarea", label: "Store Description", section: SECTIONS.CONTENT },
+      { name: "logoImage", type: "image", label: "Logo Image (overrides name)", section: SECTIONS.CONTENT },
+      { 
+        name: "columns", 
+        type: "array", 
+        label: "Link Columns",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          { name: "title", type: "text", label: "Column Title" },
+          { 
+            name: "links", 
+            type: "array", 
+            label: "Links",
+            itemSchema: [
+              { name: "label", type: "text", label: "Label" },
+              { name: "href", type: "page-link", label: "Link" }
+            ]
+          }
+        ]
+      },
+      { 
+        name: "socialLinks", 
+        type: "array", 
+        label: "Social Links",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          { 
+            name: "platform", 
+            type: "select", 
+            label: "Platform",
+            options: [
+              { label: "Instagram", value: "instagram" },
+              { label: "Twitter", value: "twitter" },
+              { label: "Facebook", value: "facebook" },
+              { label: "YouTube", value: "youtube" },
+              { label: "LinkedIn", value: "linkedin" }
+            ]
+          },
+          { name: "url", type: "text", label: "URL" }
+        ]
+      },
+      { name: "showNewsletter", type: "boolean", label: "Show Newsletter", section: SECTIONS.SETTINGS },
+      { name: "newsletterTitle", type: "text", label: "Newsletter Title", section: SECTIONS.CONTENT },
+      { name: "newsletterDescription", type: "text", label: "Newsletter Description", section: SECTIONS.CONTENT },
+      { name: "contactEmail", type: "text", label: "Contact Email", section: SECTIONS.CONTENT },
+      { name: "contactPhone", type: "text", label: "Contact Phone", section: SECTIONS.CONTENT },
+      { name: "contactAddress", type: "text", label: "Contact Address", section: SECTIONS.CONTENT },
+      { name: "copyrightText", type: "text", label: "Copyright Text", section: SECTIONS.CONTENT },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "backgroundOpacity", type: "number", label: "Background Opacity (%)", min: 0, max: 100, section: SECTIONS.DESIGN },
       { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
@@ -65,6 +142,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   Hero: {
     label: "Hero Section",
+    category: "MARKETING",
     defaultProps: { 
       title: "Welcome", 
       subtitle: "Best hoodies in town",
@@ -89,6 +167,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   InfoGrid: {
     label: "Info Grid",
+    category: "CONTENT",
     defaultProps: { 
       title: "Info Grid", 
       columns: 3, 
@@ -121,6 +200,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   BenefitsGrid: {
     label: "Benefits Grid (Legacy)",
+    category: "CONTENT",
     defaultProps: { title: "Why Us?", animationStyle: "theme" },
     fields: [
       { name: "title", type: "text", label: "Section Title", section: SECTIONS.CONTENT },
@@ -129,6 +209,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   ProductGrid: {
     label: "Product Grid",
+    category: "COMMERCE",
     defaultProps: { 
       title: "Featured Products",
       collectionId: "all",
@@ -160,6 +241,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   ProductDetail: {
     label: "Product Detail",
+    category: "COMMERCE",
     defaultProps: {
       animationStyle: "theme",
       buttonAction: "addToCart"
@@ -181,6 +263,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   TextContent: {
     label: "Text Box",
+    category: "CONTENT",
     defaultProps: {
       title: "About Us",
       subtitle: "Our Story",
@@ -222,6 +305,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   Newsletter: {
     label: "Newsletter Signup",
+    category: "MARKETING",
     defaultProps: {
       title: "Subscribe to our newsletter",
       description: "Get the latest updates on new products and upcoming sales.",
@@ -243,6 +327,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   CustomerProfile: {
     label: "Customer Profile",
+    category: "COMMERCE",
     defaultProps: {
       backgroundColor: "#ffffff",
       textColor: "#0f172a",
@@ -256,6 +341,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   VideoGrid: {
     label: "Video Grid",
+    category: "MEDIA",
     defaultProps: {
       title: "Tutorials",
       subtitle: "Watch and learn",
@@ -289,6 +375,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   ImageBox: {
     label: "Image Box",
+    category: "MEDIA",
     defaultProps: {
       image: "https://images.unsplash.com/photo-1523726491678-bf852e717f63?auto=format&fit=crop&w=1200&q=80",
       caption: "Beautiful imagery",
@@ -330,6 +417,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   Testimonials: {
     label: "Testimonials",
+    category: "SOCIAL",
     defaultProps: {
       title: "What Our Customers Say",
       subtitle: "Real reviews from real customers",
@@ -367,6 +455,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   FAQ: {
     label: "FAQ",
+    category: "CONTENT",
     defaultProps: {
       title: "Frequently Asked Questions",
       subtitle: "Everything you need to know",
@@ -400,6 +489,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   Banner: {
     label: "Banner",
+    category: "MARKETING",
     defaultProps: {
       text: "🎉 Free shipping on orders over $50!",
       linkText: "Shop Now",
@@ -435,6 +525,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   LogoCloud: {
     label: "Logo Cloud",
+    category: "SOCIAL",
     defaultProps: {
       title: "Trusted by leading brands",
       logos: [
@@ -470,6 +561,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   Countdown: {
     label: "Countdown Timer",
+    category: "MARKETING",
     defaultProps: {
       title: "Sale Ends In",
       subtitle: "Don't miss out on these amazing deals!",
@@ -494,6 +586,7 @@ export const COMPONENT_DEFINITIONS = {
   },
   Features: {
     label: "Features",
+    category: "CONTENT",
     defaultProps: {
       features: [
         { title: "Free Shipping", description: "On orders over $50", icon: "truck" },
@@ -541,6 +634,74 @@ export const COMPONENT_DEFINITIONS = {
         options: [
           { label: "Horizontal Row", value: "horizontal" },
           { label: "2-Column Grid", value: "grid" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  UniversalGrid: {
+    label: "Universal Grid",
+    category: "LAYOUT",
+    defaultProps: {
+      title: "Mixed Content Grid",
+      subtitle: "Combine products, videos, and info cards",
+      columns: 4,
+      gap: "medium",
+      items: [
+        { type: "product", title: "Product 1", description: "Product description", image: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80", price: 4999, link: "/products/product-1", colSpan: 1 },
+        { type: "info", title: "Our Story", description: "Learn more about our journey", image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80", buttonText: "Read More", link: "/about", colSpan: 1 },
+        { type: "video", title: "Tutorial", description: "Getting started guide", image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?auto=format&fit=crop&w=800&q=80", videoUrl: "https://youtube.com", duration: "5:30", colSpan: 1 },
+        { type: "image", title: "Featured", description: "Check out our collection", image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80", link: "/collections", colSpan: 1 }
+      ],
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Section Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "columns", type: "number", label: "Columns (2-6)", min: 2, max: 6, section: SECTIONS.SETTINGS },
+      {
+        name: "gap",
+        type: "select",
+        label: "Gap Size",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Small", value: "small" },
+          { label: "Medium", value: "medium" },
+          { label: "Large", value: "large" }
+        ]
+      },
+      {
+        name: "items",
+        type: "array",
+        label: "Grid Items",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          {
+            name: "type",
+            type: "select",
+            label: "Item Type",
+            options: [
+              { label: "Product", value: "product" },
+              { label: "Video", value: "video" },
+              { label: "Info Card", value: "info" },
+              { label: "Image", value: "image" }
+            ]
+          },
+          { name: "productId", type: "product-select", label: "Select Product (for Product type)" },
+          { name: "title", type: "text", label: "Title (Override or for other types)" },
+          { name: "description", type: "text", label: "Description (Override or for other types)" },
+          { name: "image", type: "image", label: "Image (Override or for other types)" },
+          { name: "link", type: "page-link", label: "Link" },
+          { name: "colSpan", type: "number", label: "Column Span", min: 1, max: 4 },
+          { name: "rowSpan", type: "number", label: "Row Span", min: 1, max: 4 },
+          { name: "price", type: "number", label: "Price (cents, override)" },
+          { name: "videoUrl", type: "text", label: "Video URL (for videos)" },
+          { name: "duration", type: "text", label: "Duration (for videos)" },
+          { name: "buttonText", type: "text", label: "Button Text (for info)" }
         ]
       },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features } from "@repo/ui-bricks"; // Import real components
+import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, UniversalGrid } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
-import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
+import { COMPONENT_DEFINITIONS, COMPONENT_CATEGORIES } from "@/config/component-registry";
 import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard, Sparkles, Wand2, Loader2, Bot } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
@@ -31,7 +31,8 @@ const RENDER_MAP: Record<string, any> = {
   Banner,
   LogoCloud,
   Countdown,
-  Features
+  Features,
+  UniversalGrid
 };
 
 export default function EditorPage() {
@@ -76,6 +77,27 @@ export default function EditorPage() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [selectedAiProvider, setSelectedAiProvider] = useState<'gemini' | 'openai' | 'anthropic'>('gemini');
+  const [selectedAiModel, setSelectedAiModel] = useState<string>('gemini-2.0-flash');
+  
+  // Available models per provider
+  const AI_MODELS = {
+    gemini: [
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    ],
+    openai: [
+      { id: 'gpt-4o', name: 'GPT-4o' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+    ],
+    anthropic: [
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+    ]
+  };
 
   const handleAiChat = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -95,6 +117,10 @@ export default function EditorPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: userMessage,
+                modelConfig: {
+                    provider: selectedAiProvider,
+                    model: selectedAiModel
+                },
                 context: {
                     storeId,
                     selectedBlock: selectedBlock ? { type: selectedBlock.type, props: selectedBlock.props } : null,
@@ -661,6 +687,7 @@ export default function EditorPage() {
                     const isSelected = block.id === selectedBlockId;
                     const isHeader = block.type === 'Header';
                     const isFooter = block.type === 'Footer';
+                    const isFirstContentBlock = !isHeader && (index === 0 || (index === 1 && blocks[0].type === 'Header'));
                     
                     // Inject Preview Data
                     let previewProps = { ...block.props };
@@ -703,6 +730,10 @@ export default function EditorPage() {
                             previewProps.product = storeProducts[0];
                         }
                     }
+
+                    if (block.type === 'UniversalGrid') {
+                        previewProps.products = storeProducts;
+                    }
                     
                     return (
                     <div key={block.id}>
@@ -737,7 +768,7 @@ export default function EditorPage() {
                             
                             {/* Actions Overlay */}
                             {isSelected && !isHeader && !isFooter && (
-                            <div className="absolute top-4 right-4 flex gap-1.5 z-[60]">
+                            <div className={`absolute right-4 flex gap-1.5 z-[60] ${isFirstContentBlock ? 'top-20' : 'top-4'}`}>
                                 <button 
                                     onClick={(e) => { 
                                         e.stopPropagation(); 
@@ -934,6 +965,35 @@ export default function EditorPage() {
                             </span>
                         </div>
 
+                        {/* Model Selector */}
+                        <div className="pb-4 border-b border-slate-100 mb-4 space-y-2">
+                            <label className="text-xs font-medium text-slate-600">AI Model</label>
+                            <div className="flex gap-2">
+                                <select
+                                    value={selectedAiProvider}
+                                    onChange={(e) => {
+                                        const provider = e.target.value as 'gemini' | 'openai' | 'anthropic';
+                                        setSelectedAiProvider(provider);
+                                        setSelectedAiModel(AI_MODELS[provider][0].id);
+                                    }}
+                                    className="flex-1 text-xs p-2 border border-slate-200 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="gemini">Gemini</option>
+                                    <option value="openai">OpenAI</option>
+                                    <option value="anthropic">Anthropic</option>
+                                </select>
+                                <select
+                                    value={selectedAiModel}
+                                    onChange={(e) => setSelectedAiModel(e.target.value)}
+                                    className="flex-1 text-xs p-2 border border-slate-200 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    {AI_MODELS[selectedAiProvider].map(model => (
+                                        <option key={model.id} value={model.id}>{model.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
                         <div className="flex-1 flex flex-col overflow-hidden">
                             <div className="flex-1 overflow-y-auto space-y-4 p-1 mb-4">
                                 {chatMessages.map((msg, i) => (
@@ -993,40 +1053,49 @@ export default function EditorPage() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ duration: 0.2 }}
-                        className="grid gap-3"
+                        className="space-y-4"
                     >
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Drag & Drop</p>
-                        {Object.entries(COMPONENT_DEFINITIONS)
-                            .filter(([key]) => key !== 'Header' && key !== 'Footer')
-                            .sort((a, b) => a[1].label.localeCompare(b[1].label))
-                            .map(([key, def]) => (
-                            <button
-                            key={key}
-                            onClick={() => {
-                                if (insertIndex !== null) {
-                                    insertBlock(insertIndex, key, def.defaultProps);
-                                    setInsertIndex(null);
-                                } else {
-                                    // Default: Insert before Footer if it exists
-                                    const footerIndex = blocks.findIndex(b => b.type === 'Footer');
-                                    if (footerIndex !== -1) {
-                                        insertBlock(footerIndex, key, def.defaultProps);
-                                    } else {
-                                        addBlock(key, def.defaultProps);
-                                    }
-                                }
-                            }}
-                            className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:border-blue-400 hover:shadow-sm hover:bg-blue-50/30 transition text-left group bg-white"
-                            >
-                            <div className="h-8 w-8 bg-slate-100 rounded flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                <Plus size={16} />
-                            </div>
-                            <div>
-                                <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700 block">{def.label}</span>
-                                <span className="text-xs text-slate-400">Click to add</span>
-                            </div>
-                            </button>
-                        ))}
+                        {Object.entries(COMPONENT_CATEGORIES)
+                            .sort(([,a], [,b]) => a.order - b.order)
+                            .map(([categoryKey, categoryInfo]) => {
+                                const componentsInCategory = Object.entries(COMPONENT_DEFINITIONS)
+                                    .filter(([key, def]) => key !== 'Header' && key !== 'Footer' && def.category === categoryKey)
+                                    .sort((a, b) => a[1].label.localeCompare(b[1].label));
+                                
+                                if (componentsInCategory.length === 0) return null;
+                                
+                                return (
+                                    <div key={categoryKey}>
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{categoryInfo.label}</p>
+                                        <div className="grid gap-2">
+                                            {componentsInCategory.map(([key, def]) => (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => {
+                                                        if (insertIndex !== null) {
+                                                            insertBlock(insertIndex, key, def.defaultProps);
+                                                            setInsertIndex(null);
+                                                        } else {
+                                                            const footerIndex = blocks.findIndex(b => b.type === 'Footer');
+                                                            if (footerIndex !== -1) {
+                                                                insertBlock(footerIndex, key, def.defaultProps);
+                                                            } else {
+                                                                addBlock(key, def.defaultProps);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-3 p-2.5 border border-slate-200 rounded-lg hover:border-blue-400 hover:shadow-sm hover:bg-blue-50/30 transition text-left group bg-white"
+                                                >
+                                                    <div className="h-7 w-7 bg-slate-100 rounded flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                                        <Plus size={14} />
+                                                    </div>
+                                                    <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700">{def.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                     </motion.div>
                 )}
 
@@ -1173,6 +1242,21 @@ export default function EditorPage() {
                                                                                         <Upload size={12} />
                                                                                     </button>
                                                                                 </div>
+                                                                            ) : subField.type === 'product-select' ? (
+                                                                                <select
+                                                                                    className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none bg-white"
+                                                                                    value={item[subField.name] || ""}
+                                                                                    onChange={(e) => {
+                                                                                        const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                        newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
+                                                                                        updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                    }}
+                                                                                >
+                                                                                    <option value="">Select a product...</option>
+                                                                                    {storeProducts.map(p => (
+                                                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                                                    ))}
+                                                                                </select>
                                                                             ) : (
                                                                                 subField.type === 'number' ? (
                                                                                     <CounterInput

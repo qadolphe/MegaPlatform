@@ -12,11 +12,12 @@ export default function StoreTabsLayout({
   const pathname = usePathname();
   const storeId = params.storeId as string;
 
-  let activeTab: "pages" | "products" | "orders" | "settings" | "knowledge" = "pages";
+  let activeTab: "pages" | "products" | "orders" | "settings" | "knowledge" | "planner" = "pages";
   if (pathname.includes("/products")) activeTab = "products";
   if (pathname.includes("/orders")) activeTab = "orders";
   if (pathname.includes("/settings")) activeTab = "settings";
   if (pathname.includes("/knowledge")) activeTab = "knowledge";
+  if (pathname.includes("/planner")) activeTab = "planner";
 
   return (
     <div className="flex flex-col h-full">
