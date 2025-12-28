@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X } from "lucide-react";
+import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ContentPacket = {
@@ -14,13 +14,14 @@ type ContentPacket = {
     created_at: string;
 };
 
-type PacketType = "feature" | "testimonial" | "faq" | "text_block";
+type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media";
 
 const PACKET_TYPES: { key: PacketType; label: string; icon: any; description: string }[] = [
     { key: "feature", label: "Features", icon: Sparkles, description: "Benefit cards with icons" },
     { key: "testimonial", label: "Testimonials", icon: MessageSquare, description: "Customer quotes" },
     { key: "faq", label: "FAQs", icon: HelpCircle, description: "Questions & answers" },
     { key: "text_block", label: "Text Blocks", icon: FileText, description: "Reusable copy" },
+    { key: "media", label: "Media", icon: Image, description: "Images & videos" },
 ];
 
 const DEFAULT_DATA: Record<PacketType, any> = {
@@ -28,6 +29,7 @@ const DEFAULT_DATA: Record<PacketType, any> = {
     testimonial: { quote: "", author: "", role: "", avatar_url: "" },
     faq: { question: "", answer: "" },
     text_block: { title: "", body: "" },
+    media: { url: "", alt: "", caption: "", mediaType: "image" },
 };
 
 export default function ContentManagerPage() {
@@ -41,6 +43,8 @@ export default function ContentManagerPage() {
     const [isCreating, setIsCreating] = useState(false);
     const [newName, setNewName] = useState("");
     const [newData, setNewData] = useState<any>(null);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClient();
 
     useEffect(() => {
@@ -104,6 +108,41 @@ export default function ContentManagerPage() {
     const startEditing = (packet: ContentPacket) => {
         setEditingId(packet.id);
         setEditData({ ...packet.data });
+    };
+
+    // Handle media file upload
+    const handleMediaUpload = async (file: File) => {
+        setUploading(true);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const isVideo = file.type.startsWith('video/');
+
+        const { error: uploadError } = await supabase.storage
+            .from('site-assets')
+            .upload(fileName, file);
+
+        if (uploadError) {
+            alert('Upload failed: ' + uploadError.message);
+            setUploading(false);
+            return null;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('site-assets')
+            .getPublicUrl(fileName);
+
+        setUploading(false);
+        return { url: publicUrl, mediaType: isVideo ? 'video' : 'image' };
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const result = await handleMediaUpload(file);
+        if (result) {
+            setNewData({ ...newData, url: result.url, mediaType: result.mediaType });
+        }
     };
 
     const renderDataEditor = (data: any, setData: (d: any) => void, type: PacketType) => {
@@ -196,6 +235,51 @@ export default function ContentManagerPage() {
                         />
                     </div>
                 );
+            case "media":
+                return (
+                    <div className="space-y-3">
+                        {data.url ? (
+                            <div className="relative">
+                                {data.mediaType === 'video' ? (
+                                    <video src={data.url} className="w-full h-32 object-cover rounded-lg" controls />
+                                ) : (
+                                    <img src={data.url} alt={data.alt} className="w-full h-32 object-cover rounded-lg" />
+                                )}
+                                <button
+                                    onClick={() => setData({ ...data, url: '', mediaType: 'image' })}
+                                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                                className="w-full h-32 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition"
+                            >
+                                <Upload size={20} className="text-slate-400" />
+                                <span className="text-sm text-slate-500">
+                                    {uploading ? 'Uploading...' : 'Upload image or video'}
+                                </span>
+                            </button>
+                        )}
+                        <input
+                            type="text"
+                            placeholder="Alt text (for accessibility)"
+                            value={data.alt || ""}
+                            onChange={(e) => setData({ ...data, alt: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Caption (optional)"
+                            value={data.caption || ""}
+                            onChange={(e) => setData({ ...data, caption: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                    </div>
+                );
         }
     };
 
@@ -234,6 +318,24 @@ export default function ContentManagerPage() {
                         <p className="text-sm text-slate-500 line-clamp-3">{packet.data.body}</p>
                     </div>
                 );
+            case "media":
+                return (
+                    <div>
+                        {packet.data.url ? (
+                            packet.data.mediaType === 'video' ? (
+                                <div className="flex items-center gap-2">
+                                    <Video size={16} className="text-purple-500" />
+                                    <span className="text-sm text-slate-600">{packet.data.alt || 'Video'}</span>
+                                </div>
+                            ) : (
+                                <img src={packet.data.url} alt={packet.data.alt} className="w-full h-20 object-cover rounded-lg" />
+                            )
+                        ) : (
+                            <span className="text-sm text-slate-400">No media</span>
+                        )}
+                        {packet.data.caption && <p className="text-xs text-slate-500 mt-1">{packet.data.caption}</p>}
+                    </div>
+                );
         }
     };
 
@@ -255,8 +357,8 @@ export default function ContentManagerPage() {
                         key={type.key}
                         onClick={() => setActiveType(type.key)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${activeType === type.key
-                                ? "bg-blue-600 text-white"
-                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            ? "bg-blue-600 text-white"
+                            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                             }`}
                     >
                         <type.icon size={16} />
@@ -264,6 +366,15 @@ export default function ContentManagerPage() {
                     </button>
                 ))}
             </div>
+
+            {/* Hidden file input for media uploads */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*,video/*"
+                onChange={handleFileSelect}
+            />
 
             {/* Content Grid */}
             <div className="grid grid-cols-2 gap-4">

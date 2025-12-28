@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams, useParams } from "next/navigation";
 import { LayoutRenderer, LayoutBlock, StoreColors } from "@/components/layout-renderer";
 import { CartDrawer } from "@repo/ui-bricks";
 
 export default function PreviewPage() {
+    const params = useParams();
     const searchParams = useSearchParams();
+    const storeId = params.storeId as string;
+    const pageSlug = searchParams.get('slug') || 'home';
+
     const [layout, setLayout] = useState<LayoutBlock[]>([]);
     const [colors, setColors] = useState<StoreColors>({
         primary: '#000000',
@@ -17,57 +21,54 @@ export default function PreviewPage() {
     });
     const [theme, setTheme] = useState('simple');
     const [products, setProducts] = useState<any[]>([]);
-    const [ready, setReady] = useState(false);
+    const readySignalSent = useRef(false);
 
     // Listen for messages from parent (editor)
     const handleMessage = useCallback((event: MessageEvent) => {
-        // Validate origin in production
         const data = event.data;
-
-        if (data.type === 'PREVIEW_UPDATE') {
+        if (data?.type === 'PREVIEW_UPDATE') {
             if (data.layout) setLayout(data.layout);
             if (data.colors) setColors(data.colors);
             if (data.theme) setTheme(data.theme);
             if (data.products) setProducts(data.products);
-            setReady(true);
         }
     }, []);
 
     useEffect(() => {
         window.addEventListener('message', handleMessage);
 
-        // Signal to parent that we're ready
-        window.parent.postMessage({ type: 'PREVIEW_READY' }, '*');
+        // Signal ready immediately - parent will send data
+        if (!readySignalSent.current) {
+            readySignalSent.current = true;
+            window.parent.postMessage({ type: 'PREVIEW_READY' }, '*');
+        }
 
         return () => window.removeEventListener('message', handleMessage);
     }, [handleMessage]);
 
-    // Also try to load from localStorage for initial render
+    // Try to load cached data from autosave for instant display
     useEffect(() => {
-        const storeId = searchParams.get('storeId');
-        const pageSlug = searchParams.get('slug') || 'home';
-
-        if (storeId) {
-            const cached = localStorage.getItem(`preview_${storeId}_${pageSlug}`);
-            if (cached) {
-                try {
-                    const data = JSON.parse(cached);
-                    if (data.layout) setLayout(data.layout);
-                    if (data.colors) setColors(data.colors);
-                    if (data.theme) setTheme(data.theme);
-                    if (data.products) setProducts(data.products);
-                    setReady(true);
-                } catch (e) {
-                    console.error('Failed to parse cached preview data');
+        const autosaveKey = `autosave_${storeId}_${pageSlug}`;
+        const cached = localStorage.getItem(autosaveKey);
+        if (cached && layout.length === 0) {
+            try {
+                const blocks = JSON.parse(cached);
+                if (Array.isArray(blocks) && blocks.length > 0) {
+                    setLayout(blocks);
                 }
+            } catch (e) {
+                // Ignore parse errors
             }
         }
-    }, [searchParams]);
+    }, [storeId, pageSlug, layout.length]);
 
-    if (!ready) {
+    // Show skeleton while waiting for data
+    if (layout.length === 0) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100">
-                <div className="text-slate-400 text-sm">Loading preview...</div>
+            <div className="min-h-screen bg-white animate-pulse">
+                <div className="h-16 bg-slate-100" />
+                <div className="h-96 bg-slate-50 m-4 rounded-lg" />
+                <div className="h-48 bg-slate-50 m-4 rounded-lg" />
             </div>
         );
     }
@@ -85,3 +86,4 @@ export default function PreviewPage() {
         </>
     );
 }
+

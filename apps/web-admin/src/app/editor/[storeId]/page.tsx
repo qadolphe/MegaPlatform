@@ -10,6 +10,8 @@ import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Set
 import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
 import { CounterInput } from "@/components/ui/counter-input";
+import { PacketSelector } from "@/components/packet-selector";
+import { getPacketTypeForBlock } from "@/lib/packet-hydration";
 import Link from "next/link";
 
 // Mapping for rendering on the Canvas
@@ -70,6 +72,7 @@ export default function EditorPage() {
 
     const [storeSubdomain, setStoreSubdomain] = useState<string>("");
     const [deploySuccess, setDeploySuccess] = useState(false);
+    const [colorsExpanded, setColorsExpanded] = useState(false);
 
     // AI Chat State
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([
@@ -797,8 +800,8 @@ export default function EditorPage() {
                                                 <div
                                                     onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
                                                     className={`relative group transition-all duration-200 ${isSelected
-                                                            ? "ring-2 ring-blue-500 ring-inset z-10"
-                                                            : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
+                                                        ? "ring-2 ring-blue-500 ring-inset z-10"
+                                                        : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
                                                         }`}
                                                 >
                                                     {/* Render the actual UI Block */}
@@ -957,35 +960,50 @@ export default function EditorPage() {
                                     </div>
 
                                     <div className="pt-4 border-t border-slate-100">
-                                        <label className="block text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">
+                                        <button
+                                            onClick={() => setColorsExpanded(!colorsExpanded)}
+                                            className="w-full flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-slate-700"
+                                        >
                                             Global Colors
-                                        </label>
-                                        <div className="space-y-3">
-                                            {Object.entries(storeColors).map(([key, value]) => (
-                                                <div key={key} className="flex items-center justify-between">
-                                                    <span className="text-sm capitalize text-slate-700">{key}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-slate-400 uppercase">{value}</span>
-                                                        <input
-                                                            type="color"
-                                                            value={value}
-                                                            onChange={(e) => {
-                                                                const newColors = { ...storeColors, [key]: e.target.value };
-                                                                setStoreColors(newColors, false);
-                                                            }}
-                                                            onBlur={async () => {
-                                                                setStoreColors(storeColors, true);
-                                                                await supabase
-                                                                    .from("stores")
-                                                                    .update({ colors: storeColors })
-                                                                    .eq("id", storeId);
-                                                            }}
-                                                            className="h-8 w-8 rounded cursor-pointer border-0 p-0"
-                                                        />
+                                            <ChevronLeft size={14} className={`transform transition ${colorsExpanded ? '-rotate-90' : 'rotate-0'}`} />
+                                        </button>
+                                        <AnimatePresence>
+                                            {colorsExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className="space-y-3 mt-3">
+                                                        {Object.entries(storeColors).map(([key, value]) => (
+                                                            <div key={key} className="flex items-center justify-between">
+                                                                <span className="text-sm capitalize text-slate-700">{key}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs text-slate-400 uppercase">{value}</span>
+                                                                    <input
+                                                                        type="color"
+                                                                        value={value}
+                                                                        onChange={(e) => {
+                                                                            const newColors = { ...storeColors, [key]: e.target.value };
+                                                                            setStoreColors(newColors, false);
+                                                                        }}
+                                                                        onBlur={async () => {
+                                                                            setStoreColors(storeColors, true);
+                                                                            await supabase
+                                                                                .from("stores")
+                                                                                .update({ colors: storeColors })
+                                                                                .eq("id", storeId);
+                                                                        }}
+                                                                        className="h-8 w-8 rounded cursor-pointer border-0 p-0"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 </motion.div>
                             )}
@@ -1038,8 +1056,8 @@ export default function EditorPage() {
                                             {chatMessages.map((msg, i) => (
                                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                                     <div className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.role === 'user'
-                                                            ? 'bg-blue-600 text-white rounded-br-none'
-                                                            : 'bg-slate-100 text-slate-800 rounded-bl-none'
+                                                        ? 'bg-blue-600 text-white rounded-br-none'
+                                                        : 'bg-slate-100 text-slate-800 rounded-bl-none'
                                                         }`}>
                                                         {msg.content}
                                                     </div>
@@ -1206,6 +1224,26 @@ export default function EditorPage() {
                                                             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sectionName}</span>
                                                         </div>
                                                         <div className="p-3 space-y-4 bg-white">
+                                                            {/* Insert PacketSelector in Content section */}
+                                                            {sectionName === "Content" && getPacketTypeForBlock(selectedBlock.type) && (
+                                                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 -mt-1 mb-3">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <Sparkles size={12} className="text-blue-600" />
+                                                                        <span className="text-xs font-semibold text-blue-700 uppercase">From Content Library</span>
+                                                                    </div>
+                                                                    <PacketSelector
+                                                                        storeId={storeId}
+                                                                        packetType={getPacketTypeForBlock(selectedBlock.type)!}
+                                                                        selectedIds={selectedBlock.props.packetIds || []}
+                                                                        onChange={(ids) => updateBlockProps(selectedBlock.id, { packetIds: ids })}
+                                                                    />
+                                                                    {(selectedBlock.props.packetIds?.length || 0) > 0 && (
+                                                                        <p className="text-xs text-blue-600 mt-2">
+                                                                            Library content will replace inline items below
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                             {fields.map((field) => {
                                                                 // Hide animation style for expandable cards
                                                                 if (field.name === 'animationStyle' && selectedBlock.props.layout === 'expandable') {
@@ -1454,121 +1492,127 @@ export default function EditorPage() {
             />
 
             {/* Missing Page Dialog */}
-            {missingPagePath && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
-                    <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-                        <h3 className="text-lg font-bold mb-2">Page Not Found</h3>
-                        <p className="text-slate-600 mb-6">
-                            The page <code className="bg-slate-100 px-1 py-0.5 rounded text-sm">{missingPagePath}</code> hasn't been created yet.
-                            Would you like to create it now?
-                        </p>
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setMissingPagePath(null)}
-                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
-                                    const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                    setNewPageSlug(slug);
-                                    setNewPageName(name);
-                                    setMissingPagePath(null);
-                                    setIsCreatePageOpen(true);
-                                }}
-                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                            >
-                                Create Page
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Create Page Modal */}
-            {isCreatePageOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-                    <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-                        <h3 className="text-lg font-bold mb-4">Create New Page</h3>
-                        <form onSubmit={handleCreatePage}>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Page Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full border border-slate-300 rounded p-2"
-                                    value={newPageName}
-                                    onChange={(e) => {
-                                        setNewPageName(e.target.value);
-                                        if (!newPageSlug) setNewPageSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
-                                    }}
-                                    placeholder="e.g. Contact Us"
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Slug</label>
-                                <input
-                                    type="text"
-                                    className="w-full border border-slate-300 rounded p-2 bg-slate-50"
-                                    value={newPageSlug}
-                                    onChange={(e) => setNewPageSlug(e.target.value)}
-                                    placeholder="e.g. contact-us"
-                                />
-                            </div>
+            {
+                missingPagePath && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
+                        <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+                            <h3 className="text-lg font-bold mb-2">Page Not Found</h3>
+                            <p className="text-slate-600 mb-6">
+                                The page <code className="bg-slate-100 px-1 py-0.5 rounded text-sm">{missingPagePath}</code> hasn't been created yet.
+                                Would you like to create it now?
+                            </p>
                             <div className="flex justify-end gap-2">
                                 <button
-                                    type="button"
-                                    onClick={() => setIsCreatePageOpen(false)}
+                                    onClick={() => setMissingPagePath(null)}
                                     className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    type="submit"
+                                    onClick={() => {
+                                        const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
+                                        const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                        setNewPageSlug(slug);
+                                        setNewPageName(name);
+                                        setMissingPagePath(null);
+                                        setIsCreatePageOpen(true);
+                                    }}
                                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                                 >
                                     Create Page
                                 </button>
                             </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Create Page Modal */}
+            {
+                isCreatePageOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+                        <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+                            <h3 className="text-lg font-bold mb-4">Create New Page</h3>
+                            <form onSubmit={handleCreatePage}>
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Page Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border border-slate-300 rounded p-2"
+                                        value={newPageName}
+                                        onChange={(e) => {
+                                            setNewPageName(e.target.value);
+                                            if (!newPageSlug) setNewPageSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
+                                        }}
+                                        placeholder="e.g. Contact Us"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Slug</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border border-slate-300 rounded p-2 bg-slate-50"
+                                        value={newPageSlug}
+                                        onChange={(e) => setNewPageSlug(e.target.value)}
+                                        placeholder="e.g. contact-us"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreatePageOpen(false)}
+                                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                    >
+                                        Create Page
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
 
 
 
             {/* Deploy Success Modal */}
-            {deploySuccess && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]">
-                    <div className="bg-white rounded-lg p-8 w-96 shadow-2xl text-center">
-                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Rocket size={32} />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2 text-slate-900">Deployment Successful!</h3>
-                        <p className="text-slate-500 mb-6">
-                            Your changes are now live. It may take a few moments for the cache to clear.
-                        </p>
-                        <div className="flex flex-col gap-3">
-                            <a
-                                href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${storeSubdomain}` : `//${storeSubdomain}.${baseDomain}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
-                            >
-                                <ExternalLink size={18} /> View Storefront
-                            </a>
-                            <button
-                                onClick={() => setDeploySuccess(false)}
-                                className="w-full py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
-                            >
-                                Continue Editing
-                            </button>
+            {
+                deploySuccess && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]">
+                        <div className="bg-white rounded-lg p-8 w-96 shadow-2xl text-center">
+                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Rocket size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2 text-slate-900">Deployment Successful!</h3>
+                            <p className="text-slate-500 mb-6">
+                                Your changes are now live. It may take a few moments for the cache to clear.
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                <a
+                                    href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${storeSubdomain}` : `//${storeSubdomain}.${baseDomain}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                                >
+                                    <ExternalLink size={18} /> View Storefront
+                                </a>
+                                <button
+                                    onClick={() => setDeploySuccess(false)}
+                                    className="w-full py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+                                >
+                                    Continue Editing
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
