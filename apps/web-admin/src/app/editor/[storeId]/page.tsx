@@ -1339,32 +1339,16 @@ export default function EditorPage() {
                                                                         className="overflow-hidden"
                                                                     >
                                                                         <div className="p-3 space-y-4">
-                                                                            {/* Insert PacketSelector in Content section */}
-                                                                            {sectionName === "Content" && getPacketTypeForBlock(selectedBlock.type) && (
-                                                                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 -mt-1 mb-3">
-                                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                                        <Sparkles size={12} className="text-blue-600" />
-                                                                                        <span className="text-xs font-semibold text-blue-700 uppercase">From Content Library</span>
-                                                                                    </div>
-                                                                                    <PacketSelector
-                                                                                        storeId={storeId}
-                                                                                        packetType={getPacketTypeForBlock(selectedBlock.type)!}
-                                                                                        selectedIds={selectedBlock.props.packetIds || []}
-                                                                                        onChange={(ids) => updateBlockProps(selectedBlock.id, { packetIds: ids })}
-                                                                                        onEdit={(packetId) => setEditingPacketId(packetId)}
-                                                                                    />
-                                                                                    {(selectedBlock.props.packetIds?.length || 0) > 0 && (
-                                                                                        <p className="text-xs text-blue-600 mt-2">
-                                                                                            Library content will replace inline items below
-                                                                                        </p>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
-                                                                            {fields.map((field) => {
+                                                                            {fields.map((field, fieldIndex) => {
                                                                                 // Hide animation style for expandable cards
                                                                                 if (field.name === 'animationStyle' && selectedBlock.props.layout === 'expandable') {
                                                                                     return null;
                                                                                 }
+
+                                                                                // Show PacketSelector after title/subtitle fields
+                                                                                const showPacketSelector = sectionName === "Content" &&
+                                                                                    getPacketTypeForBlock(selectedBlock.type) &&
+                                                                                    (field.name === 'subtitle' || (field.name === 'title' && !fields.some(f => f.name === 'subtitle')));
 
                                                                                 return (
                                                                                     <div key={field.name}>
@@ -1579,6 +1563,21 @@ export default function EditorPage() {
                                                                                                 onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
                                                                                             />
                                                                                         )}
+
+                                                                                        {/* Insert PacketSelector after title/subtitle */}
+                                                                                        {showPacketSelector && (
+                                                                                            <div className="mt-4 pt-4 border-t border-slate-200">
+                                                                                                <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
+                                                                                                    Content Library
+                                                                                                </label>
+                                                                                                <PacketSelector
+                                                                                                    storeId={storeId}
+                                                                                                    selectedIds={selectedBlock.props.packetIds || []}
+                                                                                                    onChange={(ids) => updateBlockProps(selectedBlock.id, { packetIds: ids })}
+                                                                                                    onEdit={(packetId) => setEditingPacketId(packetId)}
+                                                                                                />
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
                                                                                 );
                                                                             })}
@@ -1612,6 +1611,7 @@ export default function EditorPage() {
                 onSelect={handleImageSelect}
             />
 
+            {/* Edit existing packet */}
             <PacketEditorDialog
                 isOpen={!!editingPacketId}
                 onClose={() => setEditingPacketId(null)}

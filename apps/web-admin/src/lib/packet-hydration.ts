@@ -59,17 +59,17 @@ export async function fetchPackets(packetIds: string[]): Promise<Map<string, Con
 function getItemsPropForBlockType(blockType: string): string {
     switch (blockType) {
         case "Features":
-        case "InfoGrid":
         case "BenefitsGrid":
             return "features";
+        case "InfoGrid":
+        case "UniversalGrid":
+            return "items";
         case "Testimonials":
             return "testimonials";
         case "FAQ":
             return "faqs";
         case "TextContent":
             return "content";
-        case "UniversalGrid":
-            return "items";
         default:
             return "items";
     }
@@ -81,7 +81,7 @@ function getItemsPropForBlockType(blockType: string): string {
 function transformPacketForBlock(packet: ContentPacket, blockType: string): any {
     const data = packet.data;
 
-    // UniversalGrid expects GridItem objects with type, title, description, image, etc.
+    // UniversalGrid expects GridItem objects with type, title, description, image, colSpan, etc.
     if (blockType === "UniversalGrid") {
         switch (packet.type) {
             case "feature":
@@ -91,13 +91,15 @@ function transformPacketForBlock(packet: ContentPacket, blockType: string): any 
                     description: data.description || "",
                     icon: data.icon,
                     image: data.image || "",
+                    colSpan: data.colSpan || 1,
                 };
             case "testimonial":
                 return {
                     type: "info",
                     title: data.author || "Customer",
                     description: data.quote || "",
-                    image: data.avatar_url || "",
+                    image: data.image || data.avatar_url || "",
+                    colSpan: data.colSpan || 1,
                 };
             case "media":
                 return {
@@ -105,14 +107,23 @@ function transformPacketForBlock(packet: ContentPacket, blockType: string): any 
                     title: data.alt || "",
                     description: data.caption || "",
                     image: data.url || "",
+                    colSpan: data.colSpan || 1,
+                };
+            case "faq":
+                return {
+                    type: "info",
+                    title: data.question || "",
+                    description: data.answer || "",
+                    image: data.image || "",
+                    colSpan: data.colSpan || 1,
                 };
             default:
-                return data;
+                return { ...data, colSpan: data.colSpan || 1 };
         }
     }
 
-    // For other blocks, return raw data
-    return data;
+    // For other blocks, return raw data with colSpan
+    return { ...data, colSpan: data.colSpan || 1 };
 }
 
 /**

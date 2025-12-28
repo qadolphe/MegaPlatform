@@ -49,9 +49,9 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     fields: [
       { name: "logoText", type: "text", label: "Logo Text", section: SECTIONS.CONTENT },
       { name: "logoImage", type: "image", label: "Logo Image (overrides text)", section: SECTIONS.CONTENT },
-      { 
-        name: "links", 
-        type: "array", 
+      {
+        name: "links",
+        type: "array",
         label: "Navigation Links",
         section: SECTIONS.CONTENT,
         itemSchema: [
@@ -88,16 +88,16 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
       { name: "storeName", type: "text", label: "Store Name", section: SECTIONS.CONTENT },
       { name: "storeDescription", type: "textarea", label: "Store Description", section: SECTIONS.CONTENT },
       { name: "logoImage", type: "image", label: "Logo Image (overrides name)", section: SECTIONS.CONTENT },
-      { 
-        name: "columns", 
-        type: "array", 
+      {
+        name: "columns",
+        type: "array",
         label: "Link Columns",
         section: SECTIONS.CONTENT,
         itemSchema: [
           { name: "title", type: "text", label: "Column Title" },
-          { 
-            name: "links", 
-            type: "array", 
+          {
+            name: "links",
+            type: "array",
             label: "Links",
             itemSchema: [
               { name: "label", type: "text", label: "Label" },
@@ -106,15 +106,15 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
           }
         ]
       },
-      { 
-        name: "socialLinks", 
-        type: "array", 
+      {
+        name: "socialLinks",
+        type: "array",
         label: "Social Links",
         section: SECTIONS.CONTENT,
         itemSchema: [
-          { 
-            name: "platform", 
-            type: "select", 
+          {
+            name: "platform",
+            type: "select",
             label: "Platform",
             options: [
               { label: "Instagram", value: "instagram" },
@@ -143,8 +143,8 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
   Hero: {
     label: "Hero Section",
     category: "MARKETING",
-    defaultProps: { 
-      title: "Welcome", 
+    defaultProps: {
+      title: "Welcome",
       subtitle: "Best hoodies in town",
       backgroundImage: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=2000&q=80",
       animationStyle: "theme"
@@ -168,31 +168,15 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
   InfoGrid: {
     label: "Info Grid",
     category: "CONTENT",
-    defaultProps: { 
-      title: "Info Grid", 
-      columns: 3, 
-      items: [
-        { title: "Feature 1", description: "Description here", colSpan: 1 },
-        { title: "Feature 2", description: "Description here", colSpan: 1 },
-        { title: "Feature 3", description: "Description here", colSpan: 1 },
-      ],
+    defaultProps: {
+      title: "Info Grid",
+      columns: 3,
+      items: [],
       animationStyle: "theme"
     },
     fields: [
       { name: "title", type: "text", label: "Section Title", section: SECTIONS.CONTENT },
       { name: "columns", type: "number", label: "Columns", min: 1, section: SECTIONS.SETTINGS },
-      { 
-        name: "items", 
-        type: "array", 
-        label: "Grid Items",
-        section: SECTIONS.CONTENT,
-        itemSchema: [
-          { name: "title", type: "text", label: "Title" },
-          { name: "description", type: "text", label: "Description" },
-          { name: "image", type: "image", label: "Image" },
-          { name: "colSpan", type: "number", label: "Column Span", min: 1 }
-        ]
-      },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
@@ -210,7 +194,7 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
   ProductGrid: {
     label: "Product Grid",
     category: "COMMERCE",
-    defaultProps: { 
+    defaultProps: {
       title: "Featured Products",
       collectionId: "all",
       columns: 4,
@@ -275,10 +259,10 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     fields: [
       { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
       { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
-      { name: "body", type: "textarea", label: "Content (Markdown/LaTeX supported)", section: SECTIONS.CONTENT }, 
-      { 
-        name: "alignment", 
-        type: "select", 
+      { name: "body", type: "textarea", label: "Content (Markdown/LaTeX supported)", section: SECTIONS.CONTENT },
+      {
+        name: "alignment",
+        type: "select",
         label: "Alignment",
         section: SECTIONS.SETTINGS,
         options: [
@@ -288,9 +272,9 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
         ]
       },
       { name: "image", type: "image", label: "Image", section: SECTIONS.CONTENT },
-      { 
-        name: "imagePosition", 
-        type: "select", 
+      {
+        name: "imagePosition",
+        type: "select",
         label: "Image Position",
         section: SECTIONS.SETTINGS,
         options: [
@@ -345,9 +329,7 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     defaultProps: {
       title: "Tutorials",
       subtitle: "Watch and learn",
-      items: [
-        { title: "Getting Started", description: "Basic setup guide", category: "basics", videoUrl: "https://youtube.com", thumbnail: "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1000&q=80" }
-      ],
+      items: [],
       columns: 3,
       animationStyle: "theme"
     },
@@ -355,19 +337,6 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
       { name: "title", type: "text", label: "Section Title", section: SECTIONS.CONTENT },
       { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
       { name: "columns", type: "number", label: "Columns (2-4)", min: 1, section: SECTIONS.SETTINGS },
-      { 
-        name: "items", 
-        type: "array", 
-        label: "Videos",
-        section: SECTIONS.CONTENT,
-        itemSchema: [
-          { name: "title", type: "text", label: "Title" },
-          { name: "description", type: "text", label: "Description" },
-          { name: "category", type: "text", label: "Category" },
-          { name: "videoUrl", type: "text", label: "Video URL" },
-          { name: "thumbnail", type: "image", label: "Thumbnail" }
-        ]
-      },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
@@ -386,9 +355,9 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     fields: [
       { name: "image", type: "image", label: "Image URL", section: SECTIONS.CONTENT },
       { name: "caption", type: "text", label: "Caption", section: SECTIONS.CONTENT },
-      { 
-        name: "width", 
-        type: "select", 
+      {
+        name: "width",
+        type: "select",
         label: "Width",
         section: SECTIONS.SETTINGS,
         options: [
@@ -398,9 +367,9 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
           { label: "Small", value: "small" }
         ]
       },
-      { 
-        name: "aspectRatio", 
-        type: "select", 
+      {
+        name: "aspectRatio",
+        type: "select",
         label: "Aspect Ratio",
         section: SECTIONS.SETTINGS,
         options: [
@@ -421,11 +390,7 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     defaultProps: {
       title: "What Our Customers Say",
       subtitle: "Real reviews from real customers",
-      testimonials: [
-        { name: "Sarah J.", role: "Verified Buyer", content: "Absolutely love the quality! Will definitely be ordering again.", rating: 5 },
-        { name: "Mike R.", role: "Repeat Customer", content: "Best purchase I've made this year. Fast shipping and great customer service.", rating: 5 },
-        { name: "Emily K.", role: "Verified Buyer", content: "The attention to detail is incredible. Highly recommend!", rating: 4 },
-      ],
+      testimonials: [],
       columns: 3,
       animationStyle: "theme"
     },
@@ -433,19 +398,6 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
       { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
       { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
       { name: "columns", type: "number", label: "Columns", min: 1, max: 4, section: SECTIONS.SETTINGS },
-      {
-        name: "testimonials",
-        type: "array",
-        label: "Testimonials",
-        section: SECTIONS.CONTENT,
-        itemSchema: [
-          { name: "name", type: "text", label: "Name" },
-          { name: "role", type: "text", label: "Role" },
-          { name: "content", type: "textarea", label: "Review" },
-          { name: "rating", type: "number", label: "Rating (1-5)", min: 1, max: 5 },
-          { name: "avatar", type: "image", label: "Avatar" }
-        ]
-      },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
       { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
@@ -459,27 +411,12 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     defaultProps: {
       title: "Frequently Asked Questions",
       subtitle: "Everything you need to know",
-      items: [
-        { question: "What is your return policy?", answer: "We offer a 30-day return policy on all items. Simply contact our support team to initiate a return." },
-        { question: "How long does shipping take?", answer: "Standard shipping takes 3-5 business days. Express shipping is available for 1-2 business day delivery." },
-        { question: "Do you ship internationally?", answer: "Yes! We ship to over 50 countries worldwide. Shipping rates and times vary by location." },
-        { question: "How can I track my order?", answer: "Once your order ships, you'll receive a tracking number via email to monitor your package's journey." },
-      ],
+      faqs: [],
       animationStyle: "theme"
     },
     fields: [
       { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
       { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
-      {
-        name: "items",
-        type: "array",
-        label: "Questions",
-        section: SECTIONS.CONTENT,
-        itemSchema: [
-          { name: "question", type: "text", label: "Question" },
-          { name: "answer", type: "textarea", label: "Answer" }
-        ]
-      },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
       { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
@@ -528,30 +465,13 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     category: "SOCIAL",
     defaultProps: {
       title: "Trusted by leading brands",
-      logos: [
-        { name: "Company 1", image: "https://via.placeholder.com/150x50?text=Logo+1" },
-        { name: "Company 2", image: "https://via.placeholder.com/150x50?text=Logo+2" },
-        { name: "Company 3", image: "https://via.placeholder.com/150x50?text=Logo+3" },
-        { name: "Company 4", image: "https://via.placeholder.com/150x50?text=Logo+4" },
-        { name: "Company 5", image: "https://via.placeholder.com/150x50?text=Logo+5" },
-      ],
+      logos: [],
       grayscale: true,
       animationStyle: "theme"
     },
     fields: [
       { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
       { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
-      {
-        name: "logos",
-        type: "array",
-        label: "Logos",
-        section: SECTIONS.CONTENT,
-        itemSchema: [
-          { name: "name", type: "text", label: "Company Name" },
-          { name: "image", type: "image", label: "Logo Image" },
-          { name: "url", type: "text", label: "Website URL" }
-        ]
-      },
       { name: "grayscale", type: "boolean", label: "Grayscale Logos", section: SECTIONS.SETTINGS },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
       { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
@@ -588,44 +508,13 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     label: "Features",
     category: "CONTENT",
     defaultProps: {
-      features: [
-        { title: "Free Shipping", description: "On orders over $50", icon: "truck" },
-        { title: "Secure Payment", description: "100% secure checkout", icon: "shield" },
-        { title: "Fast Delivery", description: "2-3 business days", icon: "clock" },
-        { title: "Easy Returns", description: "30-day return policy", icon: "creditCard" },
-      ],
+      features: [],
       layout: "horizontal",
       animationStyle: "theme"
     },
     fields: [
       { name: "title", type: "text", label: "Section Title", section: SECTIONS.CONTENT },
       { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
-      {
-        name: "features",
-        type: "array",
-        label: "Features",
-        section: SECTIONS.CONTENT,
-        itemSchema: [
-          { name: "title", type: "text", label: "Title" },
-          { name: "description", type: "text", label: "Description" },
-          { name: "value", type: "text", label: "Stat Value (optional)" },
-          { 
-            name: "icon", 
-            type: "select", 
-            label: "Icon",
-            options: [
-              { label: "Truck", value: "truck" },
-              { label: "Shield", value: "shield" },
-              { label: "Clock", value: "clock" },
-              { label: "Credit Card", value: "creditCard" },
-              { label: "Heart", value: "heart" },
-              { label: "Star", value: "star" },
-              { label: "Award", value: "award" },
-              { label: "Zap", value: "zap" }
-            ]
-          }
-        ]
-      },
       {
         name: "layout",
         type: "select",
@@ -651,12 +540,7 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
       subtitle: "Combine products, videos, and info cards",
       columns: 4,
       gap: "medium",
-      items: [
-        { type: "product", title: "Product 1", description: "Product description", image: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80", price: 4999, link: "/products/product-1", colSpan: 1 },
-        { type: "info", title: "Our Story", description: "Learn more about our journey", image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80", buttonText: "Read More", link: "/about", colSpan: 1 },
-        { type: "video", title: "Tutorial", description: "Getting started guide", image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?auto=format&fit=crop&w=800&q=80", videoUrl: "https://youtube.com", duration: "5:30", colSpan: 1 },
-        { type: "image", title: "Featured", description: "Check out our collection", image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80", link: "/collections", colSpan: 1 }
-      ],
+      items: [],
       animationStyle: "theme"
     },
     fields: [
@@ -672,36 +556,6 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
           { label: "Small", value: "small" },
           { label: "Medium", value: "medium" },
           { label: "Large", value: "large" }
-        ]
-      },
-      {
-        name: "items",
-        type: "array",
-        label: "Grid Items",
-        section: SECTIONS.CONTENT,
-        itemSchema: [
-          {
-            name: "type",
-            type: "select",
-            label: "Item Type",
-            options: [
-              { label: "Product", value: "product" },
-              { label: "Video", value: "video" },
-              { label: "Info Card", value: "info" },
-              { label: "Image", value: "image" }
-            ]
-          },
-          { name: "productId", type: "product-select", label: "Select Product (for Product type)" },
-          { name: "title", type: "text", label: "Title (Override or for other types)" },
-          { name: "description", type: "text", label: "Description (Override or for other types)" },
-          { name: "image", type: "image", label: "Image (Override or for other types)" },
-          { name: "link", type: "page-link", label: "Link" },
-          { name: "colSpan", type: "number", label: "Column Span", min: 1, max: 4 },
-          { name: "rowSpan", type: "number", label: "Row Span", min: 1, max: 4 },
-          { name: "price", type: "number", label: "Price (cents, override)" },
-          { name: "videoUrl", type: "text", label: "Video URL (for videos)" },
-          { name: "duration", type: "text", label: "Duration (for videos)" },
-          { name: "buttonText", type: "text", label: "Button Text (for info)" }
         ]
       },
       { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
