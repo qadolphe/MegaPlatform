@@ -180,6 +180,11 @@ export default async function DomainPage({
         color: colors.text
       } as React.CSSProperties}
     >
+      <style>{`
+        html, body {
+          background-color: ${colors.background};
+        }
+      `}</style>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {hydratedLayout.map((block: any, i: number) => {
         const Component = COMPONENT_REGISTRY[block.type];
