@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import { LayoutRenderer, LayoutBlock, StoreColors } from "@/components/layout-renderer";
 import { CartDrawer } from "@repo/ui-bricks";
+import { extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
+import { createClient } from "@/lib/supabase/client";
 
 export default function PreviewPage() {
     const params = useParams();
@@ -12,6 +14,7 @@ export default function PreviewPage() {
     const pageSlug = searchParams.get('slug') || 'home';
 
     const [layout, setLayout] = useState<LayoutBlock[]>([]);
+    const [hydratedLayout, setHydratedLayout] = useState<LayoutBlock[]>([]);
     const [colors, setColors] = useState<StoreColors>({
         primary: '#000000',
         secondary: '#ffffff',
@@ -21,7 +24,9 @@ export default function PreviewPage() {
     });
     const [theme, setTheme] = useState('simple');
     const [products, setProducts] = useState<any[]>([]);
+    const [packetsMap, setPacketsMap] = useState<Map<string, ContentPacket>>(new Map());
     const readySignalSent = useRef(false);
+    const supabase = createClient();
 
     // Listen for messages from parent (editor)
     const handleMessage = useCallback((event: MessageEvent) => {
@@ -45,6 +50,50 @@ export default function PreviewPage() {
 
         return () => window.removeEventListener('message', handleMessage);
     }, [handleMessage]);
+
+    // Fetch packets when layout changes
+    useEffect(() => {
+        const fetchLayoutPackets = async () => {
+            const packetIds = extractPacketIds(layout);
+            if (packetIds.length === 0) {
+                setHydratedLayout(layout);
+                return;
+            }
+
+            // Check if we need to fetch any new packets
+            const missingIds = packetIds.filter(id => !packetsMap.has(id));
+
+            if (missingIds.length > 0) {
+                const { data } = await supabase
+                    .from("content_packets")
+                    .select("id, type, name, data")
+                    .in("id", missingIds);
+
+                if (data) {
+                    setPacketsMap(prev => {
+                        const next = new Map(prev);
+                        data.forEach((p: any) => next.set(p.id, p));
+                        return next;
+                    });
+                }
+            }
+        };
+
+        fetchLayoutPackets();
+    }, [layout, storeId]);
+
+    // Hydrate layout whenever packets or layout changes
+    useEffect(() => {
+        if (extractPacketIds(layout).length === 0) {
+            setHydratedLayout(layout);
+            return;
+        }
+
+        const hydrated = layout.map(block =>
+            hydrateBlockWithPackets(block, packetsMap)
+        );
+        setHydratedLayout(hydrated);
+    }, [layout, packetsMap]);
 
     // Try to load cached data from autosave for instant display
     useEffect(() => {
@@ -76,7 +125,7 @@ export default function PreviewPage() {
     return (
         <>
             <LayoutRenderer
-                layout={layout}
+                layout={hydratedLayout}
                 colors={colors}
                 theme={theme}
                 products={products}

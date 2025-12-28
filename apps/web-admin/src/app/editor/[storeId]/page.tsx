@@ -11,7 +11,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
 import { CounterInput } from "@/components/ui/counter-input";
 import { PacketSelector } from "@/components/packet-selector";
-import { getPacketTypeForBlock } from "@/lib/packet-hydration";
+import { PacketEditorDialog } from "@/components/packet-editor-dialog";
+import { getPacketTypeForBlock, extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
 import Link from "next/link";
 
 // Mapping for rendering on the Canvas
@@ -65,6 +66,7 @@ export default function EditorPage() {
     const [newPageName, setNewPageName] = useState("");
     const [newPageSlug, setNewPageSlug] = useState("");
     const [missingPagePath, setMissingPagePath] = useState<string | null>(null);
+    const [editingPacketId, setEditingPacketId] = useState<string | null>(null);
 
     // Product/Collection Data for Preview
     const [collections, setCollections] = useState<{ id: string, title: string }[]>([]);
@@ -73,6 +75,13 @@ export default function EditorPage() {
     const [storeSubdomain, setStoreSubdomain] = useState<string>("");
     const [deploySuccess, setDeploySuccess] = useState(false);
     const [colorsExpanded, setColorsExpanded] = useState(false);
+    const [packetsMap, setPacketsMap] = useState<Map<string, ContentPacket>>(new Map());
+    const [hydratedBlocks, setHydratedBlocks] = useState<any[]>([]);
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+        "Content": true,
+        "Design": false,
+        "Colors": false
+    });
 
     // AI Chat State
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([
@@ -208,6 +217,8 @@ export default function EditorPage() {
             setIsChatLoading(false);
         }
     };
+
+
 
     // 1. Load initial data
     useEffect(() => {
@@ -378,9 +389,10 @@ export default function EditorPage() {
             }
 
             setLoading(false);
+            setLoading(false);
         }
+
         loadData();
-        fetchMediaPreview();
     }, [storeId, pageSlug]);
 
     // Autosave Effect
@@ -429,6 +441,84 @@ export default function EditorPage() {
             setMediaPreview(imageUrls);
         }
     };
+
+    // Fetch media preview on load
+    useEffect(() => {
+        fetchMediaPreview();
+    }, []);
+
+    const syncMediaToPackets = async () => {
+        setLoading(true);
+        try {
+            // 1. List files
+            const { data: files } = await supabase.storage.from("site-assets").list();
+            if (!files) return;
+
+            // 2. Fetch existing media packets
+            const { data: existingPackets } = await supabase
+                .from("content_packets")
+                .select("data")
+                .eq("type", "media")
+                .eq("store_id", storeId);
+
+            const existingFilenames = new Set(existingPackets?.map(p => p.data.filename) || []);
+
+            let createdCount = 0;
+            for (const file of files) {
+                if (!existingFilenames.has(file.name)) {
+                    const { data: publicUrlData } = supabase.storage.from("site-assets").getPublicUrl(file.name);
+
+                    await supabase.from("content_packets").insert({
+                        store_id: storeId,
+                        type: "media",
+                        name: file.name,
+                        data: {
+                            url: publicUrlData.publicUrl,
+                            filename: file.name,
+                            type: "image",
+                            alt: file.name,
+                            caption: ""
+                        }
+                    });
+                    createdCount++;
+                }
+            }
+
+            if (createdCount > 0) {
+                // alert(`Synced ${createdCount} new media items to Content Library.`);
+                refreshPackets();
+            }
+        } catch (e) {
+            console.error("Sync error:", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const refreshPackets = async () => {
+        const packetsNeeded = extractPacketIds(blocks);
+        if (packetsNeeded.length > 0) {
+            const { data } = await supabase
+                .from('content_packets')
+                .select('*')
+                .in('id', packetsNeeded);
+
+            if (data) {
+                const newMap = new Map(packetsMap);
+                data.forEach((p: any) => newMap.set(p.id, p));
+                setPacketsMap(newMap);
+
+                const hydrated = blocks.map(block => hydrateBlockWithPackets(block, newMap));
+                setHydratedBlocks(hydrated);
+            }
+        } else {
+            setHydratedBlocks(blocks);
+        }
+    };
+
+    useEffect(() => {
+        refreshPackets();
+    }, [blocks]);
 
     // 2. Deploy function
     const handleDeploy = async () => {
@@ -724,7 +814,7 @@ export default function EditorPage() {
                                         <p>Your canvas is empty. Add components from the left.</p>
                                     </div>
                                 ) : (
-                                    blocks.map((block, index) => {
+                                    (hydratedBlocks.length > 0 ? hydratedBlocks : blocks).map((block, index) => {
                                         const Component = RENDER_MAP[block.type];
                                         const isSelected = block.id === selectedBlockId;
                                         const isHeader = block.type === 'Header';
@@ -1163,12 +1253,21 @@ export default function EditorPage() {
                                     transition={{ duration: 0.2 }}
                                     className="flex flex-col gap-4"
                                 >
-                                    <button
-                                        onClick={() => { setActivePropName(null); setIsMediaManagerOpen(true); }}
-                                        className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition text-sm font-medium flex items-center justify-center gap-2"
-                                    >
-                                        <Upload size={16} /> Upload New
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => { setActivePropName(null); setIsMediaManagerOpen(true); }}
+                                            className="flex-1 py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition text-sm font-medium flex items-center justify-center gap-2"
+                                        >
+                                            <Upload size={16} /> Upload
+                                        </button>
+                                        <button
+                                            onClick={syncMediaToPackets}
+                                            className="flex-1 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:text-blue-600 hover:border-blue-300 transition text-sm font-medium flex items-center justify-center gap-2 shadow-sm"
+                                            title="Create packets for existing files"
+                                        >
+                                            <LayoutDashboard size={16} /> Sync
+                                        </button>
+                                    </div>
 
                                     <div className="grid grid-cols-2 gap-2">
                                         {mediaPreview.map((img) => (
@@ -1218,257 +1317,278 @@ export default function EditorPage() {
                                                     fieldsBySection[section].push(field);
                                                 });
 
-                                                return Object.entries(fieldsBySection).map(([sectionName, fields]) => (
-                                                    <div key={sectionName} className="border border-slate-200 rounded-lg overflow-hidden">
-                                                        <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
-                                                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sectionName}</span>
-                                                        </div>
-                                                        <div className="p-3 space-y-4 bg-white">
-                                                            {/* Insert PacketSelector in Content section */}
-                                                            {sectionName === "Content" && getPacketTypeForBlock(selectedBlock.type) && (
-                                                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 -mt-1 mb-3">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <Sparkles size={12} className="text-blue-600" />
-                                                                        <span className="text-xs font-semibold text-blue-700 uppercase">From Content Library</span>
-                                                                    </div>
-                                                                    <PacketSelector
-                                                                        storeId={storeId}
-                                                                        packetType={getPacketTypeForBlock(selectedBlock.type)!}
-                                                                        selectedIds={selectedBlock.props.packetIds || []}
-                                                                        onChange={(ids) => updateBlockProps(selectedBlock.id, { packetIds: ids })}
-                                                                    />
-                                                                    {(selectedBlock.props.packetIds?.length || 0) > 0 && (
-                                                                        <p className="text-xs text-blue-600 mt-2">
-                                                                            Library content will replace inline items below
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            {fields.map((field) => {
-                                                                // Hide animation style for expandable cards
-                                                                if (field.name === 'animationStyle' && selectedBlock.props.layout === 'expandable') {
-                                                                    return null;
-                                                                }
+                                                return Object.entries(fieldsBySection).map(([sectionName, fields]) => {
+                                                    const isOpen = openSections[sectionName] ?? (sectionName === "Content");
 
-                                                                return (
-                                                                    <div key={field.name}>
-                                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-                                                                            {field.name === 'columns' && selectedBlock.props.layout === 'expandable' ? 'Products per row' : field.label}
-                                                                        </label>
-
-                                                                        {field.type === 'collection-select' ? (
-                                                                            <select
-                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                                                                value={selectedBlock.props[field.name] || "all"}
-                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                            >
-                                                                                <option value="all">All Products</option>
-                                                                                {collections.map(c => (
-                                                                                    <option key={c.id} value={c.id}>{c.title}</option>
-                                                                                ))}
-                                                                            </select>
-                                                                        ) : field.type === 'select' ? (
-                                                                            <select
-                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                                                                value={selectedBlock.props[field.name] || ""}
-                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                            >
-                                                                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                                                {(field as any).options?.map((opt: any) => (
-                                                                                    <option key={opt.value} value={opt.value}>
-                                                                                        {opt.value === 'theme' ? `Theme Default (${storeTheme})` : opt.label}
-                                                                                    </option>
-                                                                                ))}
-                                                                            </select>
-                                                                        ) : field.type === 'array' ? (
-                                                                            <div className="space-y-3">
-                                                                                {(selectedBlock.props[field.name] || []).map((item: any, index: number) => (
-                                                                                    <div key={index} className="border border-slate-200 rounded p-3 bg-slate-50">
-                                                                                        <div className="flex justify-between items-center mb-2">
-                                                                                            <span className="text-xs font-bold text-slate-400">Item {index + 1}</span>
-                                                                                            <button onClick={() => {
-                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                newItems.splice(index, 1);
-                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                            }} className="text-red-400 hover:text-red-600"><Trash size={12} /></button>
-                                                                                        </div>
-                                                                                        {/* Render sub-fields */}
-                                                                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                                                        {(field as any).itemSchema?.map((subField: any) => (
-                                                                                            <div key={subField.name} className="mb-2">
-                                                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">{subField.label}</label>
-                                                                                                {subField.type === 'image' ? (
-                                                                                                    <div className="flex gap-2">
-                                                                                                        <input
-                                                                                                            type="text"
-                                                                                                            className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none"
-                                                                                                            value={item[subField.name] || ""}
-                                                                                                            onChange={(e) => {
-                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                            }}
-                                                                                                        />
-                                                                                                        <button
-                                                                                                            onClick={() => {
-                                                                                                                openMediaManager(`${field.name}:${index}:${subField.name}`);
-                                                                                                            }}
-                                                                                                            className="bg-slate-100 border border-slate-300 rounded-md px-2 hover:bg-slate-200 text-slate-600"
-                                                                                                        >
-                                                                                                            <Upload size={12} />
-                                                                                                        </button>
-                                                                                                    </div>
-                                                                                                ) : subField.type === 'product-select' ? (
-                                                                                                    <select
-                                                                                                        className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none bg-white"
-                                                                                                        value={item[subField.name] || ""}
-                                                                                                        onChange={(e) => {
-                                                                                                            const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                            newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                        }}
-                                                                                                    >
-                                                                                                        <option value="">Select a product...</option>
-                                                                                                        {storeProducts.map(p => (
-                                                                                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                                                                                        ))}
-                                                                                                    </select>
-                                                                                                ) : (
-                                                                                                    subField.type === 'number' ? (
-                                                                                                        <CounterInput
-                                                                                                            value={parseInt(item[subField.name] || "0")}
-                                                                                                            onChange={(val) => {
-                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: val };
-                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                            }}
-                                                                                                            min={(subField as any).min}
-                                                                                                            className="w-full"
-                                                                                                        />
-                                                                                                    ) : (
-                                                                                                        <input
-                                                                                                            type="text"
-                                                                                                            className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none focus:border-blue-500"
-                                                                                                            value={item[subField.name] || ""}
-                                                                                                            onChange={(e) => {
-                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                            }}
-                                                                                                        />
-                                                                                                    )
-                                                                                                )}
-                                                                                            </div>
-                                                                                        ))}
+                                                    return (
+                                                        <div key={sectionName} className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                                                            <button
+                                                                onClick={() => setOpenSections(prev => ({ ...prev, [sectionName]: !prev[sectionName] }))}
+                                                                className="w-full bg-slate-50 px-3 py-2 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition"
+                                                            >
+                                                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sectionName}</span>
+                                                                <ChevronLeft size={14} className={`text-slate-400 transform transition-transform duration-200 ${isOpen ? '-rotate-90' : 'rotate-0'}`} />
+                                                            </button>
+                                                            <AnimatePresence initial={false}>
+                                                                {isOpen && (
+                                                                    <motion.div
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        transition={{ duration: 0.2 }}
+                                                                        className="overflow-hidden"
+                                                                    >
+                                                                        <div className="p-3 space-y-4">
+                                                                            {/* Insert PacketSelector in Content section */}
+                                                                            {sectionName === "Content" && getPacketTypeForBlock(selectedBlock.type) && (
+                                                                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 -mt-1 mb-3">
+                                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                                        <Sparkles size={12} className="text-blue-600" />
+                                                                                        <span className="text-xs font-semibold text-blue-700 uppercase">From Content Library</span>
                                                                                     </div>
-                                                                                ))}
-                                                                                <button onClick={() => {
-                                                                                    const newItems = [...(selectedBlock.props[field.name] || []), {}];
-                                                                                    updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                }} className="w-full py-2 text-xs font-medium text-blue-600 border border-dashed border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center gap-1">
-                                                                                    <Plus size={12} /> Add Item
-                                                                                </button>
-                                                                            </div>
-                                                                        ) : field.type === 'page-link' ? (
-                                                                            <div className="flex flex-col gap-2">
-                                                                                <select
-                                                                                    className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                                                                                    value={selectedBlock.props[field.name] || ""}
-                                                                                    onChange={(e) => {
-                                                                                        if (e.target.value === 'CREATE_NEW') {
-                                                                                            setIsCreatePageOpen(true);
-                                                                                        } else {
-                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: e.target.value });
-                                                                                        }
-                                                                                    }}
-                                                                                >
-                                                                                    <option value="">Select a page...</option>
-                                                                                    {availablePages.map((page) => (
-                                                                                        <option key={page.slug} value={`/${page.slug}`}>
-                                                                                            {page.name || page.slug} (/{page.slug})
-                                                                                        </option>
-                                                                                    ))}
-                                                                                    <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Page</option>
-                                                                                </select>
-                                                                                <input
-                                                                                    type="text"
-                                                                                    placeholder="Or type custom URL..."
-                                                                                    className="w-full border border-slate-300 rounded-md p-2 text-xs text-slate-500 focus:text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                                                                                    value={selectedBlock.props[field.name] || ""}
-                                                                                    onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                />
-                                                                            </div>
-                                                                        ) : field.type === 'image' ? (
-                                                                            <div className="flex gap-2">
-                                                                                <div className="relative flex-1">
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        className="w-full border border-slate-300 rounded-md p-2 text-sm pl-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                                                                        value={selectedBlock.props[field.name] || ""}
-                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                    <PacketSelector
+                                                                                        storeId={storeId}
+                                                                                        packetType={getPacketTypeForBlock(selectedBlock.type)!}
+                                                                                        selectedIds={selectedBlock.props.packetIds || []}
+                                                                                        onChange={(ids) => updateBlockProps(selectedBlock.id, { packetIds: ids })}
+                                                                                        onEdit={(packetId) => setEditingPacketId(packetId)}
                                                                                     />
-                                                                                    <div className="absolute left-2.5 top-2.5 text-slate-400">
-                                                                                        <ImageIcon size={14} />
-                                                                                    </div>
-                                                                                </div>
-                                                                                <button
-                                                                                    onClick={() => openMediaManager(field.name)}
-                                                                                    className="bg-slate-100 border border-slate-300 rounded-md px-3 hover:bg-slate-200 text-slate-600 transition"
-                                                                                    title="Select Image"
-                                                                                >
-                                                                                    <Upload size={16} />
-                                                                                </button>
-                                                                            </div>
-                                                                        ) : field.type === 'number' ? (
-                                                                            <CounterInput
-                                                                                value={parseInt(selectedBlock.props[field.name] || "0")}
-                                                                                onChange={(val) => updateBlockProps(selectedBlock.id, { [field.name]: val })}
-                                                                                min={(field as any).min}
-                                                                                className="w-full"
-                                                                            />
-                                                                        ) : field.type === 'color' ? (
-                                                                            <div className="flex gap-2">
-                                                                                <div className="relative">
-                                                                                    <input
-                                                                                        type="color"
-                                                                                        className="h-9 w-9 rounded cursor-pointer border border-slate-300 p-0.5 overflow-hidden"
-                                                                                        value={selectedBlock.props[field.name] || "#000000"}
-                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                    />
-                                                                                </div>
-                                                                                <div className="flex-1 flex gap-1">
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                                                                        value={selectedBlock.props[field.name] || ""}
-                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                        placeholder="Default (Global)"
-                                                                                    />
-                                                                                    {selectedBlock.props[field.name] && (
-                                                                                        <button
-                                                                                            onClick={() => updateBlockProps(selectedBlock.id, { [field.name]: undefined })}
-                                                                                            className="p-2 text-slate-400 hover:text-red-500"
-                                                                                            title="Reset to Global Default"
-                                                                                        >
-                                                                                            <Undo size={14} />
-                                                                                        </button>
+                                                                                    {(selectedBlock.props.packetIds?.length || 0) > 0 && (
+                                                                                        <p className="text-xs text-blue-600 mt-2">
+                                                                                            Library content will replace inline items below
+                                                                                        </p>
                                                                                     )}
                                                                                 </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <input
-                                                                                type="text"
-                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                                                                value={selectedBlock.props[field.name] || ""}
-                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                            />
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                                            )}
+                                                                            {fields.map((field) => {
+                                                                                // Hide animation style for expandable cards
+                                                                                if (field.name === 'animationStyle' && selectedBlock.props.layout === 'expandable') {
+                                                                                    return null;
+                                                                                }
+
+                                                                                return (
+                                                                                    <div key={field.name}>
+                                                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                                                                                            {field.name === 'columns' && selectedBlock.props.layout === 'expandable' ? 'Products per row' : field.label}
+                                                                                        </label>
+
+                                                                                        {field.type === 'collection-select' ? (
+                                                                                            <select
+                                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                                                                                value={selectedBlock.props[field.name] || "all"}
+                                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                            >
+                                                                                                <option value="all">All Products</option>
+                                                                                                {collections.map(c => (
+                                                                                                    <option key={c.id} value={c.id}>{c.title}</option>
+                                                                                                ))}
+                                                                                            </select>
+                                                                                        ) : field.type === 'select' ? (
+                                                                                            <select
+                                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                                                                                value={selectedBlock.props[field.name] || ""}
+                                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                            >
+                                                                                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                                                                                {(field as any).options?.map((opt: any) => (
+                                                                                                    <option key={opt.value} value={opt.value}>
+                                                                                                        {opt.value === 'theme' ? `Theme Default (${storeTheme})` : opt.label}
+                                                                                                    </option>
+                                                                                                ))}
+                                                                                            </select>
+                                                                                        ) : field.type === 'array' ? (
+                                                                                            <div className="space-y-3">
+                                                                                                {(selectedBlock.props[field.name] || []).map((item: any, index: number) => (
+                                                                                                    <div key={index} className="border border-slate-200 rounded p-3 bg-slate-50">
+                                                                                                        <div className="flex justify-between items-center mb-2">
+                                                                                                            <span className="text-xs font-bold text-slate-400">Item {index + 1}</span>
+                                                                                                            <button onClick={() => {
+                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                                                newItems.splice(index, 1);
+                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                                            }} className="text-red-400 hover:text-red-600"><Trash size={12} /></button>
+                                                                                                        </div>
+                                                                                                        {/* Render sub-fields */}
+                                                                                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                                                                                        {(field as any).itemSchema?.map((subField: any) => (
+                                                                                                            <div key={subField.name} className="mb-2">
+                                                                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">{subField.label}</label>
+                                                                                                                {subField.type === 'image' ? (
+                                                                                                                    <div className="flex gap-2">
+                                                                                                                        <input
+                                                                                                                            type="text"
+                                                                                                                            className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none"
+                                                                                                                            value={item[subField.name] || ""}
+                                                                                                                            onChange={(e) => {
+                                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
+                                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                                                            }}
+                                                                                                                        />
+                                                                                                                        <button
+                                                                                                                            onClick={() => {
+                                                                                                                                openMediaManager(`${field.name}:${index}:${subField.name}`);
+                                                                                                                            }}
+                                                                                                                            className="bg-slate-100 border border-slate-300 rounded-md px-2 hover:bg-slate-200 text-slate-600"
+                                                                                                                        >
+                                                                                                                            <Upload size={12} />
+                                                                                                                        </button>
+                                                                                                                    </div>
+                                                                                                                ) : subField.type === 'product-select' ? (
+                                                                                                                    <select
+                                                                                                                        className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none bg-white"
+                                                                                                                        value={item[subField.name] || ""}
+                                                                                                                        onChange={(e) => {
+                                                                                                                            const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                                                            newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
+                                                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                                                        }}
+                                                                                                                    >
+                                                                                                                        <option value="">Select a product...</option>
+                                                                                                                        {storeProducts.map(p => (
+                                                                                                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                                                                                                        ))}
+                                                                                                                    </select>
+                                                                                                                ) : (
+                                                                                                                    subField.type === 'number' ? (
+                                                                                                                        <CounterInput
+                                                                                                                            value={parseInt(item[subField.name] || "0")}
+                                                                                                                            onChange={(val) => {
+                                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: val };
+                                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                                                            }}
+                                                                                                                            min={(subField as any).min}
+                                                                                                                            className="w-full"
+                                                                                                                        />
+                                                                                                                    ) : (
+                                                                                                                        <input
+                                                                                                                            type="text"
+                                                                                                                            className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none focus:border-blue-500"
+                                                                                                                            value={item[subField.name] || ""}
+                                                                                                                            onChange={(e) => {
+                                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
+                                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
+                                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                                                            }}
+                                                                                                                        />
+                                                                                                                    )
+                                                                                                                )}
+                                                                                                            </div>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                ))}
+                                                                                                <button onClick={() => {
+                                                                                                    const newItems = [...(selectedBlock.props[field.name] || []), {}];
+                                                                                                    updateBlockProps(selectedBlock.id, { [field.name]: newItems });
+                                                                                                }} className="w-full py-2 text-xs font-medium text-blue-600 border border-dashed border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center gap-1">
+                                                                                                    <Plus size={12} /> Add Item
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        ) : field.type === 'page-link' ? (
+                                                                                            <div className="flex flex-col gap-2">
+                                                                                                <select
+                                                                                                    className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                                                                                                    value={selectedBlock.props[field.name] || ""}
+                                                                                                    onChange={(e) => {
+                                                                                                        if (e.target.value === 'CREATE_NEW') {
+                                                                                                            setIsCreatePageOpen(true);
+                                                                                                        } else {
+                                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: e.target.value });
+                                                                                                        }
+                                                                                                    }}
+                                                                                                >
+                                                                                                    <option value="">Select a page...</option>
+                                                                                                    {availablePages.map((page) => (
+                                                                                                        <option key={page.slug} value={`/${page.slug}`}>
+                                                                                                            {page.name || page.slug} (/{page.slug})
+                                                                                                        </option>
+                                                                                                    ))}
+                                                                                                    <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Page</option>
+                                                                                                </select>
+                                                                                                <input
+                                                                                                    type="text"
+                                                                                                    className="w-full border border-slate-300 rounded-md p-2 text-xs text-slate-500 focus:text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                                                                                    value={selectedBlock.props[field.name] || ""}
+                                                                                                    onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                                    placeholder="Or type custom URL..."
+                                                                                                />
+                                                                                            </div>
+                                                                                        ) : field.type === 'image' ? (
+                                                                                            <div className="flex gap-2">
+                                                                                                <div className="relative flex-1">
+                                                                                                    <input
+                                                                                                        type="text"
+                                                                                                        className="w-full border border-slate-300 rounded-md p-2 text-sm pl-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                                                                                        value={selectedBlock.props[field.name] || ""}
+                                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                                    />
+                                                                                                    <div className="absolute left-2.5 top-2.5 text-slate-400">
+                                                                                                        <ImageIcon size={14} />
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                                <button
+                                                                                                    onClick={() => openMediaManager(field.name)}
+                                                                                                    className="bg-slate-100 border border-slate-300 rounded-md px-3 hover:bg-slate-200 text-slate-600 transition"
+                                                                                                    title="Select Image"
+                                                                                                >
+                                                                                                    <Upload size={16} />
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        ) : field.type === 'number' ? (
+                                                                                            <CounterInput
+                                                                                                value={parseInt(selectedBlock.props[field.name] || "0")}
+                                                                                                onChange={(val) => updateBlockProps(selectedBlock.id, { [field.name]: val })}
+                                                                                                min={(field as any).min}
+                                                                                                className="w-full"
+                                                                                            />
+                                                                                        ) : field.type === 'color' ? (
+                                                                                            <div className="flex gap-2">
+                                                                                                <div className="relative">
+                                                                                                    <input
+                                                                                                        type="color"
+                                                                                                        className="h-9 w-9 rounded cursor-pointer border border-slate-300 p-0.5 overflow-hidden"
+                                                                                                        value={selectedBlock.props[field.name] || "#000000"}
+                                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                                    />
+                                                                                                </div>
+                                                                                                <div className="flex-1 flex gap-1">
+                                                                                                    <input
+                                                                                                        type="text"
+                                                                                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                                                                                        value={selectedBlock.props[field.name] || ""}
+                                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                                        placeholder="Default (Global)"
+                                                                                                    />
+                                                                                                    {selectedBlock.props[field.name] && (
+                                                                                                        <button
+                                                                                                            onClick={() => updateBlockProps(selectedBlock.id, { [field.name]: undefined })}
+                                                                                                            className="p-2 text-slate-400 hover:text-red-500"
+                                                                                                            title="Reset to Global Default"
+                                                                                                        >
+                                                                                                            <Undo size={14} />
+                                                                                                        </button>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                                                                                value={selectedBlock.props[field.name] || ""}
+                                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
+                                                                                            />
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
                                                         </div>
-                                                    </div>
-                                                ));
+                                                    );
+                                                });
                                             })()}
                                         </div>
                                     ) : (
@@ -1477,18 +1597,30 @@ export default function EditorPage() {
                                             <p className="text-sm">Select a block on the canvas to edit its properties.</p>
                                         </div>
                                     )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
 
-            </div>
+                                </motion.div >
+                            )}
+                        </AnimatePresence >
+                    </div >
+                </div >
+
+            </div >
 
             <MediaManager
                 isOpen={isMediaManagerOpen}
                 onClose={() => setIsMediaManagerOpen(false)}
                 onSelect={handleImageSelect}
+            />
+
+            <PacketEditorDialog
+                isOpen={!!editingPacketId}
+                onClose={() => setEditingPacketId(null)}
+                packetId={editingPacketId}
+                packetType={selectedBlock ? (getPacketTypeForBlock(selectedBlock.type) || 'text_block') : 'text_block'}
+                storeId={storeId}
+                onSave={() => {
+                    refreshPackets();
+                }}
             />
 
             {/* Missing Page Dialog */}
@@ -1510,6 +1642,7 @@ export default function EditorPage() {
                                 </button>
                                 <button
                                     onClick={() => {
+                                        if (!missingPagePath) return;
                                         const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
                                         const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                                         setNewPageSlug(slug);

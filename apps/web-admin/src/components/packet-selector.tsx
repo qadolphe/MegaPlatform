@@ -27,6 +27,7 @@ interface PacketSelectorProps {
     packetType: PacketType;
     selectedIds: string[];
     onChange: (ids: string[]) => void;
+    onEdit?: (packetId: string) => void;
     maxItems?: number;
     label?: string;
 }
@@ -36,6 +37,7 @@ export function PacketSelector({
     packetType,
     selectedIds = [],
     onChange,
+    onEdit,
     maxItems = 10,
     label,
 }: PacketSelectorProps) {
@@ -110,18 +112,24 @@ export function PacketSelector({
                 {selectedPackets.map((packet) => (
                     <div
                         key={packet.id}
-                        className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"
+                        className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-blue-100 transition"
+                        onClick={() => onEdit?.(packet.id)}
                     >
                         <div className="flex items-center gap-2">
                             <Icon size={14} className="text-blue-500" />
                             <span className="text-sm text-slate-700">{getPreviewText(packet)}</span>
                         </div>
-                        <button
-                            onClick={() => removePacket(packet.id)}
-                            className="text-slate-400 hover:text-red-500 transition"
-                        >
-                            <X size={14} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                            {onEdit && (
+                                <span className="text-[10px] text-blue-500 mr-1">click to edit</span>
+                            )}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); removePacket(packet.id); }}
+                                className="text-slate-400 hover:text-red-500 transition"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>

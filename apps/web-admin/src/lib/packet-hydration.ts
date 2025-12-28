@@ -76,6 +76,46 @@ function getItemsPropForBlockType(blockType: string): string {
 }
 
 /**
+ * Transform packet data to match component's expected format
+ */
+function transformPacketForBlock(packet: ContentPacket, blockType: string): any {
+    const data = packet.data;
+
+    // UniversalGrid expects GridItem objects with type, title, description, image, etc.
+    if (blockType === "UniversalGrid") {
+        switch (packet.type) {
+            case "feature":
+                return {
+                    type: "info",
+                    title: data.title || "",
+                    description: data.description || "",
+                    icon: data.icon,
+                    image: data.image || "",
+                };
+            case "testimonial":
+                return {
+                    type: "info",
+                    title: data.author || "Customer",
+                    description: data.quote || "",
+                    image: data.avatar_url || "",
+                };
+            case "media":
+                return {
+                    type: "image",
+                    title: data.alt || "",
+                    description: data.caption || "",
+                    image: data.url || "",
+                };
+            default:
+                return data;
+        }
+    }
+
+    // For other blocks, return raw data
+    return data;
+}
+
+/**
  * Hydrate block props with packet data
  * Converts packetIds to actual content items
  */
@@ -91,7 +131,7 @@ export function hydrateBlockWithPackets(
     const items = packetIds
         .map((id) => packetsMap.get(id))
         .filter(Boolean)
-        .map((packet) => packet!.data);
+        .map((packet) => transformPacketForBlock(packet!, block.type));
 
     if (items.length === 0) {
         return block;

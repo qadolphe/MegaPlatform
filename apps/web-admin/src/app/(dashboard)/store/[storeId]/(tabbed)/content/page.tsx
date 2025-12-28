@@ -16,12 +16,12 @@ type ContentPacket = {
 
 type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media";
 
-const PACKET_TYPES: { key: PacketType; label: string; icon: any; description: string }[] = [
-    { key: "feature", label: "Features", icon: Sparkles, description: "Benefit cards with icons" },
-    { key: "testimonial", label: "Testimonials", icon: MessageSquare, description: "Customer quotes" },
-    { key: "faq", label: "FAQs", icon: HelpCircle, description: "Questions & answers" },
-    { key: "text_block", label: "Text Blocks", icon: FileText, description: "Reusable copy" },
-    { key: "media", label: "Media", icon: Image, description: "Images & videos" },
+const PACKET_TYPES: { key: PacketType; label: string; singular: string; icon: any; description: string }[] = [
+    { key: "feature", label: "Features", singular: "Feature", icon: Sparkles, description: "Benefit cards with icons" },
+    { key: "testimonial", label: "Testimonials", singular: "Testimonial", icon: MessageSquare, description: "Customer quotes" },
+    { key: "faq", label: "FAQs", singular: "FAQ", icon: HelpCircle, description: "Questions & answers" },
+    { key: "text_block", label: "Text Blocks", singular: "Text Block", icon: FileText, description: "Reusable copy" },
+    { key: "media", label: "Media", singular: "Media", icon: Image, description: "Images & videos" },
 ];
 
 const DEFAULT_DATA: Record<PacketType, any> = {
@@ -51,6 +51,57 @@ export default function ContentManagerPage() {
         fetchPackets();
     }, [storeId]);
 
+    // Auto-sync media from storage when Media tab is selected
+    useEffect(() => {
+        if (activeType === "media") {
+            syncMediaFromStorage();
+        }
+    }, [activeType, storeId]);
+
+    const syncMediaFromStorage = async () => {
+        // 1. List files in storage
+        const { data: files } = await supabase.storage.from("site-assets").list();
+        if (!files || files.length === 0) return;
+
+        // 2. Get existing media packets
+        const { data: existingPackets } = await supabase
+            .from("content_packets")
+            .select("data")
+            .eq("store_id", storeId)
+            .eq("type", "media");
+
+        const existingFilenames = new Set(existingPackets?.map(p => p.data?.filename || p.data?.url?.split('/').pop()) || []);
+
+        // 3. Create packets for new files
+        let created = 0;
+        for (const file of files) {
+            // Skip folders/placeholders 
+            if (!file.name || file.name.startsWith('.')) continue;
+
+            if (!existingFilenames.has(file.name)) {
+                const { data: publicUrlData } = supabase.storage.from("site-assets").getPublicUrl(file.name);
+
+                await supabase.from("content_packets").insert({
+                    store_id: storeId,
+                    type: "media",
+                    name: file.name,
+                    data: {
+                        url: publicUrlData.publicUrl,
+                        filename: file.name,
+                        mediaType: file.name.match(/\.(mp4|webm|mov)$/i) ? "video" : "image",
+                        alt: file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
+                        caption: ""
+                    }
+                });
+                created++;
+            }
+        }
+
+        if (created > 0) {
+            fetchPackets(); // Refresh the list
+        }
+    };
+
     const fetchPackets = async () => {
         const { data, error } = await supabase
             .from("content_packets")
@@ -62,7 +113,16 @@ export default function ContentManagerPage() {
         setLoading(false);
     };
 
-    const filteredPackets = packets.filter((p) => p.type === activeType);
+    const filteredPackets = packets.filter((p) => p.type === activeType).sort((a, b) => {
+        // For media, sort by type (images first, then videos)
+        if (activeType === "media") {
+            const aIsVideo = a.data?.mediaType === "video";
+            const bIsVideo = b.data?.mediaType === "video";
+            if (aIsVideo !== bIsVideo) return aIsVideo ? 1 : -1;
+        }
+        // Then by creation date (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
     const handleCreate = async () => {
         if (!newName.trim()) return;
@@ -387,7 +447,7 @@ export default function ContentManagerPage() {
                     className="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50/50 transition text-slate-500 hover:text-blue-600"
                 >
                     <Plus size={24} />
-                    <span className="text-sm font-medium">Add {PACKET_TYPES.find((t) => t.key === activeType)?.label.slice(0, -1)}</span>
+                    <span className="text-sm font-medium">Add {PACKET_TYPES.find((t) => t.key === activeType)?.singular}</span>
                 </motion.button>
 
                 {/* Existing Packets */}
@@ -467,7 +527,7 @@ export default function ContentManagerPage() {
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-semibold text-slate-900">
-                                    New {PACKET_TYPES.find((t) => t.key === activeType)?.label.slice(0, -1)}
+                                    New {PACKET_TYPES.find((t) => t.key === activeType)?.singular}
                                 </h2>
                                 <button onClick={() => setIsCreating(false)} className="text-slate-400 hover:text-slate-600">
                                     <X size={20} />
