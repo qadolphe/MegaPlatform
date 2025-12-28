@@ -129,7 +129,8 @@ export default async function DomainPage({
 
     let fetchedProducts: any[] = [];
 
-    if (collectionId === 'all') {
+    // Default to fetching store products (fallback for specific collections until fully implemented)
+    if (fetchedProducts.length === 0) {
       const { data } = await supabase
         .from("products")
         .select("*")

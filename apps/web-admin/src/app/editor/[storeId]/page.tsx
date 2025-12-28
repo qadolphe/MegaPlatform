@@ -1618,6 +1618,7 @@ export default function EditorPage() {
                 packetId={editingPacketId}
                 packetType={selectedBlock ? (getPacketTypeForBlock(selectedBlock.type) || 'text_block') : 'text_block'}
                 storeId={storeId}
+                maxColumns={selectedBlock?.props?.columns}
                 onSave={() => {
                     refreshPackets();
                 }}

@@ -12,6 +12,7 @@ interface PacketEditorDialogProps {
     packetType: string;
     storeId: string;
     onSave: (newPacketId?: string) => void;
+    maxColumns?: number;
 }
 
 const DEFAULT_DATA: Record<string, any> = {
@@ -135,7 +136,7 @@ function ColSpanPicker({
     );
 }
 
-export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, storeId, onSave }: PacketEditorDialogProps) {
+export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, storeId, onSave, maxColumns = 4 }: PacketEditorDialogProps) {
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -256,19 +257,11 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                             onChange={(url) => setData(prev => ({ ...prev, image: url }))}
                             label="Background Image"
                         />
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Column Span</label>
-                            <select
-                                className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
-                                value={data.colSpan || 1}
-                                onChange={e => setData(prev => ({ ...prev, colSpan: parseInt(e.target.value) }))}
-                            >
-                                <option value={1}>1 Column</option>
-                                <option value={2}>2 Columns</option>
-                                <option value={3}>3 Columns</option>
-                                <option value={4}>4 Columns</option>
-                            </select>
-                        </div>
+                        <ColSpanPicker
+                            value={data.colSpan || 1}
+                            onChange={(val) => setData(prev => ({ ...prev, colSpan: val }))}
+                            max={maxColumns}
+                        />
                     </>
                 );
             case 'testimonial':
@@ -303,19 +296,11 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                             onChange={(url) => setData(prev => ({ ...prev, image: url }))}
                             label="Avatar / Photo"
                         />
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Column Span</label>
-                            <select
-                                className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
-                                value={data.colSpan || 1}
-                                onChange={e => setData(prev => ({ ...prev, colSpan: parseInt(e.target.value) }))}
-                            >
-                                <option value={1}>1 Column</option>
-                                <option value={2}>2 Columns</option>
-                                <option value={3}>3 Columns</option>
-                                <option value={4}>4 Columns</option>
-                            </select>
-                        </div>
+                        <ColSpanPicker
+                            value={data.colSpan || 1}
+                            onChange={(val) => setData(prev => ({ ...prev, colSpan: val }))}
+                            max={maxColumns}
+                        />
                     </>
                 );
             case 'faq':
@@ -337,17 +322,11 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                                 onChange={e => setData(prev => ({ ...prev, answer: e.target.value }))}
                             />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Column Span</label>
-                            <select
-                                className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
-                                value={data.colSpan || 1}
-                                onChange={e => setData(prev => ({ ...prev, colSpan: parseInt(e.target.value) }))}
-                            >
-                                <option value={1}>1 Column</option>
-                                <option value={2}>2 Columns</option>
-                            </select>
-                        </div>
+                        <ColSpanPicker
+                            value={data.colSpan || 1}
+                            onChange={(val) => setData(prev => ({ ...prev, colSpan: val }))}
+                            max={maxColumns}
+                        />
                     </>
                 );
             case 'text_block':
@@ -374,19 +353,11 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                             onChange={(url) => setData(prev => ({ ...prev, image: url }))}
                             label="Image"
                         />
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Column Span</label>
-                            <select
-                                className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
-                                value={data.colSpan || 1}
-                                onChange={e => setData(prev => ({ ...prev, colSpan: parseInt(e.target.value) }))}
-                            >
-                                <option value={1}>1 Column</option>
-                                <option value={2}>2 Columns</option>
-                                <option value={3}>3 Columns</option>
-                                <option value={4}>4 Columns</option>
-                            </select>
-                        </div>
+                        <ColSpanPicker
+                            value={data.colSpan || 1}
+                            onChange={(val) => setData(prev => ({ ...prev, colSpan: val }))}
+                            max={maxColumns}
+                        />
                     </>
                 );
             case 'media':
@@ -414,19 +385,11 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                                 onChange={e => setData(prev => ({ ...prev, caption: e.target.value }))}
                             />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Column Span</label>
-                            <select
-                                className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
-                                value={data.colSpan || 1}
-                                onChange={e => setData(prev => ({ ...prev, colSpan: parseInt(e.target.value) }))}
-                            >
-                                <option value={1}>1 Column</option>
-                                <option value={2}>2 Columns</option>
-                                <option value={3}>3 Columns</option>
-                                <option value={4}>4 Columns</option>
-                            </select>
-                        </div>
+                        <ColSpanPicker
+                            value={data.colSpan || 1}
+                            onChange={(val) => setData(prev => ({ ...prev, colSpan: val }))}
+                            max={maxColumns}
+                        />
                     </>
                 );
             default:
