@@ -1,52 +1,40 @@
+
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 import { useCart } from '@repo/ui-bricks';
 import Link from 'next/link';
-import { CheckCircle, ShoppingBag, ArrowRight } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 export default function CheckoutSuccessPage() {
-    const searchParams = useSearchParams();
-    const sessionId = searchParams.get('session_id');
     const { clearCart } = useCart();
-    const [isCleared, setIsCleared] = useState(false);
 
     useEffect(() => {
-        // Clear cart only once
-        if (!isCleared && sessionId) {
-            clearCart();
-            setIsCleared(true);
-        }
-    }, [sessionId, isCleared, clearCart]);
+        // Clear the cart when the success page loads
+        clearCart();
+    }, [clearCart]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-                <div className="mb-6">
-                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="w-12 h-12 text-green-600" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-2">Order Confirmed!</h1>
-                    <p className="text-slate-600">
-                        Thank you for your purchase. We've sent a confirmation email with your order details.
-                    </p>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
 
-                <div className="bg-slate-50 rounded-xl p-4 mb-6">
-                    <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
-                        <ShoppingBag className="w-4 h-4" />
-                        <span>Order confirmation sent to your email</span>
-                    </div>
-                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                    Payment Successful!
+                </h1>
+
+                <p className="text-gray-600 mb-8">
+                    Thank you for your purchase. We have received your order and will begin processing it shortly.
+                </p>
 
                 <div className="space-y-3">
                     <Link
                         href="/"
-                        className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 transition"
+                        className="block w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
                     >
-                        Continue Shopping
-                        <ArrowRight className="w-4 h-4" />
+                        Return to Store
                     </Link>
                 </div>
             </div>
