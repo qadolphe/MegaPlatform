@@ -15,35 +15,35 @@ export async function POST(req: Request) {
     // 1. RAG: Retrieve relevant knowledge
     let knowledgeContext = "";
     if (context.storeId) {
-        try {
-            const supabase = await createClient();
-            // Generate embedding for the user prompt
-            const embedding = await generateEmbedding(prompt);
-            
-            // Search for relevant knowledge
-            const { data: documents } = await supabase.rpc('match_knowledge', {
-                query_embedding: embedding,
-                match_threshold: 0.3, // Lower threshold to catch more potential matches
-                match_count: 10,      // Increase count to ensure we get all relevant products
-                filter_store_id: context.storeId
-            });
+      try {
+        const supabase = await createClient();
+        // Generate embedding for the user prompt
+        const embedding = await generateEmbedding(prompt);
 
-            if (documents && documents.length > 0) {
-                knowledgeContext = `
+        // Search for relevant knowledge
+        const { data: documents } = await supabase.rpc('match_knowledge', {
+          query_embedding: embedding,
+          match_threshold: 0.3, // Lower threshold to catch more potential matches
+          match_count: 10,      // Increase count to ensure we get all relevant products
+          filter_store_id: context.storeId
+        });
+
+        if (documents && documents.length > 0) {
+          knowledgeContext = `
                 Relevant Store Knowledge:
                 ${documents.map((d: any) => `- ${d.content}`).join('\n')}
                 `;
-            }
-        } catch (e) {
-            console.warn("RAG lookup failed:", e);
         }
+      } catch (e) {
+        console.warn("RAG lookup failed:", e);
+      }
     }
 
     // 2. Prepare Context
     const componentsList = Object.entries(COMPONENT_DEFINITIONS).map(([key, def]) => ({
-        type: key,
-        description: def.label,
-        fields: def.fields.map(f => ({ name: f.name, type: f.type }))
+      type: key,
+      description: def.label,
+      fields: def.fields.map(f => ({ name: f.name, type: f.type }))
     }));
 
     const systemPrompt = `
@@ -57,7 +57,9 @@ export async function POST(req: Request) {
       2. UPDATE_COMPONENT: Modify the currently selected component.
       3. SET_THEME: Change the global color palette and animation style.
       4. UPDATE_LAYOUT: Reorder, delete, or replace multiple components. Use this for requests like "delete everything", "remove the text section", "make it just a hero and footer".
-      5. GENERAL_CHAT: Answer a question or provide advice (e.g. SEO, design tips).
+      5. CREATE_TODO: Add a task to the store's todo list/planner.
+      6. CREATE_CONTENT_PACKET: Create a reusable content item (feature, testimonial, post) in the Content Library.
+      7. GENERAL_CHAT: Answer a question or provide advice (e.g. SEO, design tips).
 
       Context:
       - Selected Block: ${context.selectedBlock ? JSON.stringify(context.selectedBlock) : "None"}
@@ -71,10 +73,12 @@ export async function POST(req: Request) {
 
       Instructions:
       - Analyze the request.
-      - If the user wants to add something (e.g. "add a hero"), use CREATE_COMPONENT.
+      - If the user wants to add something to the page (e.g. "add a hero"), use CREATE_COMPONENT.
       - If the user wants to change the selected block (e.g. "make the background blue"), use UPDATE_COMPONENT.
       - If the user wants to change the overall look (e.g. "make it look like cyberpunk"), use SET_THEME.
       - If the user wants to restructure the page (delete, reorder, replace), use UPDATE_LAYOUT.
+      - If the user wants to remember to do something (e.g. "remind me to write a blog post", "add task to check inventory"), use CREATE_TODO.
+      - If the user wants to save content for later or add to the library (e.g. "create a testimonial from Bob", "save this feature text"), use CREATE_CONTENT_PACKET.
       - Otherwise, use GENERAL_CHAT.
 
       Response Format (JSON ONLY):
@@ -103,8 +107,6 @@ export async function POST(req: Request) {
           "blocks": [ 
             { "type": "ComponentType", "props": { ... } } 
             // Return the COMPLETE list of blocks for the page. 
-            // If keeping an existing block, try to preserve its props if possible, or regenerate them if needed.
-            // IMPORTANT: Always include Header and Footer unless explicitly asked to remove them.
           ]
         }
       }
@@ -115,6 +117,25 @@ export async function POST(req: Request) {
         "data": {
           "theme": "simple" | "playful" | "elegant" | "dynamic" | "none",
           "colors": { "primary": "#...", "secondary": "#...", "accent": "#...", "background": "#...", "text": "#..." }
+        }
+      }
+
+      For CREATE_TODO:
+      {
+        "action": "CREATE_TODO",
+        "data": {
+          "title": "Short title",
+          "description": "Detailed description"
+        }
+      }
+
+      For CREATE_CONTENT_PACKET:
+      {
+        "action": "CREATE_CONTENT_PACKET",
+        "data": {
+          "type": "feature" | "testimonial" | "faq" | "text_block",
+          "name": "Internal Name",
+          "data": { ...content fields (title, description, author, quote, question, answer)... }
         }
       }
 

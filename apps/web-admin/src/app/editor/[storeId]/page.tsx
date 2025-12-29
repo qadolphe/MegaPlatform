@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
 import { CounterInput } from "@/components/ui/counter-input";
 import { PacketSelector } from "@/components/packet-selector";
+import { ProductPicker } from "@/components/product-picker";
 import { PacketEditorDialog } from "@/components/packet-editor-dialog";
 import { getPacketTypeForBlock, extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
 import Link from "next/link";
@@ -198,6 +199,46 @@ export default function EditorPage() {
                         await supabase.from("stores").update({ colors: result.data.colors }).eq("id", storeId);
                     }
                     assistantMessage = "I've updated the store theme and colors.";
+                    break;
+
+                case 'CREATE_TODO':
+                    if (result.data?.title) {
+                        try {
+                            const { error } = await supabase.from("planner_tasks").insert({
+                                store_id: storeId,
+                                title: result.data.title,
+                                description: result.data.description || "",
+                                status: 'todo'
+                            });
+                            if (error) throw error;
+                            assistantMessage = `I've added "${result.data.title}" to your planner.`;
+                        } catch (e) {
+                            console.error("Error creating todo:", e);
+                            assistantMessage = "I failed to create the task.";
+                        }
+                    }
+                    break;
+
+                case 'CREATE_CONTENT_PACKET':
+                    if (result.data?.type && result.data?.data) {
+                        try {
+                            const { error } = await supabase.from("content_packets").insert({
+                                store_id: storeId,
+                                type: result.data.type,
+                                name: result.data.name || "AI Generated Content",
+                                data: result.data.data
+                            });
+                            if (error) throw error;
+                            assistantMessage = "I've saved that content to your library.";
+                            // Refresh packets to show the new item immediately if needed
+                            refreshPackets();
+                        } catch (e) {
+                            console.error("Error creating packet:", e);
+                            assistantMessage = "I failed to save the content packet.";
+                        }
+                    } else {
+                        assistantMessage = "I couldn't create the content packet. Missing data.";
+                    }
                     break;
 
                 case 'GENERAL_CHAT':
@@ -837,16 +878,22 @@ export default function EditorPage() {
                                         }
 
                                         if (block.type === 'ProductGrid') {
-                                            const collectionId = block.props.collectionId || 'all';
-                                            let filtered = [];
-                                            if (collectionId === 'all') {
-                                                filtered = storeProducts;
+                                            if (block.props?.sourceType === 'manual' && Array.isArray(block.props?.productIds)) {
+                                                const selectedIds = block.props.productIds;
+                                                previewProps.products = storeProducts
+                                                    .filter(p => selectedIds.includes(p.id))
+                                                    .sort((a, b) => selectedIds.indexOf(a.id) - selectedIds.indexOf(b.id)); // Preserve order
                                             } else {
-                                                filtered = storeProducts.filter(p => p.collectionIds.includes(collectionId));
-                                            }
-
-                                            if (filtered.length > 0) {
-                                                previewProps.products = filtered.slice(0, 8);
+                                                const collectionId = block.props.collectionId || 'all';
+                                                let filtered = [];
+                                                if (collectionId === 'all') {
+                                                    filtered = storeProducts;
+                                                } else {
+                                                    filtered = storeProducts.filter(p => p.collectionIds.includes(collectionId));
+                                                }
+                                                if (filtered.length > 0) {
+                                                    previewProps.products = filtered.slice(0, 8);
+                                                }
                                             }
                                         }
 
@@ -1367,6 +1414,12 @@ export default function EditorPage() {
                                                                                                     <option key={c.id} value={c.id}>{c.title}</option>
                                                                                                 ))}
                                                                                             </select>
+                                                                                        ) : field.type === 'product-picker' ? (
+                                                                                            <ProductPicker
+                                                                                                storeId={storeId}
+                                                                                                selectedIds={selectedBlock.props[field.name] || []}
+                                                                                                onChange={(ids) => updateBlockProps(selectedBlock.id, { [field.name]: ids })}
+                                                                                            />
                                                                                         ) : field.type === 'select' ? (
                                                                                             <select
                                                                                                 className="w-full border border-slate-300 rounded-md p-2 text-sm"

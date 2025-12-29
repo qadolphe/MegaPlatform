@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, X, Sparkles, MessageSquare, HelpCircle, FileText, Image } from "lucide-react";
+import { Plus, X, Sparkles, MessageSquare, HelpCircle, FileText, Image, ArrowUp, ArrowDown } from "lucide-react";
 import { ContentPickerDialog } from "./content-picker-dialog";
 
 type ContentPacket = {
@@ -66,7 +66,9 @@ export function PacketSelector({
         onChange(selectedIds.filter((i) => i !== id));
     };
 
-    const selectedPackets = packets.filter((p) => selectedIds.includes(p.id));
+    const selectedPackets = packets
+        .filter((p) => selectedIds.includes(p.id))
+        .sort((a, b) => selectedIds.indexOf(a.id) - selectedIds.indexOf(b.id));
 
     const getPreviewText = (packet: ContentPacket) => {
         const data = packet.data;
@@ -103,15 +105,14 @@ export function PacketSelector({
                 </label>
             )}
 
-            {/* Selected Items */}
             {selectedPackets.length > 0 && (
                 <div className="space-y-1">
-                    {selectedPackets.map((packet) => {
+                    {selectedPackets.map((packet, index) => {
                         const Icon = PACKET_ICONS[packet.type as PacketType] || Sparkles;
                         return (
                             <div
                                 key={packet.id}
-                                className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-100 transition"
+                                className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-100 transition group"
                                 onClick={() => onEdit?.(packet.id)}
                             >
                                 <div className="flex items-center gap-2 min-w-0">
@@ -121,9 +122,40 @@ export function PacketSelector({
                                         {packet.type}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-1 flex-shrink-0">
+                                <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const newIds = [...selectedIds];
+                                            if (index > 0) {
+                                                [newIds[index], newIds[index - 1]] = [newIds[index - 1], newIds[index]];
+                                                onChange(newIds);
+                                            }
+                                        }}
+                                        disabled={index === 0}
+                                        className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 disabled:hover:text-slate-400"
+                                        title="Move Up"
+                                    >
+                                        <ArrowUp size={14} />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const newIds = [...selectedIds];
+                                            if (index < selectedIds.length - 1) {
+                                                [newIds[index], newIds[index + 1]] = [newIds[index + 1], newIds[index]];
+                                                onChange(newIds);
+                                            }
+                                        }}
+                                        disabled={index === selectedIds.length - 1}
+                                        className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 disabled:hover:text-slate-400"
+                                        title="Move Down"
+                                    >
+                                        <ArrowDown size={14} />
+                                    </button>
+                                    <div className="w-px h-3 bg-slate-300 mx-1"></div>
                                     {onEdit && (
-                                        <span className="text-[10px] text-slate-400 mr-1">edit</span>
+                                        <span className="text-[10px] text-slate-400 mr-1 hover:text-slate-600">edit</span>
                                     )}
                                     <button
                                         onClick={(e) => { e.stopPropagation(); removePacket(packet.id); }}

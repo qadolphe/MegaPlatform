@@ -104,12 +104,18 @@ export function LayoutRenderer({
 
                 // Inject products into ProductGrid
                 if (block.type === 'ProductGrid') {
-                    const colId = block.props?.collectionId || 'all';
-                    props = {
-                        ...props,
-                        products: productsMap[colId] || products,
-                        columns: block.props?.columns || 4,
-                    };
+                    if (block.props?.sourceType === 'manual' && Array.isArray(block.props?.productIds)) {
+                        const allProducts = productsMap['all'] || products;
+                        const selectedIds = block.props.productIds;
+                        // Map IDs to product objects and preserve order
+                        props.products = selectedIds
+                            .map((id: string) => allProducts.find((p: any) => p.id === id))
+                            .filter(Boolean);
+                    } else {
+                        const colId = block.props?.collectionId || 'all';
+                        props.products = productsMap[colId] || products;
+                    }
+                    props.columns = block.props?.columns || 4;
                 }
 
                 // Inject product data into ProductDetail

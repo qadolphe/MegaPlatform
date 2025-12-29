@@ -203,7 +203,18 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
     },
     fields: [
       { name: "title", type: "text", label: "Section Title", section: SECTIONS.CONTENT },
+      {
+        name: "sourceType",
+        type: "select",
+        label: "Source",
+        section: SECTIONS.CONTENT,
+        options: [
+          { label: "Collection", value: "collection" },
+          { label: "Manual Selection", value: "manual" }
+        ]
+      },
       { name: "collectionId", type: "collection-select", label: "Collection", section: SECTIONS.CONTENT },
+      { name: "productIds", type: "product-picker", label: "Select Products", section: SECTIONS.CONTENT },
       { name: "columns", type: "number", label: "Columns (2-6)", min: 1, section: SECTIONS.SETTINGS },
       {
         name: "layout",
