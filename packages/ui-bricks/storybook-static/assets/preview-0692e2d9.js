@@ -1,0 +1,1 @@
+import{j as a}from"./jsx-runtime-55d5bf0e.js";const o={parameters:{actions:{argTypesRegex:"^on[A-Z].*"},controls:{matchers:{color:/(background|color)$/i,date:/Date$/i}},backgrounds:{default:"light",values:[{name:"light",value:"#ffffff"},{name:"dark",value:"#1a1a1a"}]}},decorators:[e=>a("div",{className:"font-sans antialiased",children:a(e,{})})]};export{o as default};
