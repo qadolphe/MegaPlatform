@@ -1,30 +1,7 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid, InfoGrid, Header, Footer, TextContent, VideoGrid, ImageBox, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, Newsletter, UniversalGrid } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
-import { COMPONENT_DEFINITIONS } from "../../config/component-registry";
 import { extractPacketIds, fetchPackets, hydrateBlockWithPackets } from "../../lib/packet-hydration";
-
-// 1. The Registry: Map database strings to real Code
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const COMPONENT_REGISTRY: Record<string, any> = {
-  'Header': Header,
-  'Footer': Footer,
-  'Hero': Hero,
-  'ProductGrid': ProductGrid,
-  'BenefitsGrid': InfoGrid,
-  'InfoGrid': InfoGrid,
-  'TextContent': TextContent,
-  'VideoGrid': VideoGrid,
-  'ImageBox': ImageBox,
-  'Testimonials': Testimonials,
-  'FAQ': FAQ,
-  'Banner': Banner,
-  'LogoCloud': LogoCloud,
-  'Countdown': Countdown,
-  'Features': Features,
-  'Newsletter': Newsletter,
-  'UniversalGrid': UniversalGrid,
-};
+import { LayoutRenderer } from "../../components/layout-renderer";
 
 // Helper to parse the domain
 const getSubdomain = (host: string) => {
@@ -43,31 +20,6 @@ const getSubdomain = (host: string) => {
 
   // 3. Custom Domain (e.g. "bob-hoodies.com")
   return null; // It's a custom domain, return null to signal "use full host"
-};
-
-// Helper to replace missing local images with placeholders
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sanitizeProps = (props: any): any => {
-  if (!props) return props;
-  if (typeof props === 'string' && (props.startsWith('/images/') || props.startsWith('/'))) {
-    // Check if it looks like an image path
-    if (props.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      // Return a placeholder image from Unsplash
-      return 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80';
-    }
-  }
-  if (Array.isArray(props)) {
-    return props.map(sanitizeProps);
-  }
-  if (typeof props === 'object') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newProps: any = {};
-    for (const key in props) {
-      newProps[key] = sanitizeProps(props[key]);
-    }
-    return newProps;
-  }
-  return props;
 };
 
 export default async function DomainPage({
@@ -165,57 +117,16 @@ export default async function DomainPage({
   // 5. Hydrate Content Packets
   const packetIds = extractPacketIds(layout);
   const packetsMap = await fetchPackets(packetIds);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hydratedLayout = layout.map((block: any) => hydrateBlockWithPackets(block, packetsMap));
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        '--color-primary': colors.primary,
-        '--color-secondary': colors.secondary,
-        '--color-accent': colors.accent,
-        '--color-background': colors.background,
-        '--color-text': colors.text,
-        backgroundColor: colors.background,
-        color: colors.text
-      } as React.CSSProperties}
-    >
-      <style>{`
-        html, body {
-          background-color: ${colors.background};
-        }
-      `}</style>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {hydratedLayout.map((block: any, i: number) => {
-        const Component = COMPONENT_REGISTRY[block.type];
-        if (!Component) return null;
-
-        // Merge defaults to ensure new features propagate to existing sites
-        const def = COMPONENT_DEFINITIONS[block.type as keyof typeof COMPONENT_DEFINITIONS];
-        const defaultProps = def ? def.defaultProps : {};
-        let props = { ...defaultProps, ...block.props };
-
-        // Inject products if this is a ProductGrid
-        if (block.type === 'ProductGrid') {
-          const collectionId = props.collectionId || 'all';
-          props.products = productsMap[collectionId] || [];
-        }
-
-        // Inject showCart if this is a Header
-        if (block.type === 'Header') {
-          props.showCart = shouldShowCart;
-        }
-
-        // Inject Global Theme if requested
-        if (props.animationStyle === 'theme') {
-          props.animationStyle = (store as any).theme || 'simple';
-        }
-
-        // Sanitize props (fix images)
-        props = sanitizeProps(props);
-
-        return <Component key={block.id || i} {...props} />;
-      })}
-    </div>
+    <LayoutRenderer
+      layout={hydratedLayout}
+      colors={colors}
+      theme={(store as any).theme}
+      productsMap={productsMap}
+      showCart={shouldShowCart}
+    />
   );
 }

@@ -1,31 +1,7 @@
 import { supabase } from "@repo/database";
-import { Hero, ProductGrid, InfoGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, Newsletter, CustomerProfile } from "@repo/ui-bricks";
 import { notFound } from "next/navigation";
-import { COMPONENT_DEFINITIONS } from "../../../config/component-registry";
 import { extractPacketIds, fetchPackets, hydrateBlockWithPackets } from "@/lib/packet-hydration";
-
-// 1. The Registry: Map database strings to real Code
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const COMPONENT_REGISTRY: Record<string, any> = {
-  'Header': Header,
-  'Footer': Footer,
-  'Hero': Hero,
-  'ProductGrid': ProductGrid,
-  'BenefitsGrid': InfoGrid,
-  'InfoGrid': InfoGrid,
-  'ProductDetail': ProductDetail,
-  'TextContent': TextContent,
-  'VideoGrid': VideoGrid,
-  'ImageBox': ImageBox,
-  'Testimonials': Testimonials,
-  'FAQ': FAQ,
-  'Banner': Banner,
-  'LogoCloud': LogoCloud,
-  'Countdown': Countdown,
-  'Features': Features,
-  'Newsletter': Newsletter,
-  'CustomerProfile': CustomerProfile,
-};
+import { LayoutRenderer } from "@/components/layout-renderer";
 
 // Helper to parse the domain
 const getSubdomain = (host: string) => {
@@ -38,29 +14,6 @@ const getSubdomain = (host: string) => {
     return host.split(".")[0];
   }
   return null;
-};
-
-// Helper to replace missing local images with placeholders
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sanitizeProps = (props: any): any => {
-  if (!props) return props;
-  if (typeof props === 'string' && (props.startsWith('/images/') || props.startsWith('/'))) {
-    if (props.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      return 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80';
-    }
-  }
-  if (Array.isArray(props)) {
-    return props.map(sanitizeProps);
-  }
-  if (typeof props === 'object') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newProps: any = {};
-    for (const key in props) {
-      newProps[key] = sanitizeProps(props[key]);
-    }
-    return newProps;
-  }
-  return props;
 };
 
 export default async function DynamicPage({
@@ -115,6 +68,10 @@ export default async function DynamicPage({
   // 1. Try to find an explicit page record first (DB-backed page)
   const targetPage = pages.find(p => p.slug === targetSlug);
 
+  // We fetch if there is a ProductDetail block AND it doesn't have a valid product prop.
+  // This logic was previously mixed in the component body, let's extract the productDetailData here.
+  let productDetailData: any = null;
+
   if (targetPage) {
     layout = targetPage.layout_config || [];
 
@@ -132,11 +89,16 @@ export default async function DynamicPage({
           .single();
 
         if (product) {
-          // Inject product data into the block props for rendering
-          // We'll handle this injection in the render loop below by checking for 'productData'
-          // But since we map over layout later, let's just mutate/prepare a map or handle it there.
-          // Actually, let's just attach it to the block temporarily or use a separate map.
-          // Simpler: Just fetch it here and use it in the map loop.
+          // Populate the data to be passed to Renderer
+          productDetailData = {
+            id: product.id,
+            name: product.title,
+            description: product.description,
+            base_price: product.price,
+            image_url: product.images?.[0] || product.image_url,
+            slug: product.slug,
+            type: product.type
+          };
         }
       }
     }
@@ -164,17 +126,8 @@ export default async function DynamicPage({
       headerBlock,
       {
         type: 'ProductDetail',
-        props: {
-          product: {
-            id: product.id,
-            name: product.title,
-            description: product.description,
-            base_price: product.price,
-            image_url: product.images?.[0] || product.image_url,
-            slug: product.slug,
-            type: product.type
-          }
-        }
+        // We set empty product here, but pass productDetailData to renderer
+        props: {}
       },
       {
         type: 'ProductGrid',
@@ -182,6 +135,16 @@ export default async function DynamicPage({
       },
       footerBlock
     ];
+
+    productDetailData = {
+      id: product.id,
+      name: product.title,
+      description: product.description,
+      base_price: product.price,
+      image_url: product.images?.[0] || product.image_url,
+      slug: product.slug,
+      type: product.type
+    };
 
   } else {
     return notFound();
@@ -194,36 +157,6 @@ export default async function DynamicPage({
   // Fetch Products for Grids if needed
   const productGrids = layout.filter((b: any) => b.type === 'ProductGrid');
   const productsMap: Record<string, any[]> = {};
-
-  // Fetch Product Data for Detail if needed (and not already populated by dynamic generation)
-  // If we loaded from DB, the ProductDetail block might be empty.
-  let productDetailData: any = null;
-  const hasProductDetail = layout.some((b: any) => b.type === 'ProductDetail');
-  const productDetailBlock = layout.find((b: any) => b.type === 'ProductDetail');
-
-  // We fetch if there is a ProductDetail block AND it doesn't have a valid product prop.
-  if (hasProductDetail && (!productDetailBlock?.props?.product || !productDetailBlock.props.product.id)) {
-    if (slugArray.length === 2 && slugArray[0] === 'products') {
-      const productSlug = slugArray[1].toLowerCase();
-      const { data: product } = await supabase
-        .from("products")
-        .select("*")
-        .eq("store_id", store.id)
-        .eq("slug", productSlug)
-        .single();
-      if (product) {
-        productDetailData = {
-          id: product.id,
-          name: product.title,
-          description: product.description,
-          base_price: product.price,
-          image_url: product.images?.[0] || product.image_url,
-          slug: product.slug,
-          type: product.type
-        };
-      }
-    }
-  }
 
   for (const block of productGrids) {
     const collectionId = block.props.collectionId || 'all';
@@ -260,57 +193,17 @@ export default async function DynamicPage({
     }));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hydratedLayout = layout.map((block: any) => hydrateBlockWithPackets(block, packetsMap));
+
   return (
-    <main style={{
-      '--color-primary': (store as any).colors?.primary || '#000000',
-      '--color-secondary': (store as any).colors?.secondary || '#ffffff',
-      '--color-accent': (store as any).colors?.accent || '#3b82f6',
-      '--color-background': (store as any).colors?.background || '#ffffff',
-      '--color-text': (store as any).colors?.text || '#000000',
-      backgroundColor: 'var(--color-background)',
-      color: 'var(--color-text)',
-      minHeight: '100vh'
-    } as React.CSSProperties}>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {layout.map((block: any, index: number) => {
-        const Component = COMPONENT_REGISTRY[block.type];
-        if (!Component) return null;
-
-        // Hydrate block with packet data if it has packetIds
-        const hydratedBlock = hydrateBlockWithPackets(block, packetsMap);
-
-        // Merge defaults to ensure new features propagate to existing sites
-        const def = COMPONENT_DEFINITIONS[block.type as keyof typeof COMPONENT_DEFINITIONS];
-        const defaultProps = def ? def.defaultProps : {};
-        let props = sanitizeProps({ ...defaultProps, ...hydratedBlock.props });
-
-        // Inject real products into ProductGrid
-        if (block.type === 'ProductGrid') {
-          const colId = block.props.collectionId || 'all';
-          props = {
-            ...props,
-            products: productsMap[colId] || [],
-            columns: block.props.columns || 4
-          };
-        }
-
-        // Inject product data into ProductDetail if available from separate fetch
-        if (block.type === 'ProductDetail' && productDetailData) {
-          props = { ...props, product: productDetailData };
-        }
-
-        // Inject showCart if this is a Header
-        if (block.type === 'Header') {
-          props.showCart = shouldShowCart;
-        }
-
-        // Inject Global Theme if requested
-        if (props.animationStyle === 'theme') {
-          props.animationStyle = (store as any).theme || 'simple';
-        }
-
-        return <Component key={index} {...props} />;
-      })}
-    </main>
+    <LayoutRenderer
+      layout={hydratedLayout}
+      colors={(store as any).colors}
+      theme={(store as any).theme}
+      productsMap={productsMap}
+      productDetailData={productDetailData}
+      showCart={shouldShowCart}
+    />
   );
 }
