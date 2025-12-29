@@ -2,6 +2,7 @@
 
 import { Hero, ProductGrid, InfoGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, Newsletter, CustomerProfile, UniversalGrid } from "@repo/ui-bricks";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
+import { LayoutBlockSchema } from "@/lib/schemas/component-props";
 
 // Component Registry - must match storefront
 const COMPONENT_REGISTRY: Record<string, any> = {
@@ -94,12 +95,33 @@ export function LayoutRenderer({
             } as React.CSSProperties}
         >
             {layout.map((block, index) => {
+                // 1. Validate Block Structure
+                const validation = LayoutBlockSchema.safeParse(block);
+
+                if (!validation.success) {
+                    console.error(`[LayoutRenderer] Invalid Block ID ${block.id}:`, validation.error);
+                    // In development, show error. In prod, skip.
+                    if (process.env.NODE_ENV === 'development') {
+                        return (
+                            <div key={index} className="p-4 bg-red-50 border border-red-200 text-red-600 rounded m-4">
+                                <p className="font-bold">Invalid Block Component</p>
+                                <pre className="text-xs mt-2 overflow-auto bg-white p-2 rounded border border-red-100">
+                                    {JSON.stringify(validation.error.format(), null, 2)}
+                                </pre>
+                            </div>
+                        );
+                    }
+                    return null;
+                }
+
                 const Component = COMPONENT_REGISTRY[block.type];
                 if (!Component) return null;
 
                 // Merge defaults
                 const def = COMPONENT_DEFINITIONS[block.type as keyof typeof COMPONENT_DEFINITIONS];
                 const defaultProps = def ? def.defaultProps : {};
+
+                // Use the validated props (though we still need to sanitize image paths manually as that's not in schema)
                 let props = sanitizeProps({ ...defaultProps, ...block.props });
 
                 // Inject products into ProductGrid

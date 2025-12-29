@@ -14,6 +14,7 @@ import { PacketSelector } from "@/components/packet-selector";
 import { ProductPicker } from "@/components/product-picker";
 import { PacketEditorDialog } from "@/components/packet-editor-dialog";
 import { getPacketTypeForBlock, extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
+import { LayoutBlockSchema } from "@/lib/schemas/component-props";
 import Link from "next/link";
 
 // Mapping for rendering on the Canvas
@@ -563,6 +564,22 @@ export default function EditorPage() {
 
     // 2. Deploy function
     const handleDeploy = async () => {
+        // Validation
+        const invalidBlocks: any[] = [];
+        blocks.forEach(block => {
+            const result = LayoutBlockSchema.safeParse(block);
+            if (!result.success) {
+                console.error(`Invalid Block ${block.type}:`, result.error);
+                invalidBlocks.push({ id: block.id, type: block.type, error: result.error });
+            }
+        });
+
+        if (invalidBlocks.length > 0) {
+            console.warn("Deploy blocked due to invalid blocks:", invalidBlocks);
+            alert(`Cannot deploy: ${invalidBlocks.length} blocks have invalid data. Check console.`);
+            return;
+        }
+
         // 1. Save current page
         const { error } = await supabase
             .from("store_pages")
