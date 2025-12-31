@@ -34,6 +34,31 @@ export async function middleware(request: NextRequest) {
     isAdmin = false;
   }
 
+  // --- STOREFRONT ROUTES (handled first to avoid any admin logic) ---
+  if (!isAdmin) {
+    // It's a Storefront (Subdomain or Custom Domain)
+    // Don't apply any auth - storefronts are public!
+
+    // Redirect /login to the main admin login (helpful if users try to access admin from storefront)
+    if (url.pathname === '/login') {
+      const targetDomain = process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'swatbloc.com';
+      const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+      return NextResponse.redirect(new URL(`${protocol}://${targetDomain}/login`, request.url));
+    }
+
+    // Don't rewrite API routes - let them be handled by the global API handlers
+    if (url.pathname.startsWith('/api')) {
+        return NextResponse.next();
+    }
+
+    // Rewrite to the dynamic [domain] route - storefronts are PUBLIC, no auth!
+    const response = NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
+    response.headers.set('x-debug-hostname', hostname);
+    response.headers.set('x-debug-is-admin', 'false');
+    return response;
+  }
+
+  // --- ADMIN ROUTES ---
   if (isAdmin) {
     // 1. Check for Preview Mode Cookie
     const previewCookie = request.cookies.get("x-preview-store");
@@ -70,26 +95,8 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // It's a Storefront (Subdomain or Custom Domain)
-
-  // Redirect /login to the main admin login (helpful if users try to access admin from storefront)
-  if (url.pathname === '/login') {
-    // Use the appropriate protocol and domain
-    const targetDomain = process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'swatbloc.com';
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    return NextResponse.redirect(new URL(`${protocol}://${targetDomain}/login`, request.url));
-  }
-
-  // Don't rewrite API routes - let them be handled by the global API handlers
-  if (url.pathname.startsWith('/api')) {
-      return NextResponse.next();
-  }
-
-  // Rewrite to the dynamic route
-  const response = NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
-  response.headers.set('x-debug-hostname', hostname);
-  response.headers.set('x-debug-is-admin', 'false');
-  return response;
+  // Fallback - should not reach here, but return next() just in case
+  return NextResponse.next();
 }
 
 export const config = {
