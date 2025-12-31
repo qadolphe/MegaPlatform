@@ -121,12 +121,19 @@ export default async function DomainPage({
   const hydratedLayout = layout.map((block: any) => hydrateBlockWithPackets(block, packetsMap));
 
   return (
-    <LayoutRenderer
-      layout={hydratedLayout}
-      colors={colors}
-      theme={(store as any).theme}
-      productsMap={productsMap}
-      showCart={shouldShowCart}
-    />
+    <>
+      <style>{`
+        html, body {
+          background-color: ${colors.background};
+        }
+      `}</style>
+      <LayoutRenderer
+        layout={hydratedLayout}
+        colors={colors}
+        theme={(store as any).theme}
+        productsMap={productsMap}
+        showCart={shouldShowCart}
+      />
+    </>
   );
 }

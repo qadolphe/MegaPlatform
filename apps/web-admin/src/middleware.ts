@@ -34,11 +34,7 @@ export async function middleware(request: NextRequest) {
     isAdmin = false;
   }
 
-  // --- STOREFRONT ROUTES (handled first to avoid any admin logic) ---
   if (!isAdmin) {
-    // It's a Storefront (Subdomain or Custom Domain)
-    // Don't apply any auth - storefronts are public!
-
     // Redirect /login to the main admin login (helpful if users try to access admin from storefront)
     if (url.pathname === '/login') {
       const targetDomain = process.env.NODE_ENV === 'development' ? 'localhost:3000' : 'swatbloc.com';
@@ -46,7 +42,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`${protocol}://${targetDomain}/login`, request.url));
     }
 
-    // Don't rewrite API routes - let them be handled by the global API handlers
     if (url.pathname.startsWith('/api')) {
         return NextResponse.next();
     }

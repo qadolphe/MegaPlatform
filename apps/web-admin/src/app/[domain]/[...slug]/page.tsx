@@ -196,14 +196,30 @@ export default async function DynamicPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hydratedLayout = layout.map((block: any) => hydrateBlockWithPackets(block, packetsMap));
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const colors = (store as any).colors || {
+    primary: "#000000",
+    secondary: "#ffffff",
+    accent: "#3b82f6",
+    background: "#ffffff",
+    text: "#000000"
+  };
+
   return (
-    <LayoutRenderer
-      layout={hydratedLayout}
-      colors={(store as any).colors}
-      theme={(store as any).theme}
-      productsMap={productsMap}
-      productDetailData={productDetailData}
-      showCart={shouldShowCart}
-    />
+    <>
+      <style>{`
+        html, body {
+          background-color: ${colors.background};
+        }
+      `}</style>
+      <LayoutRenderer
+        layout={hydratedLayout}
+        colors={colors}
+        theme={(store as any).theme}
+        productsMap={productsMap}
+        productDetailData={productDetailData}
+        showCart={shouldShowCart}
+      />
+    </>
   );
 }
