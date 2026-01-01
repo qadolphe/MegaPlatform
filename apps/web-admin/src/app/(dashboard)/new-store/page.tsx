@@ -1,156 +1,134 @@
 "use client";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Store, Globe } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Wand2 } from "lucide-react";
 import Link from "next/link";
 
 export default function CreateStore() {
-  const [name, setName] = useState("");
-  const [subdomain, setSubdomain] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
-  const supabase = createClient();
 
   const handleCreate = async () => {
-    if (!name || !subdomain) return alert("Please fill in all fields");
+    if (!prompt.trim()) {
+      setError("Please describe what you want to sell");
+      return;
+    }
+
     setLoading(true);
+    setError("");
 
-    // 1. Get the current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      setLoading(false);
-      return alert("You must be logged in!");
-    }
+    try {
+      const response = await fetch('/api/ai/build-store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
 
-    // 2. Create the Store
-    const { data: store, error } = await supabase
-      .from("stores")
-      .insert({ name, subdomain, owner_id: user.id })
-      .select()
-      .single();
-
-    if (error) {
-      setLoading(false);
-      return alert(error.message);
-    }
-
-    // 3. Create the default "Home" page with a default Hero
-    const defaultLayout = [
-      { 
-        id: crypto.randomUUID(),
-        type: "Header", 
-        props: { 
-          title: name, 
-          links: [
-            { label: "Home", href: "/" }, 
-            { label: "Shop", href: "/shop" }
-          ] 
-        } 
-      },
-      {
-        id: crypto.randomUUID(),
-        type: "Hero",
-        props: { title: `Welcome to ${name}!` }
-      },
-      {
-        id: crypto.randomUUID(),
-        type: "ProductGrid",
-        props: { 
-          title: "Featured Products",
-          products: [
-            { id: 1, title: "Cool Hoodie", price: 4999 },
-            { id: 2, title: "Awesome Cap", price: 2499 },
-            { id: 3, title: "Graphic Tee", price: 2999 }
-          ]
-        }
-      },
-      { 
-        id: crypto.randomUUID(),
-        type: "Footer", 
-        props: { copyright: `© ${new Date().getFullYear()} ${name}` } 
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create store");
       }
-    ];
 
-    await supabase.from("store_pages").insert({
-      store_id: store.id,
-      slug: "home",
-      layout_config: defaultLayout,
-      published: true,
-      is_home: true
-    });
+      const { storeId, storeName } = await response.json();
 
-    setLoading(false);
-    router.push("/"); // Redirect to dashboard
+      // Redirect to editor
+      router.push(`/editor/${storeId}?slug=home`);
+    } catch (e) {
+      console.error("Store creation error:", e);
+      setError(e instanceof Error ? e.message : "Something went wrong");
+      setLoading(false);
+    }
   };
 
+  const suggestions = [
+    "I want to sell handmade jewelry",
+    "Create a streetwear clothing store",
+    "Build a gourmet coffee shop",
+    "Start a vintage furniture store",
+    "Launch a plant and garden shop"
+  ];
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <Link href="/" className="flex items-center text-gray-500 hover:text-gray-900 mb-6 transition-colors">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Dashboard
-      </Link>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full">
+        <Link href="/" className="flex items-center text-purple-300 hover:text-white mb-8 transition-colors">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Link>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Create a New Store</h1>
-          <p className="text-gray-500 mt-1">Launch a new storefront in seconds.</p>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 mb-6 shadow-lg shadow-purple-500/30">
+            <Wand2 className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            What do you want to sell?
+          </h1>
+          <p className="text-purple-200 text-lg">
+            Describe your vision and we'll build your entire store in seconds
+          </p>
         </div>
 
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Store Name
-            </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Store className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="block w-full rounded-md border-gray-300 pl-10 focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border"
-                placeholder="e.g. Bob's Hoodies"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subdomain
-            </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Globe className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="block w-full rounded-md border-gray-300 pl-10 focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border"
-                placeholder="e.g. bob-hoodies"
-                value={subdomain}
-                onChange={(e) => setSubdomain(e.target.value)}
-              />
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                <span className="text-gray-500 sm:text-sm">.hoodieplatform.com</span>
-              </div>
-            </div>
-            <p className="mt-2 text-sm text-gray-500">
-              This will be your store's temporary URL. You can add a custom domain later.
-            </p>
-          </div>
-
-          <div className="pt-4">
-            <button
-              onClick={handleCreate}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 shadow-2xl">
+          <div className="relative">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !loading) {
+                  e.preventDefault();
+                  handleCreate();
+                }
+              }}
+              placeholder="I want to sell handmade jewelry for young professionals..."
+              className="w-full h-32 p-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300/60 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-lg"
               disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? "Creating Store..." : "Launch Store"}
-            </button>
+            />
+
+            {error && (
+              <p className="mt-2 text-red-400 text-sm">{error}</p>
+            )}
+          </div>
+
+          <button
+            onClick={handleCreate}
+            disabled={loading || !prompt.trim()}
+            className="w-full mt-6 py-4 px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Building your store with AI...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-5 w-5" />
+                Build My Store
+              </>
+            )}
+          </button>
+
+          <div className="mt-8">
+            <p className="text-purple-300/60 text-sm mb-3">Try one of these:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => setPrompt(suggestion)}
+                  disabled={loading}
+                  className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-purple-200 text-sm transition-colors disabled:opacity-50"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
+        <p className="text-center text-purple-300/40 text-sm mt-8">
+          AI will generate your store name, products, theme, and complete homepage
+        </p>
       </div>
     </div>
   );

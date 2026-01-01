@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, UniversalGrid } from "@repo/ui-bricks"; // Import real components
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS, COMPONENT_CATEGORIES } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard, Sparkles, Wand2, Loader2, Bot } from "lucide-react";
+import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard, Sparkles, Wand2, Loader2, Bot, Wrench } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MediaManager } from "@/components/media-manager";
 import { CounterInput } from "@/components/ui/counter-input";
@@ -54,7 +54,8 @@ export default function EditorPage() {
     const [pageName, setPageName] = useState("");
     const [storeTheme, setStoreTheme] = useState("simple");
     const [availablePages, setAvailablePages] = useState<{ name: string, slug: string }[]>([]);
-    const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media' | 'properties' | 'theme' | 'ai'>('components');
+    const [activeSidebarTab, setActiveSidebarTab] = useState<'components' | 'media' | 'properties' | 'theme' | 'ai'>('ai');
+    const [editorMode, setEditorMode] = useState<'ai' | 'advanced'>('ai');
     const [mediaPreview, setMediaPreview] = useState<{ name: string, url: string }[]>([]);
     const [isMediaManagerOpen, setIsMediaManagerOpen] = useState(false);
     const [activePropName, setActivePropName] = useState<string | null>(null);
@@ -92,14 +93,13 @@ export default function EditorPage() {
     const [chatInput, setChatInput] = useState("");
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [selectedAiProvider, setSelectedAiProvider] = useState<'gemini' | 'openai' | 'anthropic'>('gemini');
-    const [selectedAiModel, setSelectedAiModel] = useState<string>('gemini-2.0-flash');
+    const [selectedAiModel, setSelectedAiModel] = useState<string>('gemini-3-flash-preview');
 
     // Available models per provider
     const AI_MODELS = {
         gemini: [
-            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+            { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (preview)' },
+            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (preview)' },
         ],
         openai: [
             { id: 'gpt-4o', name: 'GPT-4o' },
@@ -239,6 +239,79 @@ export default function EditorPage() {
                         }
                     } else {
                         assistantMessage = "I couldn't create the content packet. Missing data.";
+                    }
+                    break;
+
+                case 'BUILD_PAGE':
+                    if (result.data?.blocks && Array.isArray(result.data.blocks)) {
+                        // Set theme if provided
+                        if (result.data.theme) {
+                            setStoreTheme(result.data.theme);
+                            await supabase.from("stores").update({ theme: result.data.theme }).eq("id", storeId);
+                        }
+                        // Set colors if provided
+                        if (result.data.colors) {
+                            setStoreColors(result.data.colors, true);
+                            await supabase.from("stores").update({ colors: result.data.colors }).eq("id", storeId);
+                        }
+                        // Set blocks
+                        const newBlocks = result.data.blocks.map((b: any) => ({
+                            ...b,
+                            id: crypto.randomUUID()
+                        }));
+                        setBlocks(newBlocks);
+                        assistantMessage = "🎉 I've built your page! I set the theme, colors, and created a complete layout with all the sections. Take a look at the preview!";
+                    } else {
+                        assistantMessage = "I couldn't generate the page layout.";
+                    }
+                    break;
+
+                case 'CREATE_PRODUCTS':
+                    if (result.data?.products && Array.isArray(result.data.products)) {
+                        try {
+                            const productsToInsert = result.data.products.map((p: any) => ({
+                                store_id: storeId,
+                                title: p.title,
+                                description: p.description || "",
+                                price: p.price || 0,
+                                images: p.images || [],
+                                slug: p.slug || p.title.toLowerCase().replace(/\s+/g, '-'),
+                                published: true
+                            }));
+
+                            const { data: insertedProducts, error } = await supabase
+                                .from("products")
+                                .insert(productsToInsert)
+                                .select();
+
+                            if (error) throw error;
+
+                            // Refresh products list
+                            const { data: productsData } = await supabase
+                                .from("products")
+                                .select("*, product_collections(collection_id)")
+                                .eq("store_id", storeId)
+                                .eq("published", true);
+
+                            if (productsData) {
+                                setStoreProducts(productsData.map((p: any) => ({
+                                    id: p.id,
+                                    name: p.title,
+                                    description: p.description,
+                                    base_price: p.price,
+                                    image_url: p.images?.[0] || p.image_url,
+                                    slug: p.slug,
+                                    collectionIds: p.product_collections?.map((pc: any) => pc.collection_id) || []
+                                })));
+                            }
+
+                            assistantMessage = `✨ I've created ${result.data.products.length} products for your store! You can see them in the Products section or add a Product Grid to your page.`;
+                        } catch (e) {
+                            console.error("Error creating products:", e);
+                            assistantMessage = "I failed to create the products.";
+                        }
+                    } else {
+                        assistantMessage = "I couldn't generate the products.";
                     }
                     break;
 
@@ -791,6 +864,32 @@ export default function EditorPage() {
                         </button>
                     </div>
                     <div className="h-6 w-px bg-slate-700 mx-2"></div>
+                    {/* AI Mode / Advanced Toggle */}
+                    <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                        <button
+                            onClick={() => {
+                                setEditorMode('ai');
+                                setActiveSidebarTab('ai');
+                            }}
+                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded transition text-xs font-medium ${editorMode === 'ai' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                            title="AI Mode"
+                        >
+                            <Sparkles size={14} />
+                            <span className="hidden lg:inline">AI Mode</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                setEditorMode('advanced');
+                                setActiveSidebarTab('components');
+                            }}
+                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded transition text-xs font-medium ${editorMode === 'advanced' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                            title="Advanced Tweaks"
+                        >
+                            <Wrench size={14} />
+                            <span className="hidden lg:inline">Advanced</span>
+                        </button>
+                    </div>
+                    <div className="h-6 w-px bg-slate-700 mx-2"></div>
                     <a
                         href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${storeSubdomain}` : `//${storeSubdomain}.${baseDomain}`}
                         target="_blank"
@@ -1014,37 +1113,52 @@ export default function EditorPage() {
 
                 {/* --- RIGHT: SIDEBAR (Floating Card) --- */}
                 <div
-                    className="bg-white border border-slate-200 flex flex-col shadow-xl z-40 w-80 m-4 rounded-xl overflow-hidden"
+                    className={`bg-white border border-slate-200 flex flex-col shadow-xl z-40 m-4 rounded-xl overflow-hidden transition-all duration-300 ${editorMode === 'ai' ? 'w-96' : 'w-80'}`}
                 >
-                    {/* Tabs */}
+                    {/* Tabs - Show different tabs based on editor mode */}
                     <div className="flex border-b border-slate-200">
+                        {editorMode === 'advanced' && (
+                            <>
+                                <button
+                                    onClick={() => setActiveSidebarTab('components')}
+                                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'components' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                                    title="Components"
+                                >
+                                    <Layers size={20} />
+                                    {activeSidebarTab === 'components' && (
+                                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setActiveSidebarTab('properties')}
+                                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'properties' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                                    title="Properties"
+                                >
+                                    <Settings size={20} />
+                                    {activeSidebarTab === 'properties' && (
+                                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setActiveSidebarTab('media')}
+                                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'media' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                                    title="Media"
+                                >
+                                    <ImageIcon size={20} />
+                                    {activeSidebarTab === 'media' && (
+                                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
+                                    )}
+                                </button>
+                            </>
+                        )}
                         <button
-                            onClick={() => setActiveSidebarTab('components')}
-                            className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'components' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                            title="Components"
+                            onClick={() => setActiveSidebarTab('ai')}
+                            className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'ai' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                            title="AI Assistant"
                         >
-                            <Layers size={20} />
-                            {activeSidebarTab === 'components' && (
-                                <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveSidebarTab('properties')}
-                            className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'properties' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                            title="Properties"
-                        >
-                            <Settings size={20} />
-                            {activeSidebarTab === 'properties' && (
-                                <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveSidebarTab('media')}
-                            className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'media' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                            title="Media"
-                        >
-                            <ImageIcon size={20} />
-                            {activeSidebarTab === 'media' && (
+                            <Bot size={20} />
+                            {editorMode === 'ai' && <span className="ml-2 text-sm font-medium">AI Assistant</span>}
+                            {activeSidebarTab === 'ai' && (
                                 <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
                             )}
                         </button>
@@ -1054,17 +1168,8 @@ export default function EditorPage() {
                             title="Theme"
                         >
                             <Palette size={20} />
+                            {editorMode === 'ai' && <span className="ml-2 text-sm font-medium">Theme</span>}
                             {activeSidebarTab === 'theme' && (
-                                <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveSidebarTab('ai')}
-                            className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'ai' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                            title="AI Assistant"
-                        >
-                            <Bot size={20} />
-                            {activeSidebarTab === 'ai' && (
                                 <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
                             )}
                         </button>

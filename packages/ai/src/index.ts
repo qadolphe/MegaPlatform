@@ -16,6 +16,8 @@ export interface ChatMessage {
   content: string;
 }
 
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
+
 // Provider Clients
 const geminiApiKey = process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(geminiApiKey);
@@ -29,11 +31,8 @@ const anthropic = anthropicApiKey ? new Anthropic({ apiKey: anthropicApiKey }) :
 // Available Models
 export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string; description: string }[]> = {
   gemini: [
-    { id: 'gemini-3.0-pro', name: 'Gemini 3.0 Pro', description: 'Next generation reasoning and capability' },
-    { id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', description: 'Next generation speed and efficiency' },
-    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', description: 'Fastest and most capable preview model' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Advanced reasoning and long context' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast and efficient for high-volume tasks' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (preview)', description: 'Preview reasoning/capability model' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (preview)', description: 'Preview fast/efficient model' },
   ],
   openai: [
     { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable OpenAI model' },
@@ -48,7 +47,7 @@ export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string; de
 };
 
 // Default Models
-export const aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+export const aiModel = genAI.getGenerativeModel({ model: DEFAULT_GEMINI_MODEL });
 export const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
 export async function generateEmbedding(text: string) {
@@ -56,16 +55,40 @@ export async function generateEmbedding(text: string) {
   return result.embedding.values;
 }
 
+function normalizeGeminiModel(model: string): string {
+  // Map stale/invalid IDs to known-good models.
+  // This prevents old UIs or stored preferences from hard-failing.
+  switch (model) {
+    case "gemini-3.0-pro":
+    case "gemini-1.5-pro":
+      return "gemini-3-pro-preview";
+    case "gemini-3.0-flash":
+    case "gemini-2.0-flash":
+    case "gemini-2.0-flash-exp":
+    case "gemini-1.5-flash":
+    case "gemini-flash-latest":
+      return "gemini-3-flash-preview";
+    default:
+      return model || DEFAULT_GEMINI_MODEL;
+  }
+}
+
+function isGeminiNotFoundError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /404|not found|NOT_FOUND|not supported/i.test(message);
+}
+
 // Unified Chat Function
 export async function chat(
   messages: ChatMessage[],
-  config: AIModelConfig = { provider: 'gemini', model: 'gemini-2.0-flash' }
+  config: AIModelConfig = { provider: 'gemini', model: DEFAULT_GEMINI_MODEL }
 ): Promise<string> {
   const { provider, model, temperature = 0.7 } = config;
 
   switch (provider) {
     case 'gemini': {
-      const geminiModel = genAI.getGenerativeModel({ model });
+      const desiredModel = normalizeGeminiModel(model);
+      let geminiModel = genAI.getGenerativeModel({ model: desiredModel });
       const systemMessage = messages.find(m => m.role === 'system')?.content || '';
       const chatHistory = messages
         .filter(m => m.role !== 'system')
@@ -78,11 +101,24 @@ export async function chat(
       const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
       const fullPrompt = systemMessage ? `${systemMessage}\n\n${lastUserMessage}` : lastUserMessage;
       
-      const result = await geminiModel.generateContent({
-        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-        generationConfig: { temperature }
-      });
-      return result.response.text();
+      try {
+        const result = await geminiModel.generateContent({
+          contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+          generationConfig: { temperature }
+        });
+        return result.response.text();
+      } catch (err) {
+        // One-shot fallback for keys without access to a preview model.
+        if (desiredModel !== "gemini-3-flash-preview" && isGeminiNotFoundError(err)) {
+          geminiModel = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+          const result = await geminiModel.generateContent({
+            contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+            generationConfig: { temperature }
+          });
+          return result.response.text();
+        }
+        throw err;
+      }
     }
 
     case 'openai': {

@@ -20,7 +20,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+    });
 
     // Prepare a summary of available components and their schemas
     const componentsContext = Object.entries(COMPONENT_DEFINITIONS).map(([key, def]) => {
