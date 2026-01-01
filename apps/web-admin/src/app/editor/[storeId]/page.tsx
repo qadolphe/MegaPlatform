@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, UniversalGrid } from "@repo/ui-bricks"; // Import real components
+import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, UniversalGrid, PricingTable, StatsSection, CallToAction, Divider, Spacer, Gallery, Accordion, Tabs, Timeline, TeamGrid, ContactForm, ComparisonTable } from "@repo/ui-bricks";
 import { useEditorStore } from "@/lib/store/editor-store";
 import { COMPONENT_DEFINITIONS, COMPONENT_CATEGORIES } from "@/config/component-registry";
 import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard, Sparkles, Wand2, Loader2, Bot, Wrench } from "lucide-react";
@@ -37,7 +37,19 @@ const RENDER_MAP: Record<string, any> = {
     LogoCloud,
     Countdown,
     Features,
-    UniversalGrid
+    UniversalGrid,
+    PricingTable,
+    StatsSection,
+    CallToAction,
+    Divider,
+    Spacer,
+    Gallery,
+    Accordion,
+    Tabs,
+    Timeline,
+    TeamGrid,
+    ContactForm,
+    ComparisonTable
 };
 
 export default function EditorPage() {
@@ -78,6 +90,12 @@ export default function EditorPage() {
     const [storeSubdomain, setStoreSubdomain] = useState<string>("");
     const [deploySuccess, setDeploySuccess] = useState(false);
     const [colorsExpanded, setColorsExpanded] = useState(false);
+
+    // Media Generation State
+    const [mediaGenPrompt, setMediaGenPrompt] = useState("");
+    const [mediaGenModel, setMediaGenModel] = useState("gemini-2.5-flash-image");
+    const [mediaGenLoading, setMediaGenLoading] = useState(false);
+    const [mediaGenResult, setMediaGenResult] = useState<{ url: string; type: string } | null>(null);
     const [packetsMap, setPacketsMap] = useState<Map<string, ContentPacket>>(new Map());
     const [hydratedBlocks, setHydratedBlocks] = useState<any[]>([]);
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -111,6 +129,54 @@ export default function EditorPage() {
             { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
             { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
         ]
+    };
+
+    // Media Generation Handler
+    const handleGenerateMedia = async () => {
+        if (!mediaGenPrompt.trim() || mediaGenLoading) return;
+
+        setMediaGenLoading(true);
+        setMediaGenResult(null);
+
+        try {
+            const response = await fetch('/api/ai/generate-media', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: mediaGenPrompt,
+                    model: mediaGenModel,
+                    storeId
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Generation failed');
+            }
+
+            const result = await response.json();
+
+            if (result.status === 'complete') {
+                setMediaGenResult({ url: result.url, type: result.type });
+                // Refresh media list
+                const { data: files } = await supabase.storage.from('media').list(`stores/${storeId}`, { limit: 100 });
+                if (files) {
+                    const urls = files.filter(f => !f.name.startsWith('.')).map(f => ({
+                        name: f.name,
+                        url: supabase.storage.from('media').getPublicUrl(`stores/${storeId}/${f.name}`).data.publicUrl
+                    }));
+                    setMediaPreview(urls);
+                }
+            } else if (result.status === 'processing') {
+                // Video is processing, show message
+                setMediaGenResult({ url: '', type: 'processing' });
+            }
+        } catch (error) {
+            console.error('Media generation error:', error);
+            alert(error instanceof Error ? error.message : 'Generation failed');
+        } finally {
+            setMediaGenLoading(false);
+        }
     };
 
     const handleAiChat = async (e?: React.FormEvent) => {
@@ -1436,6 +1502,70 @@ export default function EditorPage() {
                                         >
                                             <LayoutDashboard size={16} /> Sync
                                         </button>
+                                    </div>
+
+                                    {/* AI Media Generation */}
+                                    <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200/50">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Sparkles size={16} className="text-purple-600" />
+                                            <span className="text-sm font-semibold text-purple-900">AI Generate</span>
+                                        </div>
+
+                                        <select
+                                            value={mediaGenModel}
+                                            onChange={(e) => setMediaGenModel(e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-2"
+                                            disabled={mediaGenLoading}
+                                        >
+                                            <option value="gemini-2.5-flash-image">🖼️ Gemini 2.5 Flash (Fast)</option>
+                                            <option value="gemini-3-pro-image-preview">🖼️ Gemini 3 Pro (Quality)</option>
+                                            <option value="veo-3.1-generate-preview">🎬 Veo 3.1 (Video)</option>
+                                        </select>
+
+                                        <textarea
+                                            value={mediaGenPrompt}
+                                            onChange={(e) => setMediaGenPrompt(e.target.value)}
+                                            placeholder="Describe the image or video you want to generate..."
+                                            className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg resize-none h-20 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            disabled={mediaGenLoading}
+                                        />
+
+                                        <button
+                                            onClick={handleGenerateMedia}
+                                            disabled={mediaGenLoading || !mediaGenPrompt.trim()}
+                                            className="w-full mt-2 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:from-purple-500 hover:to-blue-500 transition disabled:opacity-50"
+                                        >
+                                            {mediaGenLoading ? (
+                                                <>
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                    Generating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Wand2 size={14} />
+                                                    Generate
+                                                </>
+                                            )}
+                                        </button>
+
+                                        {mediaGenResult && mediaGenResult.type !== 'processing' && (
+                                            <div className="mt-3 p-2 bg-white rounded-lg border border-green-200">
+                                                <img src={mediaGenResult.url} alt="Generated" className="w-full rounded" />
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(mediaGenResult.url)}
+                                                    className="w-full mt-2 py-1.5 bg-green-50 text-green-700 rounded text-xs font-medium hover:bg-green-100 transition"
+                                                >
+                                                    Copy URL
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {mediaGenResult?.type === 'processing' && (
+                                            <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+                                                <Loader2 size={14} className="animate-spin" />
+                                                Video is processing... Check back soon.
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2">

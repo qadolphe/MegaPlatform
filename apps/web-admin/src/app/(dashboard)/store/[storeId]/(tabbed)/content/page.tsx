@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload } from "lucide-react";
+import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload, Wand2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ContentPacket = {
@@ -32,6 +32,12 @@ const DEFAULT_DATA: Record<PacketType, any> = {
     media: { url: "", alt: "", caption: "", mediaType: "image" },
 };
 
+const AI_MEDIA_MODELS = [
+    { id: 'gemini-2.5-flash-image', name: '🖼️ Gemini 2.5 Flash (Fast)', type: 'image' },
+    { id: 'gemini-3-pro-image-preview', name: '🖼️ Gemini 3 Pro (Quality)', type: 'image' },
+    { id: 'veo-3.1-generate-preview', name: '🎬 Veo 3.1 (Video)', type: 'video' },
+];
+
 export default function ContentManagerPage() {
     const params = useParams();
     const storeId = params.storeId as string;
@@ -46,6 +52,12 @@ export default function ContentManagerPage() {
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClient();
+
+    // AI Media Generation State
+    const [aiGenPrompt, setAiGenPrompt] = useState("");
+    const [aiGenModel, setAiGenModel] = useState("gemini-2.5-flash-image");
+    const [aiGenLoading, setAiGenLoading] = useState(false);
+    const [aiGenResult, setAiGenResult] = useState<{ url: string; type: string } | null>(null);
 
     useEffect(() => {
         fetchPackets();
@@ -168,6 +180,62 @@ export default function ContentManagerPage() {
     const startEditing = (packet: ContentPacket) => {
         setEditingId(packet.id);
         setEditData({ ...packet.data });
+    };
+
+    // AI Media Generation Handler
+    const handleAiGenerate = async () => {
+        if (!aiGenPrompt.trim() || aiGenLoading) return;
+
+        setAiGenLoading(true);
+        setAiGenResult(null);
+
+        try {
+            const response = await fetch('/api/ai/generate-media', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: aiGenPrompt,
+                    model: aiGenModel,
+                    storeId
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Generation failed');
+            }
+
+            const result = await response.json();
+
+            if (result.status === 'complete') {
+                setAiGenResult({ url: result.url, type: result.type });
+
+                // Auto-create media packet
+                const modelInfo = AI_MEDIA_MODELS.find(m => m.id === aiGenModel);
+                await supabase.from("content_packets").insert({
+                    store_id: storeId,
+                    type: "media",
+                    name: `AI Generated - ${aiGenPrompt.slice(0, 30)}...`,
+                    data: {
+                        url: result.url,
+                        mediaType: result.type,
+                        alt: aiGenPrompt,
+                        caption: `Generated with ${modelInfo?.name}`,
+                        source: 'ai_generated'
+                    }
+                });
+
+                fetchPackets(); // Refresh
+                setAiGenPrompt("");
+            } else if (result.status === 'processing') {
+                setAiGenResult({ url: '', type: 'processing' });
+            }
+        } catch (error) {
+            console.error('AI generation error:', error);
+            alert(error instanceof Error ? error.message : 'Generation failed');
+        } finally {
+            setAiGenLoading(false);
+        }
     };
 
     // Handle media file upload
@@ -435,6 +503,76 @@ export default function ContentManagerPage() {
                 accept="image/*,video/*"
                 onChange={handleFileSelect}
             />
+
+            {/* AI Media Generation - only show for Media tab */}
+            {activeType === "media" && (
+                <div className="mb-6 p-5 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200/50">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Wand2 size={20} className="text-purple-600" />
+                        <h3 className="font-semibold text-purple-900">AI Generate Media</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <select
+                                value={aiGenModel}
+                                onChange={(e) => setAiGenModel(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                disabled={aiGenLoading}
+                            >
+                                {AI_MEDIA_MODELS.map(model => (
+                                    <option key={model.id} value={model.id}>{model.name}</option>
+                                ))}
+                            </select>
+
+                            <textarea
+                                value={aiGenPrompt}
+                                onChange={(e) => setAiGenPrompt(e.target.value)}
+                                placeholder="Describe the image or video you want to generate..."
+                                className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg resize-none h-24 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                disabled={aiGenLoading}
+                            />
+
+                            <button
+                                onClick={handleAiGenerate}
+                                disabled={aiGenLoading || !aiGenPrompt.trim()}
+                                className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:from-purple-500 hover:to-blue-500 transition disabled:opacity-50"
+                            >
+                                {aiGenLoading ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles size={16} />
+                                        Generate with AI
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        <div className="flex items-center justify-center">
+                            {aiGenResult && aiGenResult.type !== 'processing' ? (
+                                <div className="w-full space-y-2">
+                                    <img src={aiGenResult.url} alt="Generated" className="w-full h-32 object-cover rounded-lg" />
+                                    <p className="text-xs text-center text-green-600 font-medium">✓ Added to your media library</p>
+                                </div>
+                            ) : aiGenResult?.type === 'processing' ? (
+                                <div className="text-center p-4">
+                                    <Loader2 size={24} className="animate-spin text-purple-600 mx-auto mb-2" />
+                                    <p className="text-sm text-purple-700">Video is processing...</p>
+                                </div>
+                            ) : (
+                                <div className="text-center p-4 text-slate-400">
+                                    <Image size={48} className="mx-auto mb-2 opacity-30" />
+                                    <p className="text-sm">Your generated media will appear here</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Content Grid */}
             <div className="grid grid-cols-2 gap-4">

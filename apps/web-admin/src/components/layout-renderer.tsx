@@ -1,6 +1,6 @@
 "use client";
 
-import { Hero, ProductGrid, InfoGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, Newsletter, CustomerProfile, UniversalGrid } from "@repo/ui-bricks";
+import { Hero, ProductGrid, InfoGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, Newsletter, CustomerProfile, UniversalGrid, PricingTable, StatsSection, CallToAction, Divider, Spacer, Gallery, Accordion, Tabs, Timeline, TeamGrid, ContactForm, ComparisonTable } from "@repo/ui-bricks";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
 import { LayoutBlockSchema } from "@/lib/schemas/component-props";
 
@@ -25,6 +25,18 @@ const COMPONENT_REGISTRY: Record<string, any> = {
     'Newsletter': Newsletter,
     'CustomerProfile': CustomerProfile,
     'UniversalGrid': UniversalGrid,
+    'PricingTable': PricingTable,
+    'StatsSection': StatsSection,
+    'CallToAction': CallToAction,
+    'Divider': Divider,
+    'Spacer': Spacer,
+    'Gallery': Gallery,
+    'Accordion': Accordion,
+    'Tabs': Tabs,
+    'Timeline': Timeline,
+    'TeamGrid': TeamGrid,
+    'ContactForm': ContactForm,
+    'ComparisonTable': ComparisonTable,
 };
 
 // Sanitize props (replace local image paths)

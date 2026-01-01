@@ -821,5 +821,153 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
       { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
     ]
+  },
+  Tabs: {
+    label: "Tabs",
+    category: "CONTENT",
+    defaultProps: {
+      title: "",
+      tabs: [
+        { label: "Tab 1", content: "Content for tab 1" },
+        { label: "Tab 2", content: "Content for tab 2" }
+      ],
+      variant: "pills",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      {
+        name: "variant",
+        type: "select",
+        label: "Style",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Pills", value: "pills" },
+          { label: "Underline", value: "underline" },
+          { label: "Boxed", value: "boxed" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  Timeline: {
+    label: "Timeline",
+    category: "CONTENT",
+    defaultProps: {
+      title: "Our Journey",
+      events: [
+        { date: "2024", title: "Founded", description: "Company was established", status: "complete" },
+        { date: "2025", title: "Growth", description: "Expanded to new markets", status: "current" }
+      ],
+      layout: "vertical",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      {
+        name: "layout",
+        type: "select",
+        label: "Layout",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Vertical", value: "vertical" },
+          { label: "Alternating", value: "alternating" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  TeamGrid: {
+    label: "Team Grid",
+    category: "CONTENT",
+    defaultProps: {
+      title: "Our Team",
+      subtitle: "Meet the people behind our success",
+      members: [],
+      columns: 3,
+      showBio: true,
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "columns", type: "number", label: "Columns", min: 2, max: 4, section: SECTIONS.SETTINGS },
+      { name: "showBio", type: "boolean", label: "Show Bios", section: SECTIONS.SETTINGS },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  ContactForm: {
+    label: "Contact Form",
+    category: "CONTENT",
+    defaultProps: {
+      title: "Contact Us",
+      subtitle: "We'd love to hear from you",
+      fields: [
+        { name: "name", label: "Name", type: "text", required: true },
+        { name: "email", label: "Email", type: "email", required: true },
+        { name: "message", label: "Message", type: "textarea", required: true }
+      ],
+      submitText: "Send Message",
+      successMessage: "Thank you! We'll be in touch soon.",
+      layout: "stacked",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "submitText", type: "text", label: "Submit Button Text", section: SECTIONS.CONTENT },
+      { name: "successMessage", type: "text", label: "Success Message", section: SECTIONS.CONTENT },
+      { name: "webhookUrl", type: "text", label: "Webhook URL (optional)", section: SECTIONS.SETTINGS },
+      {
+        name: "layout",
+        type: "select",
+        label: "Layout",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Stacked", value: "stacked" },
+          { label: "Side by Side", value: "side-by-side" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "buttonColor", type: "color", label: "Button Color", section: SECTIONS.DESIGN },
+      { name: "buttonTextColor", type: "color", label: "Button Text Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  ComparisonTable: {
+    label: "Comparison Table",
+    category: "MARKETING",
+    defaultProps: {
+      title: "Compare Plans",
+      subtitle: "Find the right plan for you",
+      columns: [],
+      features: [],
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
   }
 };

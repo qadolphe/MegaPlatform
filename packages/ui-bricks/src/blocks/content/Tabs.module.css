@@ -1,0 +1,99 @@
+.section {
+    padding: 4rem 1.5rem;
+    background: var(--tabs-bg, var(--color-background));
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 1.125rem;
+    opacity: 0.7;
+}
+
+.tabList {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.tab {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 0.5rem;
+}
+
+/* Pills variant */
+.pills .tab {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pills .tab.active {
+    background: var(--accent);
+    color: #fff !important;
+    border-color: var(--accent);
+}
+
+/* Underline variant */
+.underline {
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    gap: 0;
+}
+
+.underline .tab {
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.underline .tab.active {
+    border-bottom-color: var(--accent);
+}
+
+/* Boxed variant */
+.boxed {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+}
+
+.boxed .tab {
+    flex: 1;
+}
+
+.boxed .tab.active {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tabContent {
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.content {
+    font-size: 1rem;
+    line-height: 1.7;
+}
