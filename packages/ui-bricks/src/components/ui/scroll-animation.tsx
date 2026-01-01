@@ -45,9 +45,9 @@ export default function ScrollAnimation({
     const variants = {
         hidden: {
             opacity: 0,
-            y: variant === "fadeUp" ? 30 : 0,
-            x: variant === "slideRight" ? -50 : variant === "slideLeft" ? 50 : 0,
-            scale: variant === "scaleUp" ? 0.9 : 1,
+            y: variant === "fadeUp" ? 20 : 0,
+            x: variant === "slideRight" ? -20 : variant === "slideLeft" ? 20 : 0,
+            scale: variant === "scaleUp" ? 0.95 : 1,
         },
         visible: {
             opacity: 1,

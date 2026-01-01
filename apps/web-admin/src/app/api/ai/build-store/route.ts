@@ -2,6 +2,69 @@ import { NextResponse } from "next/server";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
 import { chat, AIModelConfig } from "@repo/ai";
 import { createClient } from "@/lib/supabase/server";
+import { ProductGridPropsSchema, HeaderPropsSchema, FooterPropsSchema, HeroPropsSchema, TestimonialsPropsSchema, TextContentPropsSchema, FAQPropsSchema, FeaturesPropsSchema, NewsletterPropsSchema, BannerPropsSchema, InfoGridPropsSchema, CountdownPropsSchema, LogoCloudPropsSchema, ImageBoxPropsSchema, VideoGridPropsSchema } from "@/lib/schemas/component-props";
+
+// Schema map for validation
+const COMPONENT_SCHEMA_MAP: Record<string, any> = {
+    Header: HeaderPropsSchema,
+    Footer: FooterPropsSchema,
+    Hero: HeroPropsSchema,
+    ProductGrid: ProductGridPropsSchema,
+    Testimonials: TestimonialsPropsSchema,
+    TextContent: TextContentPropsSchema,
+    FAQ: FAQPropsSchema,
+    Features: FeaturesPropsSchema,
+    Newsletter: NewsletterPropsSchema,
+    Banner: BannerPropsSchema,
+    InfoGrid: InfoGridPropsSchema,
+    BenefitsGrid: InfoGridPropsSchema,
+    Countdown: CountdownPropsSchema,
+    LogoCloud: LogoCloudPropsSchema,
+    ImageBox: ImageBoxPropsSchema,
+    VideoGrid: VideoGridPropsSchema,
+};
+
+// Default props for components that need them
+const COMPONENT_DEFAULTS: Record<string, Record<string, any>> = {
+    ProductGrid: {
+        sourceType: 'collection',
+        columns: 4,
+    },
+};
+
+// Validate a single block and return errors
+function validateBlock(block: { type: string; props: any }): string[] {
+    const schema = COMPONENT_SCHEMA_MAP[block.type];
+    if (!schema) return []; // Unknown component, skip validation
+
+    const result = schema.safeParse(block.props);
+    if (result.success) return [];
+
+    return result.error.issues.map((issue: any) =>
+        `${block.type}.${issue.path.join('.')}: ${issue.message}`
+    );
+}
+
+// Apply defaults and validate layout blocks
+function validateAndFixLayout(blocks: any[]): { blocks: any[]; errors: string[] } {
+    const allErrors: string[] = [];
+
+    const fixedBlocks = blocks.map(block => {
+        // Apply component-specific defaults
+        const defaults = COMPONENT_DEFAULTS[block.type] || {};
+        const props = { ...defaults, ...block.props };
+
+        const fixedBlock = { ...block, props };
+
+        // Validate
+        const errors = validateBlock(fixedBlock);
+        allErrors.push(...errors);
+
+        return fixedBlock;
+    });
+
+    return { blocks: fixedBlocks, errors: allErrors };
+}
 
 export async function POST(req: Request) {
     try {
@@ -32,6 +95,11 @@ export async function POST(req: Request) {
 
       Available Components for the layout:
       ${JSON.stringify(componentsList)}
+
+      IMPORTANT VALIDATION RULES:
+      - ProductGrid MUST include: sourceType: "collection" or "manual", columns: number
+      - All components should include animationStyle: "theme" for default animations
+      - Ensure all props match the component schemas exactly
 
       User's Store Vision: "${prompt}"
 
@@ -66,27 +134,54 @@ export async function POST(req: Request) {
         ],
         "layout": [
           { "type": "Header", "props": { "logoText": "Artisan Gems", "links": [{"label": "Home", "href": "/"}, {"label": "Shop", "href": "/shop"}] } },
-          { "type": "Hero", "props": { "title": "Handcrafted Jewelry", "subtitle": "Unique pieces made with love", "buttonText": "Shop Now", "buttonLink": "/shop" } },
-          { "type": "ProductGrid", "props": { "title": "Featured Collection", "columns": 4 } },
+          { "type": "Hero", "props": { "title": "Handcrafted Jewelry", "subtitle": "Unique pieces made with love", "primaryCtaText": "Shop Now", "primaryCtaLink": "/shop" } },
+          { "type": "ProductGrid", "props": { "title": "Featured Collection", "sourceType": "collection", "columns": 4 } },
           { "type": "Testimonials", "props": { "title": "What Our Customers Say" } },
-          { "type": "Footer", "props": { "copyright": "© 2026 Artisan Gems" } }
+          { "type": "Footer", "props": { "storeName": "Artisan Gems" } }
         ]
       }
     `;
 
-        const result = await chat(
-            [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
-            aiConfig
-        );
-
-        let text = result.replace(/```json\n?|```/g, "").trim();
-
+        // Generate with validation retry loop
         let storeConfig;
-        try {
-            storeConfig = JSON.parse(text);
-        } catch (e) {
-            console.error("Failed to parse AI response:", text);
-            return NextResponse.json({ error: "AI returned invalid configuration" }, { status: 500 });
+        let attempts = 0;
+        const maxAttempts = 2;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+
+            const result = await chat(
+                [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
+                aiConfig
+            );
+
+            let text = result.replace(/```json\n?|```/g, "").trim();
+
+            try {
+                storeConfig = JSON.parse(text);
+            } catch (e) {
+                console.error("Failed to parse AI response:", text);
+                if (attempts >= maxAttempts) {
+                    return NextResponse.json({ error: "AI returned invalid configuration" }, { status: 500 });
+                }
+                continue;
+            }
+
+            // Validate layout blocks
+            if (storeConfig.layout && Array.isArray(storeConfig.layout)) {
+                const { blocks: fixedBlocks, errors } = validateAndFixLayout(storeConfig.layout);
+                storeConfig.layout = fixedBlocks;
+
+                if (errors.length > 0) {
+                    console.warn("Layout validation errors (auto-fixed):", errors);
+                }
+            }
+
+            break; // Success
+        }
+
+        if (!storeConfig) {
+            return NextResponse.json({ error: "Failed to generate valid store configuration" }, { status: 500 });
         }
 
         // Create the store
@@ -122,17 +217,132 @@ export async function POST(req: Request) {
             await supabase.from("products").insert(productsToInsert);
         }
 
-        // Create homepage with layout
+        // Create homepage with layout (blocks are already validated/fixed)
         const layoutBlocks = storeConfig.layout?.map((b: any) => ({
             id: crypto.randomUUID(),
             type: b.type,
-            props: b.props || {}
+            props: { ...COMPONENT_DEFAULTS[b.type], ...b.props }
         })) || [
                 { id: crypto.randomUUID(), type: "Header", props: { logoText: storeConfig.storeName } },
                 { id: crypto.randomUUID(), type: "Hero", props: { title: `Welcome to ${storeConfig.storeName}!` } },
-                { id: crypto.randomUUID(), type: "ProductGrid", props: { title: "Featured Products" } },
-                { id: crypto.randomUUID(), type: "Footer", props: { copyright: `© ${new Date().getFullYear()} ${storeConfig.storeName}` } }
+                { id: crypto.randomUUID(), type: "ProductGrid", props: { title: "Featured Products", sourceType: "collection", columns: 4 } },
+                { id: crypto.randomUUID(), type: "Footer", props: { storeName: storeConfig.storeName } }
             ];
+
+        const headerBlock = layoutBlocks.find((b: any) => b.type === "Header") || {
+            id: crypto.randomUUID(),
+            type: "Header",
+            props: { logoText: storeConfig.storeName }
+        };
+
+        const footerBlock = layoutBlocks.find((b: any) => b.type === "Footer") || {
+            id: crypto.randomUUID(),
+            type: "Footer",
+            props: { storeName: storeConfig.storeName }
+        };
+
+        const titleFromSlug = (slug: string) =>
+            slug
+                .split("/")
+                .filter(Boolean)
+                .pop()!
+                .split("-")
+                .filter(Boolean)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(" ");
+
+        const extractInternalSlugsFromLayout = (blocks: any[]): string[] => {
+            const slugs = new Set<string>();
+
+            const addHref = (href: unknown) => {
+                if (typeof href !== "string") return;
+                if (!href.startsWith("/")) return;
+                const cleanPath = href.split("?")[0].split("#")[0];
+                if (cleanPath === "/") return;
+                const cleanSlug = cleanPath.replace(/^\/+/g, "").replace(/\/+$/g, "");
+                if (!cleanSlug) return;
+                // Product detail pages are dynamically handled at /products/[slug]
+                if (cleanSlug.startsWith("products/")) return;
+                slugs.add(cleanSlug);
+            };
+
+            const header = blocks.find((b: any) => b.type === "Header");
+            const headerLinks = header?.props?.links;
+            if (Array.isArray(headerLinks)) {
+                for (const link of headerLinks) addHref(link?.href);
+            }
+            addHref(header?.props?.ctaLink);
+
+            const footer = blocks.find((b: any) => b.type === "Footer");
+            const columns = footer?.props?.columns;
+            if (Array.isArray(columns)) {
+                for (const col of columns) {
+                    const links = col?.links;
+                    if (!Array.isArray(links)) continue;
+                    for (const link of links) addHref(link?.href);
+                }
+            }
+
+            return Array.from(slugs);
+        };
+
+        const cloneBlockWithNewId = (block: any) => ({
+            id: crypto.randomUUID(),
+            type: block.type,
+            props: block.props || {}
+        });
+
+        const createPlaceholderPagesForLinks = async () => {
+            const internalSlugs = extractInternalSlugsFromLayout(layoutBlocks);
+            if (internalSlugs.length === 0) return;
+
+            const pagesToInsert = internalSlugs
+                .filter(slug => slug !== "home")
+                .map(slug => {
+                    const isProductsListing = slug === "products" || slug === "shop";
+                    const pageName = titleFromSlug(slug);
+
+                    const pageLayout = isProductsListing
+                        ? [
+                            cloneBlockWithNewId(headerBlock),
+                            {
+                                id: crypto.randomUUID(),
+                                type: "ProductGrid",
+                                props: { title: "All Products", collectionId: "all", columns: 4 }
+                            },
+                            cloneBlockWithNewId(footerBlock)
+                        ]
+                        : [
+                            cloneBlockWithNewId(headerBlock),
+                            {
+                                id: crypto.randomUUID(),
+                                type: "TextContent",
+                                props: {
+                                    title: pageName,
+                                    subtitle: "",
+                                    body: `This is the ${pageName} page. You can edit this content in the editor.`,
+                                    alignment: "left",
+                                    imagePosition: "right",
+                                    animationStyle: "theme"
+                                }
+                            },
+                            cloneBlockWithNewId(footerBlock)
+                        ];
+
+                    return {
+                        store_id: store.id,
+                        slug,
+                        name: pageName,
+                        layout_config: pageLayout,
+                        published: true,
+                        is_home: false
+                    };
+                });
+
+            if (pagesToInsert.length > 0) {
+                await supabase.from("store_pages").insert(pagesToInsert);
+            }
+        };
 
         await supabase.from("store_pages").insert({
             store_id: store.id,
@@ -142,6 +352,9 @@ export async function POST(req: Request) {
             published: true,
             is_home: true
         });
+
+        // Ensure all internal Header/Footer links resolve (no 404s)
+        await createPlaceholderPagesForLinks();
 
         return NextResponse.json({
             storeId: store.id,
