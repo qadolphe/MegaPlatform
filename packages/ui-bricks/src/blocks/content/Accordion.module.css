@@ -1,0 +1,94 @@
+.section {
+    padding: 4rem 1.5rem;
+    background: var(--accordion-bg, var(--color-background));
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 1.125rem;
+    opacity: 0.7;
+}
+
+.accordionList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.accordionItem {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.accordionItem.open {
+    border-color: var(--accent);
+}
+
+.accordionTrigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: left;
+    transition: background 0.2s ease;
+}
+
+.accordionTrigger:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    transition: transform 0.3s ease;
+    opacity: 0.6;
+}
+
+.open .icon {
+    transform: rotate(180deg);
+}
+
+.accordionContent {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+}
+
+.open .accordionContent {
+    grid-template-rows: 1fr;
+}
+
+.contentInner {
+    overflow: hidden;
+    padding: 0 1.5rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+}
+
+.open .contentInner {
+    padding-bottom: 1.5rem;
+}

@@ -1,0 +1,138 @@
+.section {
+    position: relative;
+    padding: 5rem 1.5rem;
+    background: var(--cta-bg, var(--color-primary));
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5));
+}
+
+.container {
+    position: relative;
+    max-width: 1000px;
+    margin: 0 auto;
+    z-index: 1;
+}
+
+.centered {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.split {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.content {
+    max-width: 600px;
+}
+
+.subtitle {
+    display: inline-block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+}
+
+.title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.description {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    opacity: 0.9;
+}
+
+.buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.centered .buttons {
+    justify-content: center;
+}
+
+.primaryButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.primaryButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.arrow {
+    width: 1.25rem;
+    height: 1.25rem;
+    transition: transform 0.2s ease;
+}
+
+.primaryButton:hover .arrow {
+    transform: translateX(4px);
+}
+
+.secondaryButton {
+    display: inline-flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 2px solid currentColor;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.secondaryButton:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+    .title {
+        font-size: 2rem;
+    }
+
+    .split {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .primaryButton,
+    .secondaryButton {
+        justify-content: center;
+        width: 100%;
+    }
+}

@@ -7,15 +7,22 @@ export * from "./blocks/marketing/Banner";
 export * from "./blocks/marketing/LogoCloud";
 export * from "./blocks/marketing/Countdown";
 export * from "./blocks/marketing/Features";
+export * from "./blocks/marketing/PricingTable";
+export * from "./blocks/marketing/StatsSection";
+export * from "./blocks/marketing/CallToAction";
 export * from "./blocks/content/TextContent";
+export * from "./blocks/content/Accordion";
 export * from "./blocks/media/VideoGrid";
 export * from "./blocks/media/ImageBox";
+export * from "./blocks/media/Gallery";
 export * from "./blocks/commerce/ProductGrid";
 export * from "./blocks/commerce/ProductDetail";
 export * from "./blocks/commerce/CustomerProfile";
 export * from "./blocks/layout/Header";
 export * from "./blocks/layout/Footer";
 export * from "./blocks/layout/UniversalGrid";
+export * from "./blocks/layout/Divider";
+export * from "./blocks/layout/Spacer";
 
 // Components
 export * from "./components/ProductCard";

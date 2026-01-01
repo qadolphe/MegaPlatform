@@ -575,5 +575,251 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
       { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
       ANIMATION_FIELD
     ]
+  },
+  PricingTable: {
+    label: "Pricing Table",
+    category: "MARKETING",
+    defaultProps: {
+      title: "Pricing Plans",
+      subtitle: "Choose the plan that fits your needs",
+      tiers: [],
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  StatsSection: {
+    label: "Stats Section",
+    category: "MARKETING",
+    defaultProps: {
+      title: "Our Impact",
+      subtitle: "Numbers that speak for themselves",
+      stats: [
+        { value: 10000, label: "Customers", suffix: "+" },
+        { value: 98, label: "Satisfaction", suffix: "%" },
+        { value: 24, label: "Support", suffix: "/7" }
+      ],
+      layout: "horizontal",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      {
+        name: "layout",
+        type: "select",
+        label: "Layout",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Horizontal", value: "horizontal" },
+          { label: "Grid", value: "grid" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  CallToAction: {
+    label: "Call to Action",
+    category: "MARKETING",
+    defaultProps: {
+      title: "Ready to get started?",
+      description: "Join thousands of customers already using our platform.",
+      primaryButtonText: "Get Started",
+      primaryButtonLink: "/",
+      layout: "centered",
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "description", type: "textarea", label: "Description", section: SECTIONS.CONTENT },
+      { name: "primaryButtonText", type: "text", label: "Primary Button Text", section: SECTIONS.CONTENT },
+      { name: "primaryButtonLink", type: "page-link", label: "Primary Button Link", section: SECTIONS.CONTENT },
+      { name: "secondaryButtonText", type: "text", label: "Secondary Button Text", section: SECTIONS.CONTENT },
+      { name: "secondaryButtonLink", type: "page-link", label: "Secondary Button Link", section: SECTIONS.CONTENT },
+      { name: "backgroundImage", type: "image", label: "Background Image", section: SECTIONS.DESIGN },
+      {
+        name: "layout",
+        type: "select",
+        label: "Layout",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Centered", value: "centered" },
+          { label: "Split", value: "split" }
+        ]
+      },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "buttonColor", type: "color", label: "Button Color", section: SECTIONS.DESIGN },
+      { name: "buttonTextColor", type: "color", label: "Button Text Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  Divider: {
+    label: "Divider",
+    category: "LAYOUT",
+    defaultProps: {
+      style: "line",
+      thickness: "thin",
+      width: "full",
+      marginTop: "2rem",
+      marginBottom: "2rem"
+    },
+    fields: [
+      {
+        name: "style",
+        type: "select",
+        label: "Style",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Solid Line", value: "line" },
+          { label: "Dashed", value: "dashed" },
+          { label: "Dotted", value: "dotted" },
+          { label: "Gradient Fade", value: "gradient" },
+          { label: "Radial Fade", value: "fade" }
+        ]
+      },
+      {
+        name: "thickness",
+        type: "select",
+        label: "Thickness",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Thin", value: "thin" },
+          { label: "Medium", value: "medium" },
+          { label: "Thick", value: "thick" }
+        ]
+      },
+      {
+        name: "width",
+        type: "select",
+        label: "Width",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Full", value: "full" },
+          { label: "Wide (80%)", value: "wide" },
+          { label: "Medium (60%)", value: "medium" },
+          { label: "Narrow", value: "narrow" }
+        ]
+      },
+      { name: "color", type: "color", label: "Color", section: SECTIONS.DESIGN },
+      { name: "marginTop", type: "text", label: "Margin Top (e.g. 2rem)", section: SECTIONS.SETTINGS },
+      { name: "marginBottom", type: "text", label: "Margin Bottom", section: SECTIONS.SETTINGS }
+    ]
+  },
+  Spacer: {
+    label: "Spacer",
+    category: "LAYOUT",
+    defaultProps: {
+      size: "md"
+    },
+    fields: [
+      {
+        name: "size",
+        type: "select",
+        label: "Size",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Extra Small (1rem)", value: "xs" },
+          { label: "Small (2rem)", value: "sm" },
+          { label: "Medium (4rem)", value: "md" },
+          { label: "Large (6rem)", value: "lg" },
+          { label: "Extra Large (8rem)", value: "xl" },
+          { label: "2XL (10rem)", value: "2xl" },
+          { label: "3XL (12rem)", value: "3xl" }
+        ]
+      },
+      {
+        name: "mobileSize",
+        type: "select",
+        label: "Mobile Size (optional)",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Auto (60% of desktop)", value: "" },
+          { label: "Extra Small", value: "xs" },
+          { label: "Small", value: "sm" },
+          { label: "Medium", value: "md" },
+          { label: "Large", value: "lg" }
+        ]
+      }
+    ]
+  },
+  Gallery: {
+    label: "Gallery",
+    category: "MEDIA",
+    defaultProps: {
+      title: "Gallery",
+      images: [],
+      columns: 3,
+      gap: "medium",
+      aspectRatio: "square",
+      enableLightbox: true,
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "columns", type: "number", label: "Columns", min: 2, max: 6, section: SECTIONS.SETTINGS },
+      {
+        name: "gap",
+        type: "select",
+        label: "Gap Size",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Small", value: "small" },
+          { label: "Medium", value: "medium" },
+          { label: "Large", value: "large" }
+        ]
+      },
+      {
+        name: "aspectRatio",
+        type: "select",
+        label: "Aspect Ratio",
+        section: SECTIONS.SETTINGS,
+        options: [
+          { label: "Square", value: "square" },
+          { label: "Landscape (16:9)", value: "landscape" },
+          { label: "Portrait (3:4)", value: "portrait" },
+          { label: "Auto", value: "auto" }
+        ]
+      },
+      { name: "enableLightbox", type: "boolean", label: "Enable Lightbox", section: SECTIONS.SETTINGS },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
+  },
+  Accordion: {
+    label: "Accordion",
+    category: "CONTENT",
+    defaultProps: {
+      title: "More Information",
+      items: [],
+      allowMultiple: false,
+      animationStyle: "theme"
+    },
+    fields: [
+      { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
+      { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
+      { name: "allowMultiple", type: "boolean", label: "Allow Multiple Open", section: SECTIONS.SETTINGS },
+      { name: "backgroundColor", type: "color", label: "Background Color", section: SECTIONS.DESIGN },
+      { name: "titleColor", type: "color", label: "Title Color", section: SECTIONS.DESIGN },
+      { name: "textColor", type: "color", label: "Text Color", section: SECTIONS.DESIGN },
+      { name: "accentColor", type: "color", label: "Accent Color", section: SECTIONS.DESIGN },
+      ANIMATION_FIELD
+    ]
   }
 };
