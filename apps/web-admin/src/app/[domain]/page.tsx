@@ -32,7 +32,7 @@ export default async function DomainPage({
   const host = decodeURIComponent(rawDomain);
   const subdomain = getSubdomain(host);
 
-  const query = supabase.from("stores").select("id, name, theme, colors, store_pages(layout_config, slug, is_home)");
+  const query = supabase.from("stores").select("id, name, theme, colors, header_config, footer_config, store_pages(layout_config, slug, is_home)");
 
   if (subdomain) {
     query.eq('subdomain', subdomain);
@@ -133,6 +133,8 @@ export default async function DomainPage({
         theme={(store as any).theme}
         productsMap={productsMap}
         showCart={shouldShowCart}
+        headerConfig={(store as any).header_config}
+        footerConfig={(store as any).footer_config}
       />
     </>
   );

@@ -11,6 +11,8 @@ export interface CartItem {
   // For your specific app: is this a kit or a service?
   type: 'kit' | 'service' 
   slug: string
+  variantId?: string
+  variantName?: string
 }
 
 interface CartStore {
@@ -19,8 +21,8 @@ interface CartStore {
   openCart: () => void
   closeCart: () => void
   addItem: (item: CartItem) => void
-  removeItem: (id: string) => void
-  updateQuantity: (id: string, quantity: number) => void
+  removeItem: (id: string, variantId?: string) => void
+  updateQuantity: (id: string, variantId: string | undefined, quantity: number) => void
   clearCart: () => void
   // Computed values
   totalPrice: () => number
@@ -37,12 +39,12 @@ export const useCart = create<CartStore>()(
       closeCart: () => set({ isOpen: false }),
       
       addItem: (newItem) => set((state) => {
-        const existingItem = state.items.find((i) => i.id === newItem.id)
+        const existingItem = state.items.find((i) => i.id === newItem.id && i.variantId === newItem.variantId)
         if (existingItem) {
           // If item exists, just bump quantity
           return {
             items: state.items.map((i) =>
-              i.id === newItem.id ? { ...i, quantity: i.quantity + 1 } : i
+              (i.id === newItem.id && i.variantId === newItem.variantId) ? { ...i, quantity: i.quantity + 1 } : i
             ),
             isOpen: true // Open cart when adding item
           }
@@ -53,19 +55,19 @@ export const useCart = create<CartStore>()(
         }
       }),
 
-      removeItem: (id) => set((state) => ({
-        items: state.items.filter((i) => i.id !== id),
+      removeItem: (id, variantId) => set((state) => ({
+        items: state.items.filter((i) => !(i.id === id && i.variantId === variantId)),
       })),
 
-      updateQuantity: (id, quantity) => set((state) => {
+      updateQuantity: (id, variantId, quantity) => set((state) => {
         if (quantity <= 0) {
             return {
-                items: state.items.filter((i) => i.id !== id)
+                items: state.items.filter((i) => !(i.id === id && i.variantId === variantId))
             }
         }
         return {
             items: state.items.map((i) =>
-                i.id === id ? { ...i, quantity } : i
+                (i.id === id && i.variantId === variantId) ? { ...i, quantity } : i
             ),
         }
       }),

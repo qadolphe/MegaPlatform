@@ -16,7 +16,9 @@ create table stores (
   is_visible boolean default true,              -- Soft delete flag
   stripe_account_id text,                       -- Stripe Connect Account ID
   stripe_details_submitted boolean default false,
-  currency text default 'usd'
+  currency text default 'usd',
+  header_config jsonb default '{}'::jsonb,      -- Global Header Configuration
+  footer_config jsonb default '{}'::jsonb       -- Global Footer Configuration
 );
 
 -- 2. Pages: The "Visual Config" for the Dynamic Renderer
@@ -59,7 +61,10 @@ create table product_variants (
   sku text,
   price integer not null,           -- Variant specific price
   inventory_quantity integer default 0,
-  options jsonb default '{}'::jsonb -- e.g. {"Size": "Small", "Color": "Red"}
+  options jsonb default '{}'::jsonb, -- e.g. {"Size": "Small", "Color": "Red"}
+  description text,                 -- Variant specific description
+  image_url text,                   -- Variant specific image (legacy single image)
+  images text[] default '{}'         -- Variant specific images (preferred)
 );
 
 -- 5. Collections

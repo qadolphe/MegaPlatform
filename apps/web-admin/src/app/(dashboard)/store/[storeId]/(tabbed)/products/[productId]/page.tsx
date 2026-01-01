@@ -18,6 +18,7 @@ export default function ProductEditor() {
     const [loading, setLoading] = useState(!isNew);
     const [saving, setSaving] = useState(false);
     const [isMediaOpen, setIsMediaOpen] = useState(false);
+    const [mediaTarget, setMediaTarget] = useState<{ type: 'product' } | { type: 'variant'; index: number }>({ type: 'product' });
 
     // Form State
     const [title, setTitle] = useState("");
@@ -60,7 +61,7 @@ export default function ProductEditor() {
 
     // Variants State
     const [variants, setVariants] = useState<any[]>([
-        { id: crypto.randomUUID(), title: "Default", price: 0, inventory_quantity: 0, options: {} }
+        { id: crypto.randomUUID(), title: "Default", price: 0, inventory_quantity: 0, options: {}, description: "", images: [], image_url: null }
     ]);
     const [options, setOptions] = useState<{ name: string, values: string[] }[]>([]);
 
@@ -206,7 +207,10 @@ export default function ProductEditor() {
             title: v.title,
             price: isNaN(v.price) ? (isNaN(price) ? 0 : price) : v.price, // Fallback to base price
             inventory_quantity: isNaN(v.inventory_quantity) ? 0 : v.inventory_quantity,
-            options: v.options
+            options: v.options,
+            description: v.description || null,
+            image_url: v.image_url || (Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : null),
+            images: Array.isArray(v.images) ? v.images : [],
         }));
 
         const { error: varError } = await supabase.from("product_variants").insert(variantsToInsert);
@@ -405,8 +409,8 @@ export default function ProductEditor() {
                             </thead>
                             <tbody className="divide-y divide-slate-200">
                                 {variants.map((variant, idx) => (
-                                    <tr key={idx}>
-                                        <td className="px-4 py-2">
+                                    <tr key={variant.id || idx}>
+                                        <td className="px-4 py-2 align-top">
                                             <input
                                                 type="text"
                                                 value={variant.title}
@@ -415,10 +419,95 @@ export default function ProductEditor() {
                                                     newVars[idx].title = e.target.value;
                                                     setVariants(newVars);
                                                 }}
-                                                className="w-full border-none bg-transparent focus:ring-0 p-0"
+                                                className="w-full border-none bg-transparent focus:ring-0 p-0 font-medium"
                                             />
+
+                                            {/* Variant option pickers */}
+                                            {options.length > 0 && (
+                                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {options.map((opt, optIdx) => (
+                                                        <div key={`${idx}-${optIdx}`}>
+                                                            <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase">{opt.name}</label>
+                                                            <select
+                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
+                                                                value={(variant.options && variant.options[opt.name]) || ""}
+                                                                onChange={(e) => {
+                                                                    const newVars = [...variants];
+                                                                    const nextOptions = { ...(newVars[idx].options || {}) };
+                                                                    nextOptions[opt.name] = e.target.value;
+                                                                    newVars[idx].options = nextOptions;
+                                                                    setVariants(newVars);
+                                                                }}
+                                                            >
+                                                                <option value="">Select {opt.name}...</option>
+                                                                {opt.values.map((val: string) => (
+                                                                    <option key={val} value={val}>{val}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Variant description */}
+                                            <div className="mt-3">
+                                                <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase">Variant Description</label>
+                                                <textarea
+                                                    value={variant.description || ""}
+                                                    onChange={(e) => {
+                                                        const newVars = [...variants];
+                                                        newVars[idx].description = e.target.value;
+                                                        setVariants(newVars);
+                                                    }}
+                                                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                                    placeholder="Unique description for this variant..."
+                                                />
+                                            </div>
+
+                                            {/* Variant images */}
+                                            <div className="mt-3">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <label className="block text-[11px] font-semibold text-slate-500 uppercase">Variant Images</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setMediaTarget({ type: 'variant', index: idx });
+                                                            setIsMediaOpen(true);
+                                                        }}
+                                                        className="text-xs text-blue-600 hover:underline"
+                                                    >
+                                                        Add from Library
+                                                    </button>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(variant.images || []).map((url: string, imgIdx: number) => (
+                                                        <div key={url + imgIdx} className="relative h-16 w-16 rounded-md overflow-hidden border border-slate-200 group">
+                                                            <img src={url} className="h-full w-full object-cover" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newVars = [...variants];
+                                                                    const next = [...(newVars[idx].images || [])].filter((_: string, i: number) => i !== imgIdx);
+                                                                    newVars[idx].images = next;
+                                                                    // keep legacy image_url aligned
+                                                                    newVars[idx].image_url = next.length > 0 ? next[0] : null;
+                                                                    setVariants(newVars);
+                                                                }}
+                                                                className="absolute top-1 right-1 bg-white/90 text-red-500 p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                                                            >
+                                                                <Trash size={12} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+
+                                                    {(variant.images || []).length === 0 && (
+                                                        <div className="text-xs text-slate-400">No images yet.</div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-2">
+                                        <td className="px-4 py-2 align-top">
                                             <input
                                                 type="number"
                                                 value={isNaN(variant.price) ? "" : variant.price / 100}
@@ -430,7 +519,7 @@ export default function ProductEditor() {
                                                 className="w-24 border border-slate-300 rounded px-2 py-1"
                                             />
                                         </td>
-                                        <td className="px-4 py-2">
+                                        <td className="px-4 py-2 align-top">
                                             <input
                                                 type="number"
                                                 value={isNaN(variant.inventory_quantity) ? "" : variant.inventory_quantity}
@@ -442,8 +531,9 @@ export default function ProductEditor() {
                                                 className="w-24 border border-slate-300 rounded px-2 py-1"
                                             />
                                         </td>
-                                        <td className="px-4 py-2 text-right">
+                                        <td className="px-4 py-2 text-right align-top">
                                             <button
+                                                type="button"
                                                 onClick={() => setVariants(variants.filter((_, i) => i !== idx))}
                                                 className="text-slate-400 hover:text-red-500"
                                             >
@@ -455,7 +545,7 @@ export default function ProductEditor() {
                             </tbody>
                         </table>
                         <button
-                            onClick={() => setVariants([...variants, { id: crypto.randomUUID(), title: "New Variant", price: price, inventory_quantity: 0, options: {} }])}
+                            onClick={() => setVariants([...variants, { id: crypto.randomUUID(), title: "New Variant", price: price, inventory_quantity: 0, options: {}, description: "", images: [], image_url: null }])}
                             className="mt-4 text-sm text-blue-600 font-medium hover:underline"
                         >
                             + Add Variant
@@ -672,7 +762,19 @@ export default function ProductEditor() {
                 isOpen={isMediaOpen}
                 onClose={() => setIsMediaOpen(false)}
                 onSelect={(url) => {
-                    setImages([...images, url]);
+                    if (mediaTarget.type === 'product') {
+                        setImages([...images, url]);
+                        setIsMediaOpen(false);
+                        return;
+                    }
+
+                    const idx = mediaTarget.index;
+                    const newVars = [...variants];
+                    const nextImages = [...(newVars[idx].images || []), url];
+                    newVars[idx].images = nextImages;
+                    // keep legacy image_url aligned
+                    newVars[idx].image_url = nextImages[0] || null;
+                    setVariants(newVars);
                     setIsMediaOpen(false);
                 }}
             />

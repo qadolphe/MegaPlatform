@@ -29,7 +29,7 @@ export default async function DynamicPage({
   // My admin currently creates flat slugs like "about-us", so we just join them just in case
   const targetSlug = slugArray.join('/');
 
-  const query = supabase.from("stores").select("id, name, theme, colors, store_pages(layout_config, slug, is_home)");
+  const query = supabase.from("stores").select("id, name, theme, colors, header_config, footer_config, store_pages(layout_config, slug, is_home)");
 
   if (subdomain) {
     query.eq('subdomain', subdomain);
@@ -83,7 +83,7 @@ export default async function DynamicPage({
         const productSlug = slugArray[1];
         const { data: product } = await supabase
           .from("products")
-          .select("*")
+          .select("*, product_variants(*)")
           .eq("store_id", store.id)
           .eq("slug", productSlug)
           .single();
@@ -97,7 +97,17 @@ export default async function DynamicPage({
             base_price: product.price,
             image_url: product.images?.[0] || product.image_url,
             slug: product.slug,
-            type: product.type
+            type: product.type,
+            variants: (product.product_variants || []).map((v: any) => ({
+              id: v.id,
+              title: v.title,
+              sku: v.sku,
+              price: v.price,
+              options: v.options,
+              description: v.description,
+              image_url: v.image_url,
+              images: v.images,
+            }))
           };
         }
       }
@@ -108,7 +118,7 @@ export default async function DynamicPage({
     const productSlug = slugArray[1];
     const { data: product } = await supabase
       .from("products")
-      .select("*")
+      .select("*, product_variants(*)")
       .eq("store_id", store.id)
       .eq("slug", productSlug)
       .single();
@@ -143,7 +153,17 @@ export default async function DynamicPage({
       base_price: product.price,
       image_url: product.images?.[0] || product.image_url,
       slug: product.slug,
-      type: product.type
+      type: product.type,
+      variants: (product.product_variants || []).map((v: any) => ({
+        id: v.id,
+        title: v.title,
+        sku: v.sku,
+        price: v.price,
+        options: v.options,
+        description: v.description,
+        image_url: v.image_url,
+        images: v.images,
+      }))
     };
 
   } else {
@@ -219,6 +239,8 @@ export default async function DynamicPage({
         productsMap={productsMap}
         productDetailData={productDetailData}
         showCart={shouldShowCart}
+        headerConfig={(store as any).header_config}
+        footerConfig={(store as any).footer_config}
       />
     </>
   );

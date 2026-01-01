@@ -121,6 +121,9 @@ export const CartDrawer = () => {
                                                     >
                                                         {item.name}
                                                     </Link>
+                                                    {item.variantName && (
+                                                        <p className="text-xs text-gray-500">{item.variantName}</p>
+                                                    )}
                                                     <p className={styles.itemPrice}>
                                                         ${(item.price / 100).toFixed(2)}
                                                     </p>
@@ -128,7 +131,7 @@ export const CartDrawer = () => {
                                                 <div className={styles.itemMeta}>
                                                     <div className={styles.quantityControls}>
                                                         <button
-                                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                            onClick={() => updateQuantity(item.id, item.variantId, item.quantity - 1)}
                                                             className={styles.qtyBtn}
                                                         >
                                                             <Minus size={14} />
@@ -137,14 +140,14 @@ export const CartDrawer = () => {
                                                             {item.quantity}
                                                         </span>
                                                         <button
-                                                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                            onClick={() => updateQuantity(item.id, item.variantId, item.quantity + 1)}
                                                             className={styles.qtyBtn}
                                                         >
                                                             <Plus size={14} />
                                                         </button>
                                                     </div>
                                                     <button
-                                                        onClick={() => removeItem(item.id)}
+                                                        onClick={() => removeItem(item.id, item.variantId)}
                                                         className={styles.removeBtn}
                                                     >
                                                         Remove

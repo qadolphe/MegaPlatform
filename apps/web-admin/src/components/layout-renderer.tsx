@@ -70,6 +70,8 @@ interface LayoutRendererProps {
     productsMap?: Record<string, any[]>;
     productDetailData?: any;
     showCart?: boolean;
+    headerConfig?: any;
+    footerConfig?: any;
 }
 
 export function LayoutRenderer({
@@ -80,7 +82,16 @@ export function LayoutRenderer({
     productsMap = {},
     productDetailData,
     showCart = false,
+    headerConfig,
+    footerConfig
 }: LayoutRendererProps) {
+    // Filter out Header and Footer from layout if global config exists
+    const filteredLayout = layout.filter(block => {
+        if (headerConfig && block.type === 'Header') return false;
+        if (footerConfig && block.type === 'Footer') return false;
+        return true;
+    });
+
     return (
         <main
             style={{
@@ -94,7 +105,9 @@ export function LayoutRenderer({
                 minHeight: '100vh',
             } as React.CSSProperties}
         >
-            {layout.map((block, index) => {
+            {headerConfig && <Header {...headerConfig} showCart={showCart} />}
+
+            {filteredLayout.map((block, index) => {
                 // 1. Validate Block Structure
                 const validation = LayoutBlockSchema.safeParse(block);
 
@@ -157,6 +170,7 @@ export function LayoutRenderer({
 
                 return <Component key={block.id || index} {...props} />;
             })}
+            {footerConfig && <Footer {...footerConfig} />}
         </main>
     );
 }
