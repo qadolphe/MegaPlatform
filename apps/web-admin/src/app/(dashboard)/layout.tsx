@@ -11,7 +11,7 @@ export default function DashboardLayout({
 }) {
   return (
     <ToastProvider>
-      <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)' }}>
         <Sidebar />
         <div className="flex-1 flex flex-col pl-16">
           <Header />
@@ -23,4 +23,3 @@ export default function DashboardLayout({
     </ToastProvider>
   );
 }
-

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, PlusCircle, Settings, LogOut, Store, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Settings, LogOut, Store, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -28,25 +28,42 @@ export function Sidebar() {
   };
 
   return (
-    <div 
-      className={`fixed left-0 top-0 bottom-0 z-[100] flex flex-col bg-gray-900 text-white transition-all duration-300 ${isHovered ? "w-64 shadow-2xl" : "w-16"}`}
+    <div
+      className={`fixed left-0 top-0 bottom-0 z-[100] flex flex-col transition-all duration-300 ${isHovered ? "w-64" : "w-16"}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      style={{
+        background: 'linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: isHovered ? '4px 0 40px rgba(0,0,0,0.3)' : 'none'
+      }}
     >
-      <Link href="/" className={`flex h-16 items-center ${isHovered ? "px-6" : "justify-center"} font-bold text-xl tracking-wider border-b border-gray-800 overflow-hidden whitespace-nowrap flex-shrink-0 hover:bg-gray-800 transition-colors`}>
-        <Store className={`h-6 w-6 text-blue-500 ${isHovered ? "mr-2" : ""}`} />
+      {/* Logo */}
+      <Link
+        href="/"
+        className={`relative flex h-16 items-center ${isHovered ? "px-5" : "justify-center"} overflow-hidden whitespace-nowrap flex-shrink-0 group`}
+      >
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
+          <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+        </div>
         {isHovered && (
           <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2 }}
+            className="ml-3 text-lg font-bold tracking-wide"
           >
-            SWAT<span className="text-blue-500">BLOC</span>
+            <span className="text-white">SWAT</span>
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">BLOC</span>
           </motion.span>
         )}
       </Link>
-      
-      <div className="flex-1 flex flex-col gap-1 p-3 overflow-x-hidden">
+
+      {/* Navigation */}
+      <div className="flex-1 flex flex-col gap-1 px-3 mt-4 overflow-x-hidden">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -54,18 +71,22 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               title={!isHovered ? item.name : ""}
-              className={`relative flex items-center ${isHovered ? "" : "justify-center"} gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
+              className={`relative flex items-center ${isHovered ? "" : "justify-center"} gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
                   ? "text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
-              }`}
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
             >
               {isActive && (
-                  <motion.div
-                    layoutId="sidebarActive"
-                    className="absolute inset-0 bg-blue-600 rounded-md"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
+                <motion.div
+                  layoutId="sidebarActive"
+                  className="absolute inset-0 rounded-xl"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(147, 51, 234, 0.2) 100%)',
+                    border: '1px solid rgba(147, 51, 234, 0.3)',
+                    boxShadow: '0 0 20px rgba(147, 51, 234, 0.2)'
+                  }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
               )}
               <span className="relative z-10 flex items-center gap-3">
                 <item.icon className="h-5 w-5 min-w-[20px]" />
@@ -84,11 +105,12 @@ export function Sidebar() {
         })}
       </div>
 
-      <div className="p-3 border-t border-gray-800 flex flex-col gap-2">
+      {/* Footer */}
+      <div className="px-3 pb-4 pt-3 border-t border-white/10">
         <button
           onClick={handleSignOut}
           title={!isHovered ? "Sign Out" : ""}
-          className={`flex w-full items-center ${isHovered ? "" : "justify-center"} gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors`}
+          className={`flex w-full items-center ${isHovered ? "" : "justify-center"} gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200`}
         >
           <LogOut className="h-5 w-5 min-w-[20px]" />
           {isHovered && (
