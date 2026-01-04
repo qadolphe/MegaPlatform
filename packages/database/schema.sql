@@ -488,7 +488,7 @@ create policy "Store owners can delete planner tasks"
 create table content_packets (
   id uuid default gen_random_uuid() primary key,
   store_id uuid references stores(id) on delete cascade not null,
-  type text not null, -- 'feature', 'testimonial', 'faq', 'text_block'
+  type text not null, -- 'feature', 'testimonial', 'faq', 'text_block', 'media', 'stat'
   name text not null, -- Internal name for selection
   data jsonb not null default '{}', -- Type-specific content
   created_at timestamp with time zone default timezone('utc'::text, now()),

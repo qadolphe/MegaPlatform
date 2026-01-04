@@ -225,6 +225,24 @@ export const FeaturesPropsSchema = z.object({
     animationStyle: AnimationStyleSchema,
 });
 
+export const StatsSectionPropsSchema = z.object({
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    packetIds: z.array(z.string()).optional(),
+    stats: z.array(z.object({
+        value: z.union([z.string(), z.number()]).optional(),
+        label: z.string().optional(),
+        prefix: z.string().optional(),
+        suffix: z.string().optional(),
+    })).optional(),
+    layout: z.enum(["horizontal", "grid"]).optional(),
+    backgroundColor: z.string().optional(),
+    titleColor: z.string().optional(),
+    textColor: z.string().optional(),
+    accentColor: z.string().optional(),
+    animationStyle: AnimationStyleSchema,
+});
+
 export const UniversalGridPropsSchema = z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -259,6 +277,7 @@ export const LayoutBlockSchema = z.discriminatedUnion("type", [
     z.object({ type: z.literal("LogoCloud"), id: z.string(), props: LogoCloudPropsSchema }),
     z.object({ type: z.literal("Countdown"), id: z.string(), props: CountdownPropsSchema }),
     z.object({ type: z.literal("Features"), id: z.string(), props: FeaturesPropsSchema }),
+    z.object({ type: z.literal("StatsSection"), id: z.string(), props: StatsSectionPropsSchema }),
     z.object({ type: z.literal("UniversalGrid"), id: z.string(), props: UniversalGridPropsSchema }),
 ]);
 

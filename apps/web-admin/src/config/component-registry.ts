@@ -613,6 +613,18 @@ export const COMPONENT_DEFINITIONS: Record<string, { label: string; category: st
       { name: "title", type: "text", label: "Title", section: SECTIONS.CONTENT },
       { name: "subtitle", type: "text", label: "Subtitle", section: SECTIONS.CONTENT },
       {
+        name: "stats",
+        type: "array",
+        label: "Stats",
+        section: SECTIONS.CONTENT,
+        itemSchema: [
+          { name: "label", type: "text", label: "Label" },
+          { name: "value", type: "text", label: "Value" },
+          { name: "prefix", type: "text", label: "Prefix" },
+          { name: "suffix", type: "text", label: "Suffix" },
+        ]
+      },
+      {
         name: "layout",
         type: "select",
         label: "Layout",

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload, Wand2, Loader2 } from "lucide-react";
+import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload, Wand2, Loader2, BarChart3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ContentPacket = {
@@ -14,7 +14,7 @@ type ContentPacket = {
     created_at: string;
 };
 
-type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media";
+type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media" | "stat";
 
 const PACKET_TYPES: { key: PacketType; label: string; singular: string; icon: any; description: string }[] = [
     { key: "feature", label: "Features", singular: "Feature", icon: Sparkles, description: "Benefit cards with icons" },
@@ -22,6 +22,7 @@ const PACKET_TYPES: { key: PacketType; label: string; singular: string; icon: an
     { key: "faq", label: "FAQs", singular: "FAQ", icon: HelpCircle, description: "Questions & answers" },
     { key: "text_block", label: "Text Blocks", singular: "Text Block", icon: FileText, description: "Reusable copy" },
     { key: "media", label: "Media", singular: "Media", icon: Image, description: "Images & videos" },
+    { key: "stat", label: "Webstore Stats", singular: "Stat", icon: BarChart3, description: "Store metrics used in Stats sections" },
 ];
 
 const DEFAULT_DATA: Record<PacketType, any> = {
@@ -30,6 +31,7 @@ const DEFAULT_DATA: Record<PacketType, any> = {
     faq: { question: "", answer: "" },
     text_block: { title: "", body: "" },
     media: { url: "", alt: "", caption: "", mediaType: "image" },
+    stat: { label: "", value: "", prefix: "", suffix: "" },
 };
 
 const AI_MEDIA_MODELS = [
@@ -408,6 +410,44 @@ export default function ContentManagerPage() {
                         />
                     </div>
                 );
+            case "stat":
+                return (
+                    <div className="space-y-3">
+                        <input
+                            type="text"
+                            placeholder="Label (e.g., Customers)"
+                            value={data.label || ""}
+                            onChange={(e) => setData({ ...data, label: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Value (e.g., 10,000)"
+                            value={data.value ?? ""}
+                            onChange={(e) => setData({ ...data, value: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                            <input
+                                type="text"
+                                placeholder="Prefix (optional, e.g. $)"
+                                value={data.prefix || ""}
+                                onChange={(e) => setData({ ...data, prefix: e.target.value })}
+                                className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Suffix (optional, e.g. +, %)"
+                                value={data.suffix || ""}
+                                onChange={(e) => setData({ ...data, suffix: e.target.value })}
+                                className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            />
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            Use these in a Stats Section by selecting them from the block’s Content Library.
+                        </p>
+                    </div>
+                );
         }
     };
 
@@ -462,6 +502,20 @@ export default function ContentManagerPage() {
                             <span className="text-sm text-slate-400">No media</span>
                         )}
                         {packet.data.caption && <p className="text-xs text-slate-500 mt-1">{packet.data.caption}</p>}
+                    </div>
+                );
+            case "stat":
+                return (
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="font-medium text-slate-900 truncate">{packet.data.label || "Untitled"}</p>
+                            <p className="text-sm text-slate-500">
+                                {(packet.data.prefix || "")}{packet.data.value || ""}{(packet.data.suffix || "")}
+                            </p>
+                        </div>
+                        <div className="h-9 w-9 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0">
+                            <BarChart3 size={18} />
+                        </div>
                     </div>
                 );
         }

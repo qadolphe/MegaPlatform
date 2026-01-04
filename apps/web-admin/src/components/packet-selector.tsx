@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, X, Sparkles, MessageSquare, HelpCircle, FileText, Image, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, X, Sparkles, MessageSquare, HelpCircle, FileText, Image, ArrowUp, ArrowDown, BarChart3 } from "lucide-react";
 import { ContentPickerDialog } from "./content-picker-dialog";
 
 type ContentPacket = {
@@ -12,7 +12,7 @@ type ContentPacket = {
     data: any;
 };
 
-type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media";
+type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media" | "stat";
 
 const PACKET_ICONS: Record<PacketType, any> = {
     feature: Sparkles,
@@ -20,11 +20,13 @@ const PACKET_ICONS: Record<PacketType, any> = {
     faq: HelpCircle,
     text_block: FileText,
     media: Image,
+    stat: BarChart3,
 };
 
 interface PacketSelectorProps {
     storeId: string;
-    packetType?: PacketType; // Optional - if not provided, shows all types
+    packetType?: PacketType; // Deprecated: use allowedTypes
+    allowedTypes?: PacketType[]; // Optional - if not provided, shows all types
     selectedIds: string[];
     onChange: (ids: string[]) => void;
     onEdit?: (packetId: string) => void;
@@ -35,6 +37,7 @@ interface PacketSelectorProps {
 export function PacketSelector({
     storeId,
     packetType,
+    allowedTypes,
     selectedIds = [],
     onChange,
     onEdit,
@@ -51,11 +54,16 @@ export function PacketSelector({
     }, [storeId]);
 
     const fetchPackets = async () => {
+        const allowed = allowedTypes && allowedTypes.length > 0 ? allowedTypes : (packetType ? [packetType] : undefined);
         let query = supabase
             .from("content_packets")
             .select("id, type, name, data")
             .eq("store_id", storeId)
             .order("created_at", { ascending: false });
+
+        if (allowed) {
+            query = query.in("type", allowed);
+        }
 
         const { data } = await query;
         setPackets(data || []);
@@ -83,6 +91,8 @@ export function PacketSelector({
                 return data.title || packet.name;
             case "media":
                 return data.alt || data.caption || packet.name;
+            case "stat":
+                return `${data.prefix || ""}${data.value || ""}${data.suffix || ""} ${data.label || packet.name}`.trim();
             default:
                 return packet.name;
         }
@@ -186,7 +196,7 @@ export function PacketSelector({
                 storeId={storeId}
                 selectedIds={selectedIds}
                 onChange={handlePickerChange}
-                allowedTypes={packetType ? [packetType] : undefined}
+                allowedTypes={(allowedTypes && allowedTypes.length > 0) ? allowedTypes : (packetType ? [packetType] : undefined)}
             />
         </div>
     );

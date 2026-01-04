@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
 import { chat, AIModelConfig } from "@repo/ai";
 import { createClient } from "@/lib/supabase/server";
-import { ProductGridPropsSchema, HeaderPropsSchema, FooterPropsSchema, HeroPropsSchema, TestimonialsPropsSchema, TextContentPropsSchema, FAQPropsSchema, FeaturesPropsSchema, NewsletterPropsSchema, BannerPropsSchema, InfoGridPropsSchema, CountdownPropsSchema, LogoCloudPropsSchema, ImageBoxPropsSchema, VideoGridPropsSchema } from "@/lib/schemas/component-props";
+import { ProductGridPropsSchema, HeaderPropsSchema, FooterPropsSchema, HeroPropsSchema, TestimonialsPropsSchema, TextContentPropsSchema, FAQPropsSchema, FeaturesPropsSchema, NewsletterPropsSchema, BannerPropsSchema, InfoGridPropsSchema, CountdownPropsSchema, LogoCloudPropsSchema, ImageBoxPropsSchema, VideoGridPropsSchema, StatsSectionPropsSchema } from "@/lib/schemas/component-props";
 
 // Schema map for validation
 const COMPONENT_SCHEMA_MAP: Record<string, any> = {
@@ -22,6 +22,7 @@ const COMPONENT_SCHEMA_MAP: Record<string, any> = {
     LogoCloud: LogoCloudPropsSchema,
     ImageBox: ImageBoxPropsSchema,
     VideoGrid: VideoGridPropsSchema,
+    StatsSection: StatsSectionPropsSchema,
 };
 
 // Default props for components that need them
@@ -35,7 +36,7 @@ const COMPONENT_DEFAULTS: Record<string, Record<string, any>> = {
 // Validate a single block and return errors
 function validateBlock(block: { type: string; props: any }): string[] {
     const schema = COMPONENT_SCHEMA_MAP[block.type];
-    if (!schema) return []; // Unknown component, skip validation
+    if (!schema) return [`${block.type}.type: Unsupported component type`];
 
     const result = schema.safeParse(block.props);
     if (result.success) return [];
@@ -49,12 +50,40 @@ function validateBlock(block: { type: string; props: any }): string[] {
 function validateAndFixLayout(blocks: any[]): { blocks: any[]; errors: string[] } {
     const allErrors: string[] = [];
 
-    const fixedBlocks = blocks.map(block => {
-        // Apply component-specific defaults
-        const defaults = COMPONENT_DEFAULTS[block.type] || {};
-        const props = { ...defaults, ...block.props };
+    const fixedBlocks = (Array.isArray(blocks) ? blocks : []).map((block: any) => {
+        const type = typeof block?.type === "string" ? block.type : "TextContent";
+        const rawProps = (block && typeof block.props === "object" && block.props) ? block.props : {};
 
-        const fixedBlock = { ...block, props };
+        // Coerce common invalid enum values
+        let props = { ...rawProps };
+        if (type === "ProductGrid") {
+            const layout = props.layout;
+            if (layout && layout !== "grid" && layout !== "expandable") {
+                props.layout = "grid";
+            }
+        }
+
+        // Apply component-specific defaults
+        const defaults = COMPONENT_DEFAULTS[type] || {};
+        props = { ...defaults, ...props };
+
+        let fixedBlock: any = { type, props };
+
+        // Unknown component types get converted into safe content blocks
+        if (!COMPONENT_SCHEMA_MAP[type]) {
+            allErrors.push(`${type}.type: Unsupported component type`);
+            fixedBlock = {
+                type: "TextContent",
+                props: {
+                    title: "Section",
+                    subtitle: "",
+                    body: "This section was replaced because it was not supported.",
+                    alignment: "left",
+                    imagePosition: "right",
+                    animationStyle: "theme"
+                }
+            };
+        }
 
         // Validate
         const errors = validateBlock(fixedBlock);
@@ -82,12 +111,15 @@ export async function POST(req: Request) {
 
         const aiConfig: AIModelConfig = { provider: 'gemini', model: 'gemini-3-flash-preview' };
 
-        // Prepare component list for context
-        const componentsList = Object.entries(COMPONENT_DEFINITIONS).map(([key, def]) => ({
-            type: key,
-            description: def.label,
-            fields: def.fields.map(f => ({ name: f.name, type: f.type }))
-        }));
+        // Prepare component list for context (only allow components we can validate safely)
+        const allowedTypes = new Set(Object.keys(COMPONENT_SCHEMA_MAP));
+        const componentsList = Object.entries(COMPONENT_DEFINITIONS)
+            .filter(([key]) => allowedTypes.has(key))
+            .map(([key, def]) => ({
+                type: key,
+                description: def.label,
+                fields: def.fields.map(f => ({ name: f.name, type: f.type }))
+            }));
 
         const systemPrompt = `
       You are an expert AI store builder. The user wants to create a new online store.
@@ -146,12 +178,13 @@ export async function POST(req: Request) {
         let storeConfig;
         let attempts = 0;
         const maxAttempts = 2;
+        let currentPrompt = prompt;
 
         while (attempts < maxAttempts) {
             attempts++;
 
             const result = await chat(
-                [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
+                [{ role: 'system', content: systemPrompt }, { role: 'user', content: currentPrompt }],
                 aiConfig
             );
 
@@ -173,7 +206,25 @@ export async function POST(req: Request) {
                 storeConfig.layout = fixedBlocks;
 
                 if (errors.length > 0) {
-                    console.warn("Layout validation errors (auto-fixed):", errors);
+                    console.warn("Layout validation errors:", errors);
+
+                    // If we still have errors, re-ask the model once to repair the JSON.
+                    if (attempts < maxAttempts) {
+                        const repairPrompt = `Your previous JSON had validation issues. Please return a corrected JSON store configuration.
+
+Allowed component types for layout: ${Array.from(allowedTypes).sort().join(", ")}
+
+Validation errors:
+${errors.map(e => `- ${e}`).join("\n")}
+
+Previous JSON:
+${JSON.stringify(storeConfig)}
+
+Return JSON ONLY with the same top-level keys: storeName, subdomain, theme, colors, products, layout.`;
+
+                        currentPrompt = repairPrompt;
+                        continue;
+                    }
                 }
             }
 

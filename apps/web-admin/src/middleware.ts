@@ -50,6 +50,9 @@ export async function middleware(request: NextRequest) {
     const response = NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
     response.headers.set('x-debug-hostname', hostname);
     response.headers.set('x-debug-is-admin', 'false');
+
+    response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
+    response.headers.set('Vary', 'Host');
     return response;
   }
 

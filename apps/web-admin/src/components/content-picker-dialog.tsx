@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { X, Plus, Sparkles, MessageSquare, HelpCircle, FileText, Image, Check, Loader2 } from "lucide-react";
+import { X, Plus, Sparkles, MessageSquare, HelpCircle, FileText, Image, Check, Loader2, BarChart3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ContentPacket = {
@@ -12,7 +12,7 @@ type ContentPacket = {
     data: any;
 };
 
-type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media";
+type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media" | "stat";
 
 const CATEGORIES: { key: PacketType; label: string; icon: any }[] = [
     { key: "feature", label: "Features", icon: Sparkles },
@@ -20,6 +20,7 @@ const CATEGORIES: { key: PacketType; label: string; icon: any }[] = [
     { key: "faq", label: "FAQs", icon: HelpCircle },
     { key: "text_block", label: "Text", icon: FileText },
     { key: "media", label: "Media", icon: Image },
+    { key: "stat", label: "Webstore Stats", icon: BarChart3 },
 ];
 
 interface ContentPickerDialogProps {
@@ -90,6 +91,7 @@ export function ContentPickerDialog({
             faq: { question: newName, answer: "", colSpan: 1 },
             text_block: { title: newName, content: "", colSpan: 1 },
             media: { url: "", alt: newName, caption: "", colSpan: 1 },
+            stat: { value: "", label: newName, prefix: "", suffix: "" },
         };
 
         const { data: newPacket, error } = await supabase
@@ -124,6 +126,8 @@ export function ContentPickerDialog({
                 return data.title || packet.name;
             case "media":
                 return data.alt || data.caption || packet.name;
+            case "stat":
+                return `${data.prefix || ""}${data.value || ""}${data.suffix || ""} ${data.label || packet.name}`.trim();
             default:
                 return packet.name;
         }

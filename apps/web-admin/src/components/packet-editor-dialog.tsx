@@ -21,6 +21,7 @@ const DEFAULT_DATA: Record<string, any> = {
     faq: { question: "", answer: "", image: "", colSpan: 1 },
     text_block: { title: "", content: "", image: "", colSpan: 1 },
     media: { url: "", alt: "", caption: "", colSpan: 1 },
+    stat: { value: "", label: "", prefix: "", suffix: "" },
 };
 
 const PACKET_LABELS: Record<string, string> = {
@@ -29,6 +30,7 @@ const PACKET_LABELS: Record<string, string> = {
     faq: "FAQ",
     text_block: "Text Block",
     media: "Media",
+    stat: "Webstore Stat",
 };
 
 // Reusable Image Picker component
@@ -142,14 +144,16 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
     const [saving, setSaving] = useState(false);
     const [name, setName] = useState("");
     const [data, setData] = useState<Record<string, any>>({});
+    const [effectiveType, setEffectiveType] = useState(packetType);
 
     const isCreateMode = !packetId;
-    const label = PACKET_LABELS[packetType] || packetType;
+    const label = PACKET_LABELS[effectiveType] || effectiveType;
 
     useEffect(() => {
         if (isOpen && packetId) {
             loadPacket();
         } else if (isOpen && !packetId) {
+            setEffectiveType(packetType);
             setName(`New ${label}`);
             setData(DEFAULT_DATA[packetType] || {});
         } else {
@@ -169,6 +173,7 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                 .single();
 
             if (packet) {
+                setEffectiveType(packet.type);
                 setName(packet.name);
                 setData(packet.data || {});
             }
@@ -187,7 +192,7 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                     .from("content_packets")
                     .insert({
                         store_id: storeId,
-                        type: packetType,
+                        type: effectiveType,
                         name,
                         data
                     })
@@ -223,7 +228,7 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
     if (!isOpen) return null;
 
     const renderFields = () => {
-        switch (packetType) {
+        switch (effectiveType) {
             case 'feature':
                 return (
                     <>
@@ -390,6 +395,52 @@ export function PacketEditorDialog({ isOpen, onClose, packetId, packetType, stor
                             onChange={(val) => setData(prev => ({ ...prev, colSpan: val }))}
                             max={maxColumns}
                         />
+                    </>
+                );
+            case 'stat':
+                return (
+                    <>
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Label</label>
+                            <input
+                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                value={data.label || ""}
+                                onChange={e => setData(prev => ({ ...prev, label: e.target.value }))}
+                                placeholder="e.g. Orders Shipped"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Value</label>
+                            <input
+                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                value={data.value ?? ""}
+                                onChange={e => setData(prev => ({ ...prev, value: e.target.value }))}
+                                placeholder="e.g. 12,500"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-500 uppercase">Prefix</label>
+                                <input
+                                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                    value={data.prefix || ""}
+                                    onChange={e => setData(prev => ({ ...prev, prefix: e.target.value }))}
+                                    placeholder="e.g. $"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-500 uppercase">Suffix</label>
+                                <input
+                                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                                    value={data.suffix || ""}
+                                    onChange={e => setData(prev => ({ ...prev, suffix: e.target.value }))}
+                                    placeholder="e.g. +"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-600">
+                            Tip: Add multiple stats to a Stats Section via the Content Library selector.
+                        </div>
                     </>
                 );
             default:

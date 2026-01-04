@@ -1,6 +1,6 @@
 import { supabase } from "@repo/database";
 
-export type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media";
+export type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media" | "stat";
 
 export interface ContentPacket {
     id: string;
@@ -70,6 +70,8 @@ function getItemsPropForBlockType(blockType: string): string {
             return "faqs";
         case "TextContent":
             return "content";
+        case "StatsSection":
+            return "stats";
         default:
             return "items";
     }
@@ -80,6 +82,15 @@ function getItemsPropForBlockType(blockType: string): string {
  */
 function transformPacketForBlock(packet: ContentPacket, blockType: string): any {
     const data = packet.data;
+
+    if (blockType === "StatsSection" && packet.type === "stat") {
+        return {
+            value: data.value ?? "",
+            label: data.label ?? "",
+            prefix: data.prefix,
+            suffix: data.suffix,
+        };
+    }
 
     // UniversalGrid expects GridItem objects with type, title, description, image, colSpan, etc.
     if (blockType === "UniversalGrid") {
@@ -169,6 +180,7 @@ export const PACKET_BLOCK_MAP: Record<PacketType, string[]> = {
     faq: ["FAQ", "UniversalGrid"],
     text_block: ["TextContent"],
     media: ["ImageBox", "UniversalGrid"],
+    stat: ["StatsSection"],
 };
 
 /**

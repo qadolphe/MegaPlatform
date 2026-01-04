@@ -13,7 +13,7 @@ import { CounterInput } from "@/components/ui/counter-input";
 import { PacketSelector } from "@/components/packet-selector";
 import { ProductPicker } from "@/components/product-picker";
 import { PacketEditorDialog } from "@/components/packet-editor-dialog";
-import { getPacketTypeForBlock, extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
+import { getAllPacketTypesForBlock, getPacketTypeForBlock, extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
 import { LayoutBlockSchema } from "@/lib/schemas/component-props";
 import Link from "next/link";
 
@@ -90,6 +90,9 @@ export default function EditorPage() {
     const [storeSubdomain, setStoreSubdomain] = useState<string>("");
     const [deploySuccess, setDeploySuccess] = useState(false);
     const [colorsExpanded, setColorsExpanded] = useState(false);
+
+    const [deployValidationOpen, setDeployValidationOpen] = useState(false);
+    const [deployValidationErrors, setDeployValidationErrors] = useState<Array<{ id: string; type: string; issues: Array<{ path: string; message: string }> }>>([]);
 
     // Media Generation State
     const [mediaGenPrompt, setMediaGenPrompt] = useState("");
@@ -704,18 +707,26 @@ export default function EditorPage() {
     // 2. Deploy function
     const handleDeploy = async () => {
         // Validation
-        const invalidBlocks: any[] = [];
+        const invalidBlocks: Array<{ id: string; type: string; issues: Array<{ path: string; message: string }> }> = [];
         blocks.forEach(block => {
             const result = LayoutBlockSchema.safeParse(block);
             if (!result.success) {
                 console.error(`Invalid Block ${block.type}:`, result.error);
-                invalidBlocks.push({ id: block.id, type: block.type, error: result.error });
+                invalidBlocks.push({
+                    id: block.id,
+                    type: block.type,
+                    issues: result.error.issues.map(i => ({
+                        path: i.path.length ? i.path.join('.') : '(root)',
+                        message: i.message
+                    }))
+                });
             }
         });
 
         if (invalidBlocks.length > 0) {
             console.warn("Deploy blocked due to invalid blocks:", invalidBlocks);
-            alert(`Cannot deploy: ${invalidBlocks.length} blocks have invalid data. Check console.`);
+            setDeployValidationErrors(invalidBlocks);
+            setDeployValidationOpen(true);
             return;
         }
 
@@ -860,7 +871,67 @@ export default function EditorPage() {
     const selectedDef = selectedBlock ? COMPONENT_DEFINITIONS[selectedBlock.type as keyof typeof COMPONENT_DEFINITIONS] : null;
 
     return (
-        <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-900 pl-16">
+        <>
+            <AnimatePresence>
+                {deployValidationOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4"
+                        onClick={() => setDeployValidationOpen(false)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                            transition={{ duration: 0.15 }}
+                            className="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-6 border-b border-slate-200 flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900">Cannot deploy</h3>
+                                    <p className="text-sm text-slate-500">Fix the blocks below, then deploy again.</p>
+                                </div>
+                                <button
+                                    onClick={() => setDeployValidationOpen(false)}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
+
+                            <div className="p-6 max-h-[60vh] overflow-auto space-y-4">
+                                {deployValidationErrors.map((b) => (
+                                    <div key={b.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div>
+                                                <div className="text-sm font-semibold text-slate-900">{b.type}</div>
+                                                <div className="text-xs text-slate-500">Block ID: {b.id}</div>
+                                            </div>
+                                            <div className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-lg">
+                                                {b.issues.length} issue{b.issues.length === 1 ? "" : "s"}
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 space-y-2">
+                                            {b.issues.map((issue, idx) => (
+                                                <div key={idx} className="text-sm text-slate-700">
+                                                    <span className="font-mono text-xs bg-white border border-slate-200 rounded px-2 py-0.5 mr-2">{issue.path}</span>
+                                                    <span className="text-red-700">{issue.message}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-900 pl-16">
             {/* --- HEADER --- */}
             <header className="fixed top-0 left-16 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-50 shadow-md">
                 <div className="flex items-center gap-4">
@@ -1646,7 +1717,7 @@ export default function EditorPage() {
 
                                                                                 // Show PacketSelector after title/subtitle fields
                                                                                 const showPacketSelector = sectionName === "Content" &&
-                                                                                    getPacketTypeForBlock(selectedBlock.type) &&
+                                                                                    getAllPacketTypesForBlock(selectedBlock.type).length > 0 &&
                                                                                     (field.name === 'subtitle' || (field.name === 'title' && !fields.some(f => f.name === 'subtitle')));
 
                                                                                 return (
@@ -1877,6 +1948,7 @@ export default function EditorPage() {
                                                                                                 </label>
                                                                                                 <PacketSelector
                                                                                                     storeId={storeId}
+                                                                                                    allowedTypes={getAllPacketTypesForBlock(selectedBlock.type)}
                                                                                                     selectedIds={selectedBlock.props.packetIds || []}
                                                                                                     onChange={(ids) => updateBlockProps(selectedBlock.id, { packetIds: ids })}
                                                                                                     onEdit={(packetId) => setEditingPacketId(packetId)}
@@ -1902,13 +1974,13 @@ export default function EditorPage() {
                                         </div>
                                     )}
 
-                                </motion.div >
+                                </motion.div>
                             )}
-                        </AnimatePresence >
-                    </div >
-                </div >
+                        </AnimatePresence>
+                    </div>
+                </div>
 
-            </div >
+            </div>
 
             <MediaManager
                 isOpen={isMediaManagerOpen}
@@ -2052,6 +2124,7 @@ export default function EditorPage() {
                     </div>
                 )
             }
-        </div >
+        </div>
+        </>
     );
 }

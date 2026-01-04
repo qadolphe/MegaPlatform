@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle, Loader2, ExternalLink, Copy, RefreshCw, Image as ImageIcon, Users, Trash2, UserPlus } from "lucide-react";
+import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle, Loader2, ExternalLink, Copy, RefreshCw, Image as ImageIcon, Users, Trash2, UserPlus, Code2, Eye, EyeOff, Key } from "lucide-react";
 import Link from "next/link";
 import { MediaManager } from "@/components/media-manager";
 
@@ -33,18 +33,27 @@ interface Collaborator {
     email?: string;
 }
 
-type SettingsTab = 'general' | 'domains' | 'theme' | 'billing' | 'team';
+type SettingsTab = 'general' | 'domains' | 'theme' | 'billing' | 'team' | 'developer';
+
+interface ApiKey {
+    id: string;
+    name: string;
+    public_key: string;
+    secret_key: string;
+    created_at: string;
+    is_active: boolean;
+}
 
 export default function StoreSettingsPage({ params }: { params: Promise<{ storeId: string }> }) {
     const { storeId } = use(params);
     const supabase = createClient();
-    
+
     const [settings, setSettings] = useState<StoreSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-    
+
     // Media Manager State
     const [isMediaOpen, setIsMediaOpen] = useState(false);
     const [mediaTarget, setMediaTarget] = useState<'logo' | 'favicon' | null>(null);
@@ -65,10 +74,18 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
     const [inviting, setInviting] = useState(false);
 
+    // API Keys State
+    const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+    const [generatingKey, setGeneratingKey] = useState(false);
+    const [newKeyName, setNewKeyName] = useState("");
+    const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+    const [newlyCreatedKey, setNewlyCreatedKey] = useState<{ publicKey: string; secretKey: string } | null>(null);
+
     useEffect(() => {
         fetchSettings();
         fetchEmailDomains();
         fetchCollaborators();
+        fetchApiKeys();
     }, [storeId]);
 
     const fetchCollaborators = async () => {
@@ -83,17 +100,17 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     const handleInviteCollaborator = async () => {
         if (!inviteEmail) return;
         setInviting(true);
-        
+
         // Note: This is a simplified version - in production you'd:
         // 1. Look up the user by email in auth.users
         // 2. If not found, send an invite email
         // 3. Create a pending invitation record
-        
+
         // For now, we'll try to find an existing user
         const { data: userData, error: userError } = await supabase
             .rpc('get_user_id_by_email', { email_param: inviteEmail })
             .single();
-        
+
         if (userError || !userData) {
             // If the RPC doesn't exist or user not found, show a message
             setMessage({ type: 'error', text: 'User not found. They must have an account first.' });
@@ -125,7 +142,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
     const handleRemoveCollaborator = async (collaboratorId: string) => {
         if (!confirm("Remove this collaborator?")) return;
-        
+
         const { error } = await supabase
             .from("store_collaborators")
             .delete()
@@ -145,6 +162,63 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             .eq("store_id", storeId);
         if (data) setEmailDomains(data);
     };
+
+    const fetchApiKeys = async () => {
+        const { data } = await supabase
+            .from("api_keys")
+            .select("*")
+            .eq("store_id", storeId)
+            .eq("is_active", true)
+            .order("created_at", { ascending: false });
+        if (data) setApiKeys(data);
+    };
+
+    const handleGenerateApiKey = async () => {
+        setGeneratingKey(true);
+        setNewlyCreatedKey(null);
+        try {
+            const res = await fetch('/api/keys/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storeId, name: newKeyName || 'Default' }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setNewlyCreatedKey({ publicKey: data.publicKey, secretKey: data.secretKey });
+                setNewKeyName("");
+                fetchApiKeys();
+                setMessage({ type: 'success', text: 'API key generated! Save your secret key now - it won\'t be shown again.' });
+            } else {
+                setMessage({ type: 'error', text: data.error || 'Failed to generate key' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to generate API key' });
+        } finally {
+            setGeneratingKey(false);
+        }
+    };
+
+    const handleRevokeApiKey = async (keyId: string) => {
+        if (!confirm('Are you sure you want to revoke this API key? This cannot be undone.')) return;
+        try {
+            const res = await fetch('/api/keys/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyId }),
+            });
+            if (res.ok) {
+                fetchApiKeys();
+                setMessage({ type: 'success', text: 'API key revoked' });
+            } else {
+                const data = await res.json();
+                setMessage({ type: 'error', text: data.error || 'Failed to revoke key' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to revoke API key' });
+        }
+    };
+
+    const maskKey = (key: string) => key.slice(0, 12) + '...' + key.slice(-4);
 
     const handleAddEmailDomain = async () => {
         if (!newEmailDomain) return;
@@ -199,12 +273,12 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             .select("*")
             .eq("id", storeId)
             .single();
-        
+
         if (error) {
             console.error("Error fetching settings:", error);
             return;
         }
-        
+
         setSettings(data);
         setCustomDomain(data.custom_domain || "");
         setLoading(false);
@@ -213,19 +287,19 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     const saveSettings = async (updates: Partial<StoreSettings>) => {
         setSaving(true);
         setMessage(null);
-        
+
         const { error } = await supabase
             .from("stores")
             .update(updates)
             .eq("id", storeId);
-        
+
         setSaving(false);
-        
+
         if (error) {
             setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
             return false;
         }
-        
+
         setSettings(prev => prev ? { ...prev, ...updates } : null);
         setMessage({ type: 'success', text: 'Settings saved successfully!' });
         return true;
@@ -237,19 +311,19 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             setDomainStatus('idle');
             return;
         }
-        
+
         // Basic domain validation
         const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
         if (!domainRegex.test(customDomain)) {
             setMessage({ type: 'error', text: 'Please enter a valid domain name (e.g., mystore.com)' });
             return;
         }
-        
+
         setDomainStatus('checking');
-        
+
         // Save domain to database
         const success = await saveSettings({ custom_domain: customDomain.toLowerCase() });
-        
+
         if (success) {
             setDomainStatus('pending');
         } else {
@@ -285,6 +359,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         { id: 'theme', label: 'Theme', icon: <Palette size={18} /> },
         { id: 'billing', label: 'Billing', icon: <CreditCard size={18} /> },
         { id: 'team', label: 'Team', icon: <Users size={18} /> },
+        { id: 'developer', label: 'Developer', icon: <Code2 size={18} /> },
     ];
 
     return (
@@ -304,11 +379,10 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             <div className="max-w-6xl mx-auto px-6 py-8">
                 {/* Message Banner */}
                 {message && (
-                    <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
-                        message.type === 'success' 
-                            ? 'bg-green-50 text-green-700 border border-green-200' 
+                    <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${message.type === 'success'
+                            ? 'bg-green-50 text-green-700 border border-green-200'
                             : 'bg-red-50 text-red-700 border border-red-200'
-                    }`}>
+                        }`}>
                         {message.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
                         <span className="text-sm font-medium">{message.text}</span>
                     </div>
@@ -322,11 +396,10 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                                        activeTab === tab.id
+                                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${activeTab === tab.id
                                             ? 'bg-blue-50 text-blue-700'
                                             : 'text-slate-600 hover:bg-slate-100'
-                                    }`}
+                                        }`}
                                 >
                                     {tab.icon}
                                     {tab.label}
@@ -342,7 +415,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                             {activeTab === 'general' && (
                                 <div className="p-6">
                                     <h2 className="text-lg font-semibold text-slate-900 mb-6">General Settings</h2>
-                                    
+
                                     <div className="space-y-6">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -370,7 +443,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         ) : (
                                                             <ImageIcon className="text-slate-300" size={24} />
                                                         )}
-                                                        <button 
+                                                        <button
                                                             onClick={() => { setMediaTarget('logo'); setIsMediaOpen(true); }}
                                                             className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                                         >
@@ -378,7 +451,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         </button>
                                                     </div>
                                                     {settings.logo_url && (
-                                                        <button 
+                                                        <button
                                                             onClick={() => setSettings(prev => prev ? { ...prev, logo_url: null } : null)}
                                                             className="text-sm text-red-600 hover:text-red-700"
                                                         >
@@ -398,7 +471,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         ) : (
                                                             <Globe className="text-slate-300" size={24} />
                                                         )}
-                                                        <button 
+                                                        <button
                                                             onClick={() => { setMediaTarget('favicon'); setIsMediaOpen(true); }}
                                                             className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                                         >
@@ -406,7 +479,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         </button>
                                                     </div>
                                                     {settings.favicon_url && (
-                                                        <button 
+                                                        <button
                                                             onClick={() => setSettings(prev => prev ? { ...prev, favicon_url: null } : null)}
                                                             className="text-sm text-red-600 hover:text-red-700"
                                                         >
@@ -436,8 +509,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
                                         <div className="pt-4 border-t border-slate-200">
                                             <button
-                                                onClick={() => saveSettings({ 
-                                                    name: settings.name, 
+                                                onClick={() => saveSettings({
+                                                    name: settings.name,
                                                     currency: settings.currency,
                                                     logo_url: settings.logo_url,
                                                     favicon_url: settings.favicon_url
@@ -457,7 +530,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                             {activeTab === 'domains' && (
                                 <div className="p-6">
                                     <h2 className="text-lg font-semibold text-slate-900 mb-6">Domain Settings</h2>
-                                    
+
                                     <div className="space-y-6">
                                         {/* Default Subdomain */}
                                         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -555,22 +628,21 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                             <p className="text-sm text-slate-500 mb-4">
                                                 Verify domains to send emails (like order confirmations) from your own brand.
                                             </p>
-                                            
+
                                             {/* List existing domains */}
                                             <div className="space-y-4 mb-6">
                                                 {emailDomains.map((domain) => (
                                                     <div key={domain.id} className="border border-slate-200 rounded-lg p-4">
                                                         <div className="flex items-center justify-between mb-3">
                                                             <div className="font-medium text-slate-900">{domain.domain}</div>
-                                                            <div className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                                                domain.status === 'verified' ? 'bg-green-100 text-green-700' : 
-                                                                domain.status === 'failed' ? 'bg-red-100 text-red-700' : 
-                                                                'bg-amber-100 text-amber-700'
-                                                            }`}>
+                                                            <div className={`text-xs px-2 py-1 rounded-full font-medium ${domain.status === 'verified' ? 'bg-green-100 text-green-700' :
+                                                                    domain.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                                                        'bg-amber-100 text-amber-700'
+                                                                }`}>
                                                                 {domain.status.charAt(0).toUpperCase() + domain.status.slice(1)}
                                                             </div>
                                                         </div>
-                                                        
+
                                                         {domain.status !== 'verified' && domain.dns_records && (
                                                             <div className="bg-slate-50 p-3 rounded text-xs font-mono overflow-x-auto">
                                                                 <table className="w-full text-left">
@@ -625,7 +697,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                             {activeTab === 'theme' && (
                                 <div className="p-6">
                                     <h2 className="text-lg font-semibold text-slate-900 mb-6">Theme Settings</h2>
-                                    
+
                                     <div className="space-y-6">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -687,7 +759,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                             {activeTab === 'billing' && (
                                 <div className="p-6">
                                     <h2 className="text-lg font-semibold text-slate-900 mb-6">Billing & Payments</h2>
-                                    
+
                                     <div className="space-y-6">
                                         {/* Stripe Connect Status */}
                                         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -697,7 +769,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                     <p className="text-sm text-slate-500 mt-1">
                                                         {settings.stripe_details_submitted
                                                             ? "Your Stripe account is active and ready to accept payments."
-                                                            : settings.stripe_account_id 
+                                                            : settings.stripe_account_id
                                                                 ? "Your Stripe account is created but setup is incomplete."
                                                                 : "Connect your Stripe account to accept payments from customers."
                                                         }
@@ -708,7 +780,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         <span className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium flex items-center gap-1">
                                                             <Check size={14} /> Active
                                                         </span>
-                                                        <button 
+                                                        <button
                                                             onClick={handleConnectStripe}
                                                             disabled={saving}
                                                             className="text-sm text-blue-600 hover:text-blue-800 font-medium"
@@ -717,7 +789,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         </button>
                                                     </div>
                                                 ) : settings.stripe_account_id ? (
-                                                    <button 
+                                                    <button
                                                         onClick={handleConnectStripe}
                                                         disabled={saving}
                                                         className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition font-medium text-sm flex items-center gap-2"
@@ -726,7 +798,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         Continue Setup
                                                     </button>
                                                 ) : (
-                                                    <button 
+                                                    <button
                                                         onClick={handleConnectStripe}
                                                         disabled={saving}
                                                         className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm flex items-center gap-2"
@@ -765,7 +837,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                             {activeTab === 'team' && (
                                 <div className="p-6">
                                     <h2 className="text-lg font-semibold text-slate-900 mb-6">Team & Collaboration</h2>
-                                    
+
                                     <div className="space-y-6">
                                         {/* Invite Collaborator */}
                                         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -848,11 +920,10 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-2">
-                                                                <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${
-                                                                    collab.role === 'editor' 
+                                                                <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${collab.role === 'editor'
                                                                         ? 'bg-green-100 text-green-700'
                                                                         : 'bg-slate-100 text-slate-600'
-                                                                }`}>
+                                                                    }`}>
                                                                     {collab.role === 'editor' ? 'Editor' : 'Viewer'}
                                                                 </span>
                                                                 <button
@@ -891,6 +962,136 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         <li>• No settings access</li>
                                                     </ul>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Developer Settings */}
+                            {activeTab === 'developer' && (
+                                <div className="p-6">
+                                    <h2 className="text-lg font-semibold text-slate-900 mb-2">Developer Settings</h2>
+                                    <p className="text-sm text-slate-500 mb-6">Manage API keys for headless integrations with Cursor, Lovable, or custom apps.</p>
+
+                                    <div className="space-y-6">
+                                        {/* Generate New Key */}
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <h3 className="font-medium text-slate-900 mb-4 flex items-center gap-2">
+                                                <Key size={18} className="text-blue-600" />
+                                                Generate New API Key
+                                            </h3>
+                                            <div className="flex gap-3">
+                                                <input
+                                                    type="text"
+                                                    value={newKeyName}
+                                                    onChange={(e) => setNewKeyName(e.target.value)}
+                                                    placeholder="Key name (e.g., 'Production', 'Development')"
+                                                    className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                                />
+                                                <button
+                                                    onClick={handleGenerateApiKey}
+                                                    disabled={generatingKey}
+                                                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm flex items-center gap-2 disabled:opacity-50"
+                                                >
+                                                    {generatingKey ? <Loader2 className="animate-spin" size={16} /> : <Key size={16} />}
+                                                    Generate Key
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Newly Created Key Alert */}
+                                        {newlyCreatedKey && (
+                                            <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                                                <div className="flex items-start gap-3">
+                                                    <Check size={20} className="text-green-600 mt-0.5" />
+                                                    <div className="flex-1">
+                                                        <h4 className="font-medium text-green-800 mb-3">Your new API key is ready!</h4>
+                                                        <p className="text-sm text-green-700 mb-4">Save your secret key now. For security, it won't be shown again.</p>
+
+                                                        <div className="space-y-3">
+                                                            <div>
+                                                                <label className="text-xs font-medium text-green-700 mb-1 block">Public Key</label>
+                                                                <div className="flex items-center gap-2">
+                                                                    <code className="flex-1 px-3 py-2 bg-white border border-green-200 rounded text-sm font-mono">{newlyCreatedKey.publicKey}</code>
+                                                                    <button onClick={() => copyToClipboard(newlyCreatedKey.publicKey)} className="p-2 text-green-600 hover:bg-green-100 rounded"><Copy size={16} /></button>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs font-medium text-green-700 mb-1 block">Secret Key ⚠️ Copy now!</label>
+                                                                <div className="flex items-center gap-2">
+                                                                    <code className="flex-1 px-3 py-2 bg-white border border-green-200 rounded text-sm font-mono">{newlyCreatedKey.secretKey}</code>
+                                                                    <button onClick={() => copyToClipboard(newlyCreatedKey.secretKey)} className="p-2 text-green-600 hover:bg-green-100 rounded"><Copy size={16} /></button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Existing Keys */}
+                                        <div>
+                                            <h3 className="font-medium text-slate-900 mb-3">Active API Keys</h3>
+                                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                                {apiKeys.length === 0 ? (
+                                                    <div className="p-8 text-center">
+                                                        <Code2 size={32} className="mx-auto mb-2 text-slate-300" />
+                                                        <p className="text-sm text-slate-500">No API keys yet</p>
+                                                        <p className="text-xs text-slate-400">Generate your first key to get started</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="divide-y divide-slate-200">
+                                                        {apiKeys.map((key) => (
+                                                            <div key={key.id} className="p-4 bg-white hover:bg-slate-50 transition">
+                                                                <div className="flex items-center justify-between mb-3">
+                                                                    <div>
+                                                                        <span className="font-medium text-slate-900">{key.name}</span>
+                                                                        <span className="text-xs text-slate-400 ml-2">Created {new Date(key.created_at).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => handleRevokeApiKey(key.id)}
+                                                                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                                                                    >
+                                                                        Revoke
+                                                                    </button>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-500">Public Key</label>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <code className="flex-1 px-2 py-1.5 bg-slate-100 rounded text-xs font-mono truncate">{key.public_key}</code>
+                                                                            <button onClick={() => copyToClipboard(key.public_key)} className="p-1 text-slate-400 hover:text-slate-600"><Copy size={14} /></button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-500">Secret Key</label>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <code className="flex-1 px-2 py-1.5 bg-slate-100 rounded text-xs font-mono">{maskKey(key.secret_key)}</code>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* SDK Installation */}
+                                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                                            <h3 className="font-medium text-indigo-900 mb-2 flex items-center gap-2">
+                                                <Code2 size={18} />
+                                                Quick Start with SDK
+                                            </h3>
+                                            <p className="text-sm text-indigo-700 mb-3">Install the SwatBloc SDK to access your store's products and checkout from any app.</p>
+                                            <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
+                                                <div className="text-slate-400">// Install the SDK</div>
+                                                <div className="text-green-400">npm install @swatbloc/sdk</div>
+                                                <div className="text-slate-400 mt-3">// Use in your app</div>
+                                                <div className="text-blue-300">import {'{'} SwatBloc {'}'} from '@swatbloc/sdk';</div>
+                                                <div className="text-white">const swat = new SwatBloc('pk_live_...');</div>
+                                                <div className="text-white">const products = await swat.products.list();</div>
                                             </div>
                                         </div>
                                     </div>
