@@ -380,8 +380,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                 {/* Message Banner */}
                 {message && (
                     <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${message.type === 'success'
-                            ? 'bg-green-50 text-green-700 border border-green-200'
-                            : 'bg-red-50 text-red-700 border border-red-200'
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
                         }`}>
                         {message.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
                         <span className="text-sm font-medium">{message.text}</span>
@@ -397,8 +397,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${activeTab === tab.id
-                                            ? 'bg-blue-50 text-blue-700'
-                                            : 'text-slate-600 hover:bg-slate-100'
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'text-slate-600 hover:bg-slate-100'
                                         }`}
                                 >
                                     {tab.icon}
@@ -540,17 +540,17 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <code className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded text-sm text-slate-600">
-                                                    {settings.subdomain}.hoodieplatform.com
+                                                    {settings.subdomain}.swatbloc.com
                                                 </code>
                                                 <button
-                                                    onClick={() => copyToClipboard(`${settings.subdomain}.hoodieplatform.com`)}
+                                                    onClick={() => copyToClipboard(`${settings.subdomain}.swatbloc.com`)}
                                                     className="p-2 text-slate-400 hover:text-slate-600 transition"
                                                     title="Copy"
                                                 >
                                                     <Copy size={16} />
                                                 </button>
                                                 <a
-                                                    href={`https://${settings.subdomain}.hoodieplatform.com`}
+                                                    href={`https://${settings.subdomain}.swatbloc.com`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-2 text-slate-400 hover:text-blue-600 transition"
@@ -593,28 +593,53 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                                                 <div className="flex items-start gap-3">
                                                     <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={18} />
-                                                    <div>
+                                                    <div className="flex-1">
                                                         <h4 className="font-medium text-amber-800 mb-2">DNS Configuration Required</h4>
                                                         <p className="text-sm text-amber-700 mb-3">
-                                                            Add the following DNS record with your domain registrar:
+                                                            Add the following DNS records with your domain registrar:
                                                         </p>
-                                                        <div className="bg-white rounded border border-amber-200 p-3 text-sm font-mono">
-                                                            <div className="grid grid-cols-3 gap-4">
-                                                                <div>
-                                                                    <span className="text-slate-500">Type:</span>
-                                                                    <span className="ml-2 text-slate-900">CNAME</span>
+                                                        <div className="space-y-3">
+                                                            {/* Root domain (A record or CNAME if supported) */}
+                                                            <div className="bg-white rounded border border-amber-200 p-3">
+                                                                <p className="text-xs text-amber-700 mb-2 font-medium">For root domain ({customDomain}):</p>
+                                                                <div className="grid grid-cols-3 gap-4 text-sm font-mono">
+                                                                    <div>
+                                                                        <span className="text-slate-500">Type:</span>
+                                                                        <span className="ml-2 text-slate-900">CNAME</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-slate-500">Name:</span>
+                                                                        <span className="ml-2 text-slate-900">@</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-slate-500">Value:</span>
+                                                                        <span className="ml-2 text-slate-900">{settings.subdomain}.swatbloc.com</span>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <span className="text-slate-500">Name:</span>
-                                                                    <span className="ml-2 text-slate-900">@</span>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-slate-500">Value:</span>
-                                                                    <span className="ml-2 text-slate-900">cname.hoodieplatform.com</span>
+                                                            </div>
+                                                            {/* WWW subdomain */}
+                                                            <div className="bg-white rounded border border-amber-200 p-3">
+                                                                <p className="text-xs text-amber-700 mb-2 font-medium">For www.{customDomain}:</p>
+                                                                <div className="grid grid-cols-3 gap-4 text-sm font-mono">
+                                                                    <div>
+                                                                        <span className="text-slate-500">Type:</span>
+                                                                        <span className="ml-2 text-slate-900">CNAME</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-slate-500">Name:</span>
+                                                                        <span className="ml-2 text-slate-900">www</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-slate-500">Value:</span>
+                                                                        <span className="ml-2 text-slate-900">{settings.subdomain}.swatbloc.com</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <p className="text-xs text-amber-600 mt-2">
+                                                        <p className="text-xs text-amber-600 mt-3">
+                                                            <strong>Note:</strong> Some registrars don't support CNAME on root (@). In that case, use only the www record and enable forwarding from @ to www.
+                                                        </p>
+                                                        <p className="text-xs text-amber-600 mt-1">
                                                             DNS changes can take up to 48 hours to propagate.
                                                         </p>
                                                     </div>
@@ -636,8 +661,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                         <div className="flex items-center justify-between mb-3">
                                                             <div className="font-medium text-slate-900">{domain.domain}</div>
                                                             <div className={`text-xs px-2 py-1 rounded-full font-medium ${domain.status === 'verified' ? 'bg-green-100 text-green-700' :
-                                                                    domain.status === 'failed' ? 'bg-red-100 text-red-700' :
-                                                                        'bg-amber-100 text-amber-700'
+                                                                domain.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                                                    'bg-amber-100 text-amber-700'
                                                                 }`}>
                                                                 {domain.status.charAt(0).toUpperCase() + domain.status.slice(1)}
                                                             </div>
@@ -921,8 +946,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${collab.role === 'editor'
-                                                                        ? 'bg-green-100 text-green-700'
-                                                                        : 'bg-slate-100 text-slate-600'
+                                                                    ? 'bg-green-100 text-green-700'
+                                                                    : 'bg-slate-100 text-slate-600'
                                                                     }`}>
                                                                     {collab.role === 'editor' ? 'Editor' : 'Viewer'}
                                                                 </span>

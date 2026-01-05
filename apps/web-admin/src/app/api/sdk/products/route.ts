@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
             .from('products')
             .select('*')
             .eq('store_id', storeId)
-            .eq('is_active', true)
+            .eq('published', true)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 

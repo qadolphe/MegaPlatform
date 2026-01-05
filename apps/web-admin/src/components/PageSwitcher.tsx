@@ -28,7 +28,7 @@ export function PageSwitcher({ storeId, activeTab }: PageSwitcherProps) {
         )}
         <span className="relative z-10 flex items-center gap-2">
           <FileText size={16} />
-          Pages
+          Webstore
         </span>
       </Link>
       <Link

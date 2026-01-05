@@ -53,7 +53,7 @@ export async function GET(
             .from('products')
             .select('*')
             .eq('store_id', storeId)
-            .eq('is_active', true);
+            .eq('published', true);
 
         // Check if it looks like a UUID
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
