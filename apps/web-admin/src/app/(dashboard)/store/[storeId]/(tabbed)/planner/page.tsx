@@ -431,6 +431,78 @@ export default function PlannerPage() {
     });
   };
 
+  const groupCompletedTasks = (doneTasks: Task[]) => {
+    // 1. Map all tasks for easy lookup
+    const taskMap = new Map(doneTasks.map(t => [t.id, t]));
+    
+    // 2. Map predecessors to find children (reverse lookup)
+    const childrenMap = new Map<string, string>(); // parentId -> childId
+    doneTasks.forEach(t => {
+      if (t.predecessor_id && taskMap.has(t.predecessor_id)) {
+        childrenMap.set(t.predecessor_id, t.id);
+      }
+    });
+
+    const groups: Task[][] = [];
+    const visited = new Set<string>();
+
+    for (const task of doneTasks) {
+      if (visited.has(task.id)) continue;
+
+      // Find the "Head" of this chain within the done set
+      // (Scan backwards until we hit a task not in done or no predecessor)
+      let head = task;
+      const chainPath = new Set<string>(); // Prevent cycle infinite loop
+      chainPath.add(head.id);
+      
+      while (head.predecessor_id && taskMap.has(head.predecessor_id)) {
+         const parent = taskMap.get(head.predecessor_id)!;
+         if (chainPath.has(parent.id)) break; // Cycle detected
+         head = parent;
+         chainPath.add(head.id);
+      }
+
+      // Now trace forward from head to build the chain
+      const chain: Task[] = [];
+      let curr: Task | undefined = head;
+      while (curr) {
+        if (!visited.has(curr.id)) {
+            chain.push(curr);
+            visited.add(curr.id);
+        }
+        
+        // Find next child
+        const childId = childrenMap.get(curr.id);
+        curr = childId ? taskMap.get(childId) : undefined;
+      }
+      
+      if (chain.length > 0) {
+          groups.push(chain);
+      }
+    }
+    
+    // Sort the groups based on the user's sort preference
+    return groups.sort((g1, g2) => {
+        // Use the first task in the group for sorting comparison
+        const t1 = g1[0];
+        const t2 = g2[0];
+        
+        // This is a simplified sort, reusing the logic from getSortedTasks essentially
+        switch (sortBy) {
+            case 'date-desc':
+                return new Date(t2.created_at).getTime() - new Date(t1.created_at).getTime();
+            case 'date-asc':
+                return new Date(t1.created_at).getTime() - new Date(t2.created_at).getTime();
+            case 'priority-high':
+                return priorityOrder[t2.priority] - priorityOrder[t1.priority];
+            case 'priority-low':
+                return priorityOrder[t1.priority] - priorityOrder[t2.priority];
+            default:
+                return 0;
+        }
+    });
+  };
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-8">
@@ -536,147 +608,157 @@ export default function PlannerPage() {
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {getSortedTasks(tasks.filter(t => t.status === col.id)).map(task => {
-                const isDone = col.id === 'done';
-                const isSelected = selectedTaskIds.has(task.id);
-
-                // Minimized card for done tasks
-                if (isDone) {
-                  return (
-                    <motion.div 
-                      layoutId={task.id}
-                      key={task.id}
-                      onClick={() => isSelectionMode ? toggleTaskSelection(task.id) : openTaskDialog(task)}
-                      className={`bg-white p-3 rounded-lg border shadow-sm hover:shadow-md transition group cursor-pointer flex items-center justify-between gap-3 ${
-                        isSelected ? 'border-purple-500 bg-purple-50' : 'border-slate-200'
-                      }`}
-                    >
-                      {isSelectionMode && (
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected ? 'bg-purple-600 border-purple-600' : 'border-slate-300'
-                        }`}>
-                          {isSelected && <Check size={14} className="text-white" />}
-                        </div>
-                      )}
-                      <h3 className="font-medium text-slate-900 flex-1 truncate">{task.title}</h3>
-                      <div className="flex items-center gap-2 text-xs text-slate-400 flex-shrink-0">
-                        <span>{new Date(task.created_at).toLocaleDateString()}</span>
-                        {task.assignee_id && (
-                             <span className="bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[80px]" title="Assignee">
-                                {getAssigneeName(task.assignee_id)}
-                             </span>
-                        )}
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); confirmDeleteTask(task.id); }} 
-                          className="text-slate-400 hover:text-red-500 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, 'in-progress'); }}
-                          className="p-1 hover:bg-slate-100 rounded text-slate-500"
-                          title="Move Back to In Progress"
-                        >
-                          <ArrowLeft size={14} />
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                }
-
-                // Full card for todo and in-progress
-                return (
-                  <motion.div 
-                    layoutId={task.id}
-                    key={task.id} 
-                    onClick={() => isSelectionMode ? toggleTaskSelection(task.id) : openTaskDialog(task)}
-                    className={`bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition group cursor-pointer ${
-                      isSelected ? 'border-purple-500 bg-purple-50' : 'border-slate-200'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        {isSelectionMode && (
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                            isSelected ? 'bg-purple-600 border-purple-600' : 'border-slate-300'
-                          }`}>
-                            {isSelected && <Check size={14} className="text-white" />}
-                          </div>
-                        )}
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${getPriorityColor(task.priority)}`}>
-                          {task.priority}
-                        </span>
-                      </div>
-                      <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); confirmDeleteTask(task.id); }} 
-                          className="text-slate-400 hover:text-red-500 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <h3 className="font-medium text-slate-900 mb-1">{task.title}</h3>
-                    
-                    {/* Tags Display */}
-                    {task.tag_ids && task.tag_ids.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-2">
-                            {task.tag_ids.map(tagId => {
-                                const tag = tags.find(t => t.id === tagId);
-                                if (!tag) return null;
-                                return (
-                                    <span key={tagId} 
-                                        className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium"
-                                        style={{ backgroundColor: tag.color + '20', borderColor: tag.color + '40', color: tag.color }}
-                                    >
-                                        {tag.name}
-                                    </span>
-                                );
-                            })}
-                        </div>
+              {(col.id === 'done' 
+                 ? groupCompletedTasks(tasks.filter(t => t.status === 'done'))
+                 : getSortedTasks(tasks.filter(t => t.status === col.id)).map(t => [t])
+              ).map(group => (
+                  <div key={group[0].id + '-group'} className={group.length > 1 ? "relative pl-3 space-y-3" : ""}>
+                    {group.length > 1 && (
+                        <div className="absolute left-0 top-2 bottom-2 w-1 bg-slate-200 rounded-full" />
                     )}
+                    {group.map(task => {
+                        const isDone = col.id === 'done';
+                        const isSelected = selectedTaskIds.has(task.id);
 
-                    {task.description && (
-                      <p className="text-sm text-slate-500 mb-3 line-clamp-2">{task.description}</p>
-                    )}
-                    
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-50 mt-2">
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <span>{new Date(task.created_at).toLocaleDateString()}</span>
-                        {task.assignee_id && (
-                          <span className="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded flex items-center gap-1 border border-slate-100" title="Assignee">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                            {getAssigneeName(task.assignee_id) || 'Unknown'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        {col.id !== 'todo' && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, 'todo'); }}
-                            className="p-1 hover:bg-slate-100 rounded text-slate-500"
-                            title="Move Back"
+                        // Minimized card for done tasks
+                        if (isDone) {
+                          return (
+                            <motion.div 
+                              layoutId={task.id}
+                              key={task.id}
+                              onClick={() => isSelectionMode ? toggleTaskSelection(task.id) : openTaskDialog(task)}
+                              className={`bg-white p-3 rounded-lg border shadow-sm hover:shadow-md transition group cursor-pointer flex items-center justify-between gap-3 ${
+                                isSelected ? 'border-purple-500 bg-purple-50' : 'border-slate-200'
+                              }`}
+                            >
+                              {isSelectionMode && (
+                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                  isSelected ? 'bg-purple-600 border-purple-600' : 'border-slate-300'
+                                }`}>
+                                  {isSelected && <Check size={14} className="text-white" />}
+                                </div>
+                              )}
+                              <h3 className="font-medium text-slate-900 flex-1 truncate">{task.title}</h3>
+                              <div className="flex items-center gap-2 text-xs text-slate-400 flex-shrink-0">
+                                <span>{new Date(task.created_at).toLocaleDateString()}</span>
+                                {task.assignee_id && (
+                                     <span className="bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[80px]" title="Assignee">
+                                        {getAssigneeName(task.assignee_id)}
+                                     </span>
+                                )}
+                              </div>
+                              <div className="flex gap-1 flex-shrink-0">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); confirmDeleteTask(task.id); }} 
+                                  className="text-slate-400 hover:text-red-500 p-1"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, 'in-progress'); }}
+                                  className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                                  title="Move Back to In Progress"
+                                >
+                                  <ArrowLeft size={14} />
+                                </button>
+                              </div>
+                            </motion.div>
+                          );
+                        }
+
+                        // Full card for todo and in-progress
+                        return (
+                          <motion.div 
+                            layoutId={task.id}
+                            key={task.id} 
+                            onClick={() => isSelectionMode ? toggleTaskSelection(task.id) : openTaskDialog(task)}
+                            className={`bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition group cursor-pointer ${
+                              isSelected ? 'border-purple-500 bg-purple-50' : 'border-slate-200'
+                            }`}
                           >
-                            <ArrowLeft size={14} />
-                          </button>
-                        )}
-                        {col.id !== 'done' && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, col.id === 'todo' ? 'in-progress' : 'done'); }}
-                            className="p-1 hover:bg-slate-100 rounded text-slate-500"
-                            title="Move Forward"
-                          >
-                            <ArrowRight size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2">
+                                {isSelectionMode && (
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                    isSelected ? 'bg-purple-600 border-purple-600' : 'border-slate-300'
+                                  }`}>
+                                    {isSelected && <Check size={14} className="text-white" />}
+                                  </div>
+                                )}
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${getPriorityColor(task.priority)}`}>
+                                  {task.priority}
+                                </span>
+                              </div>
+                              <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); confirmDeleteTask(task.id); }} 
+                                  className="text-slate-400 hover:text-red-500 p-1"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <h3 className="font-medium text-slate-900 mb-1">{task.title}</h3>
+                            
+                            {/* Tags Display */}
+                            {task.tag_ids && task.tag_ids.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                    {task.tag_ids.map(tagId => {
+                                        const tag = tags.find(t => t.id === tagId);
+                                        if (!tag) return null;
+                                        return (
+                                            <span key={tagId} 
+                                                className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium"
+                                                style={{ backgroundColor: tag.color + '20', borderColor: tag.color + '40', color: tag.color }}
+                                            >
+                                                {tag.name}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {task.description && (
+                              <p className="text-sm text-slate-500 mb-3 line-clamp-2">{task.description}</p>
+                            )}
+                            
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-50 mt-2">
+                              <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <span>{new Date(task.created_at).toLocaleDateString()}</span>
+                                {task.assignee_id && (
+                                  <span className="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded flex items-center gap-1 border border-slate-100" title="Assignee">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                    {getAssigneeName(task.assignee_id) || 'Unknown'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex gap-1">
+                                {col.id !== 'todo' && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, 'todo'); }}
+                                    className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                                    title="Move Back"
+                                  >
+                                    <ArrowLeft size={14} />
+                                  </button>
+                                )}
+                                {col.id !== 'done' && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, col.id === 'todo' ? 'in-progress' : 'done'); }}
+                                    className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                                    title="Move Forward"
+                                  >
+                                    <ArrowRight size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                    })}
+                  </div>
+              ))}
               
               {tasks.filter(t => t.status === col.id).length === 0 && (
                 <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-lg">
@@ -847,7 +929,40 @@ export default function PlannerPage() {
       {/* Task Details Dialog */
       selectedTask && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col">
+            
+             {/* Floating Timeline Navigation Buttons */}
+             {!isEditMode && (
+                <>
+                   {(tasks.find(t => t.id === selectedTask.predecessor_id) || selectedTask.predecessor_id) && (
+                       <button 
+                           onClick={() => {
+                               const pred = tasks.find(t => t.id === selectedTask.predecessor_id);
+                               if (pred) setSelectedTask(pred);
+                           }}
+                           className="absolute -left-16 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-slate-100 text-slate-600 rounded-full shadow-lg transition disabled:opacity-50 hidden md:block z-10"
+                           title="Previous Task"
+                           disabled={!tasks.find(t => t.id === selectedTask.predecessor_id)}
+                       >
+                           <ChevronLeft size={24} />
+                       </button>
+                   )}
+                   {(tasks.find(t => t.predecessor_id === selectedTask.id)) && (
+                       <button 
+                           onClick={() => {
+                               const succ = tasks.find(t => t.predecessor_id === selectedTask.id);
+                               if (succ) setSelectedTask(succ);
+                           }}
+                           className="absolute -right-16 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-slate-100 text-slate-600 rounded-full shadow-lg transition hidden md:block z-10"
+                           title="Next Task"
+                       >
+                           <ChevronRight size={24} />
+                       </button>
+                   )}
+                </>
+             )}
+
+            <div className="bg-white rounded-xl shadow-xl w-full h-full overflow-hidden flex flex-col">
             
             {/* Header */}
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -1075,36 +1190,7 @@ export default function PlannerPage() {
                 )}
             </div>
 
-             {/* Floating Timeline Navigation Buttons */}
-             {selectedTask && !isEditMode && (
-                <>
-                   {(tasks.find(t => t.id === selectedTask.predecessor_id) || selectedTask.predecessor_id) && (
-                       <button 
-                           onClick={() => {
-                               const pred = tasks.find(t => t.id === selectedTask.predecessor_id);
-                               if (pred) setSelectedTask(pred);
-                           }}
-                           className="absolute -left-16 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-slate-100 text-slate-600 rounded-full shadow-lg transition disabled:opacity-50 hidden md:block"
-                           title="Previous Task"
-                           disabled={!tasks.find(t => t.id === selectedTask.predecessor_id)}
-                       >
-                           <ChevronLeft size={24} />
-                       </button>
-                   )}
-                   {(tasks.find(t => t.predecessor_id === selectedTask.id)) && (
-                       <button 
-                           onClick={() => {
-                               const succ = tasks.find(t => t.predecessor_id === selectedTask.id);
-                               if (succ) setSelectedTask(succ);
-                           }}
-                           className="absolute -right-16 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-slate-100 text-slate-600 rounded-full shadow-lg transition hidden md:block"
-                           title="Next Task"
-                       >
-                           <ChevronRight size={24} />
-                       </button>
-                   )}
-                </>
-             )}
+
 
             {/* Footer Buttons for Edit Mode (Cancel) */}
             {isEditMode && (
@@ -1125,6 +1211,7 @@ export default function PlannerPage() {
             )}
           </div>
         </div>
+      </div>
       )}
 
       {/* Export Dialog */}
