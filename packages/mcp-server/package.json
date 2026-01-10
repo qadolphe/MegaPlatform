@@ -10,7 +10,9 @@
         "dev": "tsc --watch"
     },
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^0.6.0"
+        "@modelcontextprotocol/sdk": "^0.6.0",
+        "zod": "^4.3.5",
+        "zod-to-json-schema": "^3.25.1"
     },
     "devDependencies": {
         "@types/minimatch": "^6.0.0",
