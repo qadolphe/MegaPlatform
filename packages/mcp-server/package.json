@@ -1,8 +1,14 @@
 {
     "name": "@swatbloc/mcp-server",
     "version": "0.1.0",
-    "private": true,
+    "private": false,
     "main": "dist/index.js",
+    "bin": {
+        "swatbloc-mcp": "./dist/index.js"
+    },
+    "files": [
+        "dist"
+    ],
     "type": "module",
     "scripts": {
         "build": "tsc",
