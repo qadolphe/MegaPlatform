@@ -14,6 +14,7 @@ interface Task {
   priority: 'low' | 'medium' | 'high';
   assignee_id?: string;
   tag_ids?: string[];
+  predecessor_id?: string;
   created_at: string;
 }
 
@@ -60,7 +61,10 @@ export default function PlannerPage() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newTaskStatus, setNewTaskStatus] = useState<'todo' | 'in-progress' | 'done'>('todo');
   const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
+  const [newTaskTags, setNewTaskTags] = useState<string[]>([]);
+  const [newTaskPredecessorId, setNewTaskPredecessorId] = useState<string | null>(null);
 
   // Dialog State
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -181,8 +185,10 @@ export default function PlannerPage() {
         title: newTaskTitle,
         description: newTaskDesc,
         priority: newTaskPriority,
-        status: 'todo',
-        assignee_id: newTaskAssignee || null
+        status: newTaskStatus,
+        assignee_id: newTaskAssignee || null,
+        tag_ids: newTaskTags,
+        predecessor_id: newTaskPredecessorId
       })
       .select()
       .single();
@@ -192,6 +198,11 @@ export default function PlannerPage() {
       setNewTaskTitle("");
       setNewTaskDesc("");
       setNewTaskAssignee("");
+      setNewTaskTags([]);
+      setNewTaskStatus('todo');
+      setNewTaskPredecessorId(null);
+      setNewTaskAssignee("");
+      setNewTaskTags([]);
       setIsCreateOpen(false);
     }
   };
@@ -619,76 +630,155 @@ export default function PlannerPage() {
       {/* Create Modal */}
       {isCreateOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg">New Task</h3>
-              <button onClick={() => setIsCreateOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <form onSubmit={createTask} className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
-                <input 
-                  type="text" 
-                  value={newTaskTitle}
-                  onChange={e => setNewTaskTitle(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="What needs to be done?"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                <textarea 
-                  value={newTaskDesc}
-                  onChange={e => setNewTaskDesc(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
-                  placeholder="Add details..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-                <div className="flex gap-2">
-                  {['low', 'medium', 'high'].map(p => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setNewTaskPriority(p as any)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize border ${
-                        newTaskPriority === p 
-                          ? 'bg-blue-50 border-blue-500 text-blue-700' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                 <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded bg-blue-100 text-blue-700`}>
+                    NEW
+                 </span>
+                 <h3 className="font-bold text-lg text-slate-900">Create Task</h3>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Assignee</label>
-                <select
-                  value={newTaskAssignee}
-                  onChange={e => setNewTaskAssignee(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                >
-                  <option value="">Unassigned</option>
-                  {collaborators.map(c => (
-                    <option key={c.id} value={c.user_id}>
-                      {c.email || `User ${c.user_id.slice(0, 4)}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="pt-2">
+              <div className="flex items-center gap-2">
                 <button 
-                  type="submit" 
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+                    onClick={() => setIsCreateOpen(false)} 
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition"
                 >
-                  Create Task
+                    <X size={20} />
                 </button>
               </div>
-            </form>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-6">
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                    <input 
+                        type="text" 
+                        value={newTaskTitle}
+                        onChange={e => setNewTaskTitle(e.target.value)}
+                        className="w-full text-lg border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="What needs to be done?"
+                        autoFocus
+                    />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                        <select 
+                            value={newTaskStatus}
+                            onChange={e => setNewTaskStatus(e.target.value as any)}
+                            className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-700"
+                        >
+                            <option value="todo">To Do</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="done">Done</option>
+                        </select>
+                    </div>
+                
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+                        <div className="flex gap-2">
+                            {['low', 'medium', 'high'].map(p => (
+                                <button
+                                    key={p}
+                                    type="button"
+                                    onClick={() => setNewTaskPriority(p as any)}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize border transition ${
+                                        newTaskPriority === p 
+                                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' 
+                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Assignee</label>
+                        <select 
+                            value={newTaskAssignee}
+                            onChange={e => setNewTaskAssignee(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                        >
+                            <option value="">Unassigned</option>
+                            {collaborators.map(c => (
+                              <option key={c.id} value={c.user_id}>
+                                {c.first_name || c.last_name ? `${c.first_name} ${c.last_name}` : (c.email || `User ${c.user_id.slice(0, 4)}`)}
+                              </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Tags</label>
+                    <div className="flex flex-wrap gap-2">
+                        {tags.map(tag => {
+                            const isSelected = newTaskTags.includes(tag.id);
+                            return (
+                                <button
+                                    key={tag.id}
+                                    onClick={() => {
+                                        if (isSelected) setNewTaskTags(newTaskTags.filter(id => id !== tag.id));
+                                        else setNewTaskTags([...newTaskTags, tag.id]);
+                                    }}
+                                    className={`px-2 py-1 rounded-full text-xs font-medium border transition flex items-center gap-1 ${
+                                        isSelected 
+                                        ? 'ring-2 ring-offset-1' 
+                                        : 'opacity-60 hover:opacity-100'
+                                    }`}
+                                    style={{ 
+                                        backgroundColor: tag.color + '20', 
+                                        borderColor: tag.color, 
+                                        color: tag.color,
+                                        boxShadow: isSelected ? `0 0 0 2px ${tag.color}` : 'none'
+                                    }}
+                                >
+                                    {tag.name} {isSelected && <Check size={10} />}
+                                </button>
+                            );
+                        })}
+                        <button
+                            onClick={() => { setIsTagManagerOpen(true); }}
+                            className="px-2 py-1 rounded-full text-xs font-medium border border-slate-300 text-slate-500 hover:bg-slate-50 flex items-center gap-1"
+                        >
+                            <Plus size={12} /> Manage Tags
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                    <textarea 
+                        value={newTaskDesc}
+                        onChange={e => setNewTaskDesc(e.target.value)}
+                        className="w-full min-h-[200px] border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none resize-y"
+                        placeholder="Add detailed description..."
+                    />
+                </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                <button 
+                    onClick={() => setIsCreateOpen(false)}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg transition font-medium"
+                >
+                    Cancel
+                </button>
+                <button 
+                    onClick={createTask}
+                    className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition font-medium flex items-center gap-2"
+                >
+                    <Plus size={16} /> Create Task
+                </button>
+            </div>
           </div>
         </div>
       )}
@@ -704,26 +794,15 @@ export default function PlannerPage() {
                  <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${getPriorityColor(isEditMode ? editPriority : selectedTask.priority)}`}>
                     {isEditMode ? editPriority : selectedTask.priority}
                  </span>
-                 <span className="text-slate-400 text-sm">
-                    {new Date(selectedTask.created_at).toLocaleDateString()}
-                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {!isEditMode ? (
+                {!isEditMode && (
                     <button 
                         onClick={() => setIsEditMode(true)}
                         className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition"
                         title="Edit Task"
                     >
                         <Pencil size={18} />
-                    </button>
-                ) : (
-                    <button 
-                        onClick={saveTaskChanges}
-                        className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition flex items-center gap-2 px-3"
-                        title="Save Changes"
-                    >
-                        <Save size={16} /> Save
                     </button>
                 )}
                 <button 
@@ -764,15 +843,22 @@ export default function PlannerPage() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-                                <select 
-                                    value={editPriority}
-                                    onChange={e => setEditPriority(e.target.value as any)}
-                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                >
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
-                                </select>
+                                <div className="flex gap-2">
+                                    {['low', 'medium', 'high'].map(p => (
+                                        <button
+                                            key={p}
+                                            type="button"
+                                            onClick={() => setEditPriority(p as any)}
+                                            className={`flex-1 py-1.5 rounded-lg text-sm font-medium capitalize border transition ${
+                                                editPriority === p 
+                                                    ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' 
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Assignee</label>
@@ -872,15 +958,37 @@ export default function PlannerPage() {
                             )}
                         </div>
 
-                        <div className="pt-6 border-t border-slate-100 flex items-center gap-4 text-sm text-slate-500">
-                             <div className="flex items-center gap-2">
-                                <Clock size={16} />
-                                Status: <span className="font-medium capitalize text-slate-900">{selectedTask.status.replace('-', ' ')}</span>
+                        <div className="pt-6 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+                             <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Clock size={16} />
+                                    Status: <span className="font-medium capitalize text-slate-900">{selectedTask.status.replace('-', ' ')}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Circle size={16} />
+                                    ID: <span className="font-mono text-xs">{selectedTask.id.slice(0, 8)}</span>
+                                </div>
                              </div>
-                             <div className="flex items-center gap-2">
-                                <Circle size={16} />
-                                ID: <span className="font-mono text-xs">{selectedTask.id.slice(0, 8)}</span>
-                             </div>
+                             
+                             {/* Complete & Follow Up Action */}
+                             {selectedTask.status !== 'done' && (
+                                <button 
+                                    onClick={() => {
+                                        updateTaskStatus(selectedTask.id, 'done');
+                                        setSelectedTask(null);
+                                        // Delay opening new task to allow dialog close
+                                        setTimeout(() => {
+                                            setNewTaskPredecessorId(selectedTask.id);
+                                            setNewTaskTitle(`Follow up: ${selectedTask.title}`);
+                                            setIsCreateOpen(true);
+                                        }, 300);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition"
+                                >
+                                    <CheckCircle2 size={16} />
+                                    Complete & Follow Up
+                                </button>
+                             )}
                         </div>
                     </div>
                 )}
