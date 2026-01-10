@@ -1,18 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { useParams } from "next/navigation";
-import { ExternalLink, Bell, Search } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { ExternalLink, Bell, Search, Settings, LogOut, User as UserIcon } from "lucide-react";
+import { ProfileSettingsDialog } from "./profile-settings-dialog";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [store, setStore] = useState<{ name: string; logo_url: string | null; subdomain: string } | null>(null);
   const supabase = createClient();
   const params = useParams();
+  const router = useRouter();
   const storeId = params.storeId as string;
   const [baseDomain, setBaseDomain] = useState("localhost:3000");
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            setIsDropdownOpen(false);
+        }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchProfileName = async (userId: string) => {
+    const { data } = await supabase.from('profiles').select('first_name, last_name').eq('id', userId).single();
+    if (data && (data.first_name || data.last_name)) {
+        setProfileName(`${data.first_name || ''} ${data.last_name || ''}`.trim());
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -21,6 +46,7 @@ export function Header() {
 
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
+      if (data.user) fetchProfileName(data.user.id);
     });
 
     if (storeId) {
@@ -31,6 +57,11 @@ export function Header() {
       setStore(null);
     }
   }, [supabase, storeId]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <header className="flex h-16 items-center justify-between px-8 border-b border-slate-200/50 bg-white/80 backdrop-blur-xl">
@@ -82,21 +113,59 @@ export function Header() {
           <span className="absolute top-2 right-2 h-2 w-2 bg-blue-500 rounded-full ring-2 ring-white" />
         </button>
 
-        {/* User Avatar */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
-          <div className="relative">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-lg">
-              {user?.email?.[0].toUpperCase() || "U"}
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full ring-2 ring-white" />
-          </div>
-          <div className="hidden lg:block">
-            <p className="text-sm font-medium text-slate-900 truncate max-w-[160px]">
-              {user?.email?.split('@')[0]}
-            </p>
-            <p className="text-xs text-slate-500">Pro Plan</p>
-          </div>
+        {/* User Avatar + Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+            <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-3 pl-3 border-l border-slate-200 hover:bg-slate-50/50 rounded-xl transition-colors p-1"
+            >
+                <div className="relative">
+                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-lg">
+                    {profileName ? profileName[0].toUpperCase() : (user?.email?.[0].toUpperCase() || "U")}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full ring-2 ring-white" />
+                </div>
+                <div className="hidden lg:block text-left">
+                    <p className="text-sm font-medium text-slate-900 truncate max-w-[160px]">
+                    {profileName || user?.email?.split('@')[0]}
+                    </p>
+                    <p className="text-xs text-slate-500">Pro Plan</p>
+                </div>
+            </button>
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+                <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                        <p className="text-sm font-medium text-slate-900 truncate">{profileName || 'User'}</p>
+                        <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                    </div>
+                    <div className="p-1">
+                        <button 
+                            onClick={() => { setIsDropdownOpen(false); setIsProfileOpen(true); }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+                        >
+                            <Settings size={16} /> Profile Settings
+                        </button>
+                        <button 
+                            onClick={handleSignOut}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            <LogOut size={16} /> Sign Out
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
+
+        {user && (
+            <ProfileSettingsDialog 
+                user={user} 
+                isOpen={isProfileOpen} 
+                onClose={() => setIsProfileOpen(false)}
+                onProfileUpdate={() => fetchProfileName(user.id)}
+            />
+        )}
       </div>
     </header>
   );

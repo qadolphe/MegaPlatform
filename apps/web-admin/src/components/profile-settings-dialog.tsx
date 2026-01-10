@@ -1,0 +1,149 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { X, Save, User as UserIcon, Loader2 } from "lucide-react";
+
+interface ProfileSettingsDialogProps {
+  user: User;
+  isOpen: boolean;
+  onClose: () => void;
+  onProfileUpdate: () => void;
+}
+
+export function ProfileSettingsDialog({ user, isOpen, onClose, onProfileUpdate }: ProfileSettingsDialogProps) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (isOpen && user) {
+      fetchProfile();
+    }
+  }, [isOpen, user]);
+
+  const fetchProfile = async () => {
+    setFetching(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (data) {
+      setFirstName(data.first_name || "");
+      setLastName(data.last_name || "");
+    }
+    // If no data, fields remain empty, ready for creation
+    setFetching(false);
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    
+    // Check if profile exists
+    const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).single();
+
+    let error;
+    if (existing) {
+       const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ first_name: firstName, last_name: lastName })
+        .eq('id', user.id);
+       error = updateError;
+    } else {
+       const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({ id: user.id, first_name: firstName, last_name: lastName });
+       error = insertError;
+    }
+
+    setLoading(false);
+    if (!error) {
+      onProfileUpdate();
+      onClose();
+    } else {
+      alert('Failed to update profile');
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <UserIcon size={20} className="text-slate-500" />
+            Profile Settings
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6">
+          {fetching ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin text-slate-400" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 mb-6">
+                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                    {firstName ? firstName[0].toUpperCase() : (user.email?.[0].toUpperCase() || "U")}
+                 </div>
+                 <div>
+                    <p className="font-medium text-slate-900">{user.email}</p>
+                    <p className="text-sm text-slate-500">Pro Plan</p>
+                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">First Name</label>
+                <input 
+                  type="text" 
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  placeholder="e.g. John"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
+                <input 
+                  type="text" 
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  placeholder="e.g. Doe"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg transition font-medium"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSave}
+            disabled={loading || fetching}
+            className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition font-medium flex items-center gap-2 disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
