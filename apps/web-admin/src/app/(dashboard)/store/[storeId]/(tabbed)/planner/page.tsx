@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft, Pencil, X, Save } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Task {
@@ -32,6 +32,14 @@ export default function PlannerPage() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+
+  // Dialog State
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [editStatus, setEditStatus] = useState<'todo' | 'in-progress' | 'done'>('todo');
 
   useEffect(() => {
     fetchTasks();
@@ -98,6 +106,41 @@ export default function PlannerPage() {
     }
   };
 
+  const openTaskDialog = (task: Task) => {
+    setSelectedTask(task);
+    setIsEditMode(false);
+    setEditTitle(task.title);
+    setEditDesc(task.description);
+    setEditPriority(task.priority);
+    setEditStatus(task.status);
+  };
+
+  const saveTaskChanges = async () => {
+    if (!selectedTask || !editTitle.trim()) return;
+
+    const updatedTask = {
+      ...selectedTask,
+      title: editTitle,
+      description: editDesc,
+      priority: editPriority,
+      status: editStatus
+    };
+
+    setTasks(tasks.map(t => t.id === selectedTask.id ? updatedTask : t));
+    setSelectedTask(updatedTask);
+    setIsEditMode(false);
+
+    await supabase
+      .from('planner_tasks')
+      .update({
+        title: editTitle,
+        description: editDesc,
+        priority: editPriority,
+        status: editStatus
+      })
+      .eq('id', selectedTask.id);
+  };
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-8">
@@ -132,14 +175,18 @@ export default function PlannerPage() {
                 <motion.div 
                   layoutId={task.id}
                   key={task.id} 
-                  className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition group"
+                  onClick={() => openTaskDialog(task)}
+                  className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition group cursor-pointer"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${getPriorityColor(task.priority)}`}>
                       {task.priority}
                     </span>
                     <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                      <button onClick={() => deleteTask(task.id)} className="text-slate-400 hover:text-red-500 p-1">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
+                        className="text-slate-400 hover:text-red-500 p-1"
+                      >
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -157,7 +204,7 @@ export default function PlannerPage() {
                     <div className="flex gap-1">
                       {col.id !== 'todo' && (
                         <button 
-                          onClick={() => updateTaskStatus(task.id, col.id === 'done' ? 'in-progress' : 'todo')}
+                          onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, col.id === 'done' ? 'in-progress' : 'todo'); }}
                           className="p-1 hover:bg-slate-100 rounded text-slate-500"
                           title="Move Back"
                         >
@@ -166,7 +213,7 @@ export default function PlannerPage() {
                       )}
                       {col.id !== 'done' && (
                         <button 
-                          onClick={() => updateTaskStatus(task.id, col.id === 'todo' ? 'in-progress' : 'done')}
+                          onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, col.id === 'todo' ? 'in-progress' : 'done'); }}
                           className="p-1 hover:bg-slate-100 rounded text-slate-500"
                           title="Move Forward"
                         >
@@ -245,6 +292,152 @@ export default function PlannerPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Task Details Dialog */
+      selectedTask && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                 <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${getPriorityColor(isEditMode ? editPriority : selectedTask.priority)}`}>
+                    {isEditMode ? editPriority : selectedTask.priority}
+                 </span>
+                 <span className="text-slate-400 text-sm">
+                    {new Date(selectedTask.created_at).toLocaleDateString()}
+                 </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {!isEditMode ? (
+                    <button 
+                        onClick={() => setIsEditMode(true)}
+                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition"
+                        title="Edit Task"
+                    >
+                        <Pencil size={18} />
+                    </button>
+                ) : (
+                    <button 
+                        onClick={saveTaskChanges}
+                        className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition flex items-center gap-2 px-3"
+                        title="Save Changes"
+                    >
+                        <Save size={16} /> Save
+                    </button>
+                )}
+                <button 
+                    onClick={() => setSelectedTask(null)} 
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition"
+                >
+                    <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto">
+                {isEditMode ? (
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                            <input 
+                                type="text" 
+                                value={editTitle}
+                                onChange={e => setEditTitle(e.target.value)}
+                                className="w-full text-lg border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                                <select 
+                                    value={editStatus}
+                                    onChange={e => setEditStatus(e.target.value as any)}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                >
+                                    <option value="todo">To Do</option>
+                                    <option value="in-progress">In Progress</option>
+                                    <option value="done">Done</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+                                <select 
+                                    value={editPriority}
+                                    onChange={e => setEditPriority(e.target.value as any)}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                >
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <textarea 
+                                value={editDesc}
+                                onChange={e => setEditDesc(e.target.value)}
+                                className="w-full min-h-[200px] border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none resize-y"
+                                placeholder="Add detailed description..."
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900 leading-tight">
+                                {selectedTask.title}
+                            </h2>
+                        </div>
+
+                        <div className="prose prose-slate max-w-none">
+                            {selectedTask.description ? (
+                                <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">
+                                    {selectedTask.description}
+                                </p>
+                            ) : (
+                                <p className="text-slate-400 italic">No description provided.</p>
+                            )}
+                        </div>
+
+                        <div className="pt-6 border-t border-slate-100 flex items-center gap-4 text-sm text-slate-500">
+                             <div className="flex items-center gap-2">
+                                <Clock size={16} />
+                                Status: <span className="font-medium capitalize text-slate-900">{selectedTask.status.replace('-', ' ')}</span>
+                             </div>
+                             <div className="flex items-center gap-2">
+                                <Circle size={16} />
+                                ID: <span className="font-mono text-xs">{selectedTask.id.slice(0, 8)}</span>
+                             </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Footer Buttons for Edit Mode (Cancel) */}
+            {isEditMode && (
+                <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                    <button 
+                        onClick={() => setIsEditMode(false)}
+                        className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg transition font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={saveTaskChanges}
+                        className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition font-medium flex items-center gap-2"
+                    >
+                        <Save size={16} /> Save Changes
+                    </button>
+                </div>
+            )}
           </div>
         </div>
       )}
