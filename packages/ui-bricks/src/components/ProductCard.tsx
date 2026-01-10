@@ -22,7 +22,6 @@ interface ProductCardProps {
     overrideDescription?: string
     overrideButtonText?: string
     overrideLink?: string
-    variant?: 'standard' | 'expandable'
     className?: string
     buttonColor?: string
     buttonTextColor?: string
@@ -38,7 +37,6 @@ export const ProductCard = ({
     overrideDescription,
     overrideButtonText,
     overrideLink,
-    variant = 'standard',
     className = '',
     buttonColor,
     buttonTextColor,
@@ -70,7 +68,6 @@ export const ProductCard = ({
             className={`
                 ${styles.card} 
                 ${isActive ? styles.focused : ''}
-                ${variant === 'expandable' ? styles.expandable : ''}
                 ${className}
             `}
             style={{

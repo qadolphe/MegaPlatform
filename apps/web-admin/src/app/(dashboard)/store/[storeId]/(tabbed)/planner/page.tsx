@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft, Pencil, X, Save, Copy, FileText, Check, ArrowUpDown, AlertTriangle, Tag as TagIcon, Filter, User } from "lucide-react";
+import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft, Pencil, X, Save, Copy, FileText, Check, ArrowUpDown, AlertTriangle, Tag as TagIcon, Filter, User, PlayCircle, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Task {
@@ -83,8 +83,62 @@ export default function PlannerPage() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportCopied, setExportCopied] = useState(false);
   const [exportText, setExportText] = useState("");
-  const [includeBuild, setIncludeBuild] = useState(false);
-  const [includeDeploy, setIncludeDeploy] = useState(false);
+  
+  // Custom Instructions
+  const [customInstructions, setCustomInstructions] = useState<{id: string, title: string, content: string}[]>([]);
+  const [selectedInstructionIds, setSelectedInstructionIds] = useState<Set<string>>(new Set());
+  const [newInstructionTitle, setNewInstructionTitle] = useState("");
+  const [newInstructionContent, setNewInstructionContent] = useState("");
+  const [isAddingInstruction, setIsAddingInstruction] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('planner_custom_instructions');
+    if (saved) {
+      try {
+        setCustomInstructions(JSON.parse(saved));
+      } catch (e) { console.error("Failed to parse instructions", e); }
+    }
+  }, []);
+
+  const saveCustomInstructions = (newInstructions: typeof customInstructions) => {
+      setCustomInstructions(newInstructions);
+      localStorage.setItem('planner_custom_instructions', JSON.stringify(newInstructions));
+  };
+
+  const handleAddInstruction = () => {
+    if (!newInstructionTitle.trim() || !newInstructionContent.trim()) return;
+    const newInst = {
+        id: crypto.randomUUID(),
+        title: newInstructionTitle,
+        content: newInstructionContent
+    };
+    const updated = [...customInstructions, newInst];
+    saveCustomInstructions(updated);
+    setNewInstructionTitle("");
+    setNewInstructionContent("");
+    setIsAddingInstruction(false);
+    // Auto-select the new instruction
+    setSelectedInstructionIds(prev => new Set(prev).add(newInst.id));
+  };
+
+  const handleDeleteInstruction = (id: string) => {
+      const updated = customInstructions.filter(i => i.id !== id);
+      saveCustomInstructions(updated);
+      setSelectedInstructionIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+      });
+  };
+
+  const toggleInstructionSelection = (id: string) => {
+      setSelectedInstructionIds(prev => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+      });
+  };
 
   // Delete Dialog State
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
@@ -209,7 +263,12 @@ export default function PlannerPage() {
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     // Optimistic update
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus as any } : t));
+    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status: newStatus as any } : t);
+    setTasks(updatedTasks);
+
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask(prev => prev ? { ...prev, status: newStatus as any } : null);
+    }
 
     await supabase
       .from('planner_tasks')
@@ -316,10 +375,12 @@ export default function PlannerPage() {
 
     let finalText = `# Development Tasks\n\nThe following tasks need to be implemented:\n\n${lines.join('\n---\n\n')}`;
     
-    if (includeBuild || includeDeploy) {
+    if (selectedInstructionIds.size > 0) {
         finalText += `\n\n## Instructions\n`;
-        if (includeBuild) finalText += `\n- [ ] Please build the project.`;
-        if (includeDeploy) finalText += `\n- [ ] Please deploy the project.`;
+        // Sort to maintain consistency? Or just iteration order.
+        customInstructions.filter(i => selectedInstructionIds.has(i.id)).forEach(inst => {
+            finalText += `\n- [ ] ${inst.content}`;
+        });
     }
 
     return finalText;
@@ -330,7 +391,7 @@ export default function PlannerPage() {
     if (isExportOpen) {
         setExportText(generateExportText());
     }
-  }, [isExportOpen, selectedTaskIds, includeBuild, includeDeploy]);
+  }, [isExportOpen, selectedTaskIds, selectedInstructionIds, customInstructions]);
 
   const copyExportText = async () => {
     await navigator.clipboard.writeText(exportText);
@@ -970,29 +1031,80 @@ export default function PlannerPage() {
                                 </div>
                              </div>
                              
-                             {/* Complete & Follow Up Action */}
-                             {selectedTask.status !== 'done' && (
-                                <button 
-                                    onClick={() => {
-                                        updateTaskStatus(selectedTask.id, 'done');
-                                        setSelectedTask(null);
-                                        // Delay opening new task to allow dialog close
-                                        setTimeout(() => {
-                                            setNewTaskPredecessorId(selectedTask.id);
-                                            setNewTaskTitle(`Follow up: ${selectedTask.title}`);
-                                            setIsCreateOpen(true);
-                                        }, 300);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition"
-                                >
-                                    <CheckCircle2 size={16} />
-                                    Complete & Follow Up
-                                </button>
-                             )}
+                             <div className="flex items-center gap-2">
+                                 {selectedTask.status === 'todo' && (
+                                    <button 
+                                        onClick={() => updateTaskStatus(selectedTask.id, 'in-progress')}
+                                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition"
+                                    >
+                                        <PlayCircle size={16} />
+                                        Move to In Progress
+                                    </button>
+                                 )}
+
+                                 {(selectedTask.status === 'in-progress' || selectedTask.status === 'done') && (
+                                    <>
+                                        <button 
+                                            onClick={() => updateTaskStatus(selectedTask.id, 'done')}
+                                            className="text-slate-600 hover:text-slate-700 font-medium flex items-center gap-1.5 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition"
+                                        >
+                                            <Check size={16} />
+                                            Complete
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                updateTaskStatus(selectedTask.id, 'done');
+                                                setSelectedTask(null);
+                                                // Delay opening new task to allow dialog close
+                                                setTimeout(() => {
+                                                    setNewTaskPredecessorId(selectedTask.id);
+                                                    setNewTaskTitle(selectedTask.title);
+                                                    setIsCreateOpen(true);
+                                                }, 300);
+                                            }}
+                                            className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition"
+                                        >
+                                            <CheckCircle2 size={16} />
+                                            Complete & Follow Up
+                                        </button>
+                                    </>
+                                 )}
+                             </div>
                         </div>
                     </div>
                 )}
             </div>
+
+             {/* Floating Timeline Navigation Buttons */}
+             {selectedTask && !isEditMode && (
+                <>
+                   {(tasks.find(t => t.id === selectedTask.predecessor_id) || selectedTask.predecessor_id) && (
+                       <button 
+                           onClick={() => {
+                               const pred = tasks.find(t => t.id === selectedTask.predecessor_id);
+                               if (pred) setSelectedTask(pred);
+                           }}
+                           className="absolute -left-16 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-slate-100 text-slate-600 rounded-full shadow-lg transition disabled:opacity-50 hidden md:block"
+                           title="Previous Task"
+                           disabled={!tasks.find(t => t.id === selectedTask.predecessor_id)}
+                       >
+                           <ChevronLeft size={24} />
+                       </button>
+                   )}
+                   {(tasks.find(t => t.predecessor_id === selectedTask.id)) && (
+                       <button 
+                           onClick={() => {
+                               const succ = tasks.find(t => t.predecessor_id === selectedTask.id);
+                               if (succ) setSelectedTask(succ);
+                           }}
+                           className="absolute -right-16 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-slate-100 text-slate-600 rounded-full shadow-lg transition hidden md:block"
+                           title="Next Task"
+                       >
+                           <ChevronRight size={24} />
+                       </button>
+                   )}
+                </>
+             )}
 
             {/* Footer Buttons for Edit Mode (Cancel) */}
             {isEditMode && (
@@ -1036,25 +1148,69 @@ export default function PlannerPage() {
                 Copy and paste this text into your AI code editor (Cursor, Lovable, etc.) to have it implement these tasks:
               </p>
               
-              <div className="flex gap-4">
-                 <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
-                    <input 
-                        type="checkbox" 
-                        checked={includeBuild} 
-                        onChange={e => setIncludeBuild(e.target.checked)}
-                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    Ask to Build
-                 </label>
-                 <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
-                    <input 
-                        type="checkbox" 
-                        checked={includeDeploy} 
-                        onChange={e => setIncludeDeploy(e.target.checked)}
-                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    Ask to Deploy
-                 </label>
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-bold text-slate-700">Custom Instructions</h4>
+                    <button 
+                        onClick={() => setIsAddingInstruction(!isAddingInstruction)}
+                        className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                        {isAddingInstruction ? 'Cancel' : '+ Add New'}
+                    </button>
+                </div>
+
+                {isAddingInstruction && (
+                    <div className="mb-4 bg-white p-3 rounded border border-slate-200 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                        <input 
+                            placeholder="Instruction Title (e.g. 'Build')"
+                            className="w-full mb-2 px-2 py-1.5 border border-slate-300 rounded text-sm outline-none focus:border-blue-500"
+                            value={newInstructionTitle}
+                            onChange={e => setNewInstructionTitle(e.target.value)}
+                        />
+                         <textarea 
+                            placeholder="Detailed instruction text..."
+                            className="w-full mb-2 px-2 py-1.5 border border-slate-300 rounded text-sm outline-none focus:border-blue-500 h-20 resize-none"
+                            value={newInstructionContent}
+                            onChange={e => setNewInstructionContent(e.target.value)}
+                        />
+                        <div className="flex justify-end">
+                            <button 
+                                onClick={handleAddInstruction}
+                                disabled={!newInstructionTitle.trim() || !newInstructionContent.trim()}
+                                className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                Add Instruction
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="flex flex-col gap-2 max-h-[150px] overflow-y-auto">
+                    {customInstructions.length === 0 && !isAddingInstruction && (
+                        <p className="text-xs text-slate-400 italic text-center py-2">No custom instructions saved.</p>
+                    )}
+                    
+                    {customInstructions.map(inst => (
+                         <div key={inst.id} className="flex items-center justify-between group hover:bg-white p-1 rounded transition">
+                            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none flex-1 truncate">
+                                <input 
+                                    type="checkbox" 
+                                    checked={selectedInstructionIds.has(inst.id)} 
+                                    onChange={() => toggleInstructionSelection(inst.id)}
+                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                />
+                                <span className="truncate" title={inst.content}>{inst.title}</span>
+                            </label>
+                            <button 
+                                onClick={() => handleDeleteInstruction(inst.id)}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition"
+                                title="Delete Instruction"
+                            >
+                                <X size={14} />
+                            </button>
+                         </div>
+                    ))}
+                </div>
               </div>
 
               <textarea 

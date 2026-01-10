@@ -101,7 +101,6 @@ export const ProductGrid = ({
                   <ProductCard 
                       product={product}
                       isActive={focusedCardId === product.id}
-                      variant="expandable"
                       buttonColor={buttonColor}
                       buttonTextColor={buttonTextColor}
                       hoverColor={hoverColor}
@@ -127,7 +126,7 @@ export const ProductGrid = ({
             >
               <ProductCard 
                   product={product} 
-                  variant="standard"
+
                   buttonColor={buttonColor}
                   buttonTextColor={buttonTextColor}
                   hoverColor={hoverColor}
