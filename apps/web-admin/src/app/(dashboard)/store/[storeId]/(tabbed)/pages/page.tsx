@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Plus, Edit, Trash, FileText, Star, Package, Code2, AlertTriangle, X, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { DeveloperSettings } from "@/components/developer-settings";
 
 type Page = {
   id: string;
@@ -52,6 +53,21 @@ export default function PagesList() {
     }
   };
 
+  const handleToggleDeveloperMode = async () => {
+    const newValue = !developerMode;
+    const { error } = await supabase
+      .from("stores")
+      .update({ developer_mode: newValue })
+      .eq("id", storeId);
+
+    if (error) {
+      alert("Error updating developer mode: " + error.message);
+    } else {
+      setDeveloperMode(newValue);
+      setShowDevModeDialog(false);
+    }
+  };
+
   const fetchPages = async () => {
     const { data, error } = await supabase
       .from("store_pages")
@@ -76,20 +92,40 @@ export default function PagesList() {
     setLoading(false);
   };
 
-  const handleToggleDeveloperMode = async () => {
-    const newValue = !developerMode;
-    const { error } = await supabase
-      .from("stores")
-      .update({ developer_mode: newValue })
-      .eq("id", storeId);
+  if (developerMode) {
+    return (
+      <div className="p-8 max-w-[1600px] mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-slate-900">Developer Settings</h1>
+          <button 
+             onClick={() => setShowDevModeDialog(true)}
+             className="text-sm text-slate-500 hover:text-slate-700"
+          >
+             Disable Developer Mode
+          </button>
+        </div>
+        <p className="text-slate-500 mb-8">
+           You are in Developer Mode. This page now shows your developer configuration instead of the visual page builder.
+        </p>
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <DeveloperSettings storeId={storeId} />
+        </div>
 
-    if (error) {
-      alert("Error updating developer mode: " + error.message);
-    } else {
-      setDeveloperMode(newValue);
-      setShowDevModeDialog(false);
-    }
-  };
+        {showDevModeDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+             <h3 className="text-lg font-bold mb-2">Disable Developer Mode?</h3>
+             <p className="text-slate-600 mb-4">You will be returned to the standard Pages view.</p>
+             <div className="flex justify-end gap-2">
+                 <button onClick={() => setShowDevModeDialog(false)} className="px-4 py-2 hover:bg-slate-100 rounded">Cancel</button>
+                 <button onClick={handleToggleDeveloperMode} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Disable</button>
+             </div>
+          </div>
+        </div>
+        )}
+      </div>
+    );
+  }
 
   const handleCreatePage = async (e: React.FormEvent) => {
     e.preventDefault();

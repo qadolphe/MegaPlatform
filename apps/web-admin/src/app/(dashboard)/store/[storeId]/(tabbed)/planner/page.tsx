@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft, Pencil, X, Save, Copy, FileText, Check, ArrowUpDown, AlertTriangle } from "lucide-react";
+import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft, Pencil, X, Save, Copy, FileText, Check, ArrowUpDown, AlertTriangle, Tag as TagIcon, Filter, User } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Task {
@@ -13,13 +13,22 @@ interface Task {
   status: 'todo' | 'in-progress' | 'done';
   priority: 'low' | 'medium' | 'high';
   assignee_id?: string;
+  tag_ids?: string[];
   created_at: string;
+}
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
 }
 
 interface Collaborator {
   id: string;
   user_id: string;
   email?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 const COLUMNS = [
@@ -28,12 +37,24 @@ const COLUMNS = [
   { id: 'done', title: 'Done', icon: CheckCircle2, color: 'bg-green-50 text-green-600' }
 ];
 
+const PRESET_COLORS = [
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Red', value: '#ef4444' },
+  { name: 'Green', value: '#22c55e' },
+  { name: 'Purple', value: '#a855f7' },
+  { name: 'Orange', value: '#f97316' },
+  { name: 'Pink', value: '#ec4899' },
+  { name: 'Teal', value: '#14b8a6' },
+  { name: 'Gray', value: '#64748b' },
+];
+
 export default function PlannerPage() {
   const params = useParams();
   const storeId = params.storeId as string;
   const supabase = createClient();
   
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -49,6 +70,7 @@ export default function PlannerPage() {
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [editStatus, setEditStatus] = useState<'todo' | 'in-progress' | 'done'>('todo');
   const [editAssignee, setEditAssignee] = useState<string>("");
+  const [editTags, setEditTags] = useState<string[]>([]);
 
 
   // Selection & Export State
@@ -56,12 +78,23 @@ export default function PlannerPage() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportCopied, setExportCopied] = useState(false);
+  const [exportText, setExportText] = useState("");
+  const [includeBuild, setIncludeBuild] = useState(false);
+  const [includeDeploy, setIncludeDeploy] = useState(false);
 
   // Delete Dialog State
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Filter State
+  const [filterMyTasks, setFilterMyTasks] = useState(false);
+  const [filterTagId, setFilterTagId] = useState<string>("all");
+  const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState(PRESET_COLORS[0].value);
 
   // Sorting State
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'priority-high' | 'priority-low'>('priority-high');
@@ -77,8 +110,20 @@ export default function PlannerPage() {
 
   useEffect(() => {
     fetchTasks();
+    fetchTags();
     fetchCollaborators();
+    fetchCurrentUser();
   }, [storeId]);
+
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setCurrentUserId(user.id);
+  };
+
+  const fetchTags = async () => {
+    const { data } = await supabase.from('store_task_tags').select('*').eq('store_id', storeId).order('name');
+    if (data) setTags(data);
+  };
 
   const fetchTasks = async () => {
     const { data, error } = await supabase
@@ -92,8 +137,37 @@ export default function PlannerPage() {
   };
 
   const fetchCollaborators = async () => {
-    const { data } = await supabase.from('store_collaborators').select('*').eq('store_id', storeId);
-    if (data) setCollaborators(data);
+    // Try to fetch with emails via RPC first
+    const { data, error } = await supabase.rpc('get_store_collaborators_with_meta', { store_id_param: storeId });
+    if (!error && data) {
+      setCollaborators(data);
+    } else {
+        // Fallback to basic fetch if RPC missing
+        const { data: basicData } = await supabase.from('store_collaborators').select('*').eq('store_id', storeId);
+        if (basicData) setCollaborators(basicData);
+    }
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTagName) return;
+    const { data } = await supabase.from('store_task_tags').insert({ 
+        store_id: storeId, 
+        name: newTagName, 
+        color: newTagColor 
+    }).select().single();
+    
+    if (data) {
+        setTags([...tags, data]);
+        setNewTagName("");
+        setNewTagColor(PRESET_COLORS[0].value);
+        setIsTagManagerOpen(false);
+    }
+  };
+
+  const handleDeleteTag = async (id: string) => {
+    if (!confirm('Delete this tag?')) return;
+    await supabase.from('store_task_tags').delete().eq('id', id);
+    setTags(tags.filter(t => t.id !== id));
   };
 
   const createTask = async (e: React.FormEvent) => {
@@ -156,7 +230,8 @@ export default function PlannerPage() {
   const getAssigneeName = (userId: string) => {
     const c = collaborators.find(c => c.user_id === userId);
     if (!c) return null;
-    return c.email ? c.email.split('@')[0] : `User ${userId.slice(0, 2)}`;
+    if (c.first_name || c.last_name) return `${c.first_name || ''} ${c.last_name || ''}`.trim();
+    return c.email || `User ${userId.slice(0, 4)}`;
   };
 
   const openTaskDialog = (task: Task) => {
@@ -167,6 +242,7 @@ export default function PlannerPage() {
     setEditPriority(task.priority);
     setEditStatus(task.status);
     setEditAssignee(task.assignee_id || "");
+    setEditTags(task.tag_ids || []);
   };
 
   const saveTaskChanges = async () => {
@@ -178,7 +254,8 @@ export default function PlannerPage() {
       description: editDesc,
       priority: editPriority,
       status: editStatus,
-      assignee_id: editAssignee || undefined
+      assignee_id: editAssignee || undefined,
+      tag_ids: editTags
     };
 
     setTasks(tasks.map(t => t.id === selectedTask.id ? updatedTask : t));
@@ -192,7 +269,8 @@ export default function PlannerPage() {
         description: editDesc,
         priority: editPriority,
         status: editStatus,
-        assignee_id: editAssignee || null
+        assignee_id: editAssignee || null,
+        tag_ids: editTags
       })
       .eq('id', selectedTask.id);
   };
@@ -225,12 +303,26 @@ export default function PlannerPage() {
       return text;
     });
 
-    return `# Development Tasks\n\nThe following tasks need to be implemented:\n\n${lines.join('\n---\n\n')}`;
+    let finalText = `# Development Tasks\n\nThe following tasks need to be implemented:\n\n${lines.join('\n---\n\n')}`;
+    
+    if (includeBuild || includeDeploy) {
+        finalText += `\n\n## Instructions\n`;
+        if (includeBuild) finalText += `\n- [ ] Please build the project.`;
+        if (includeDeploy) finalText += `\n- [ ] Please deploy the project.`;
+    }
+
+    return finalText;
   };
 
+  // Update export text when selection or options change
+  useEffect(() => {
+    if (isExportOpen) {
+        setExportText(generateExportText());
+    }
+  }, [isExportOpen, selectedTaskIds, includeBuild, includeDeploy]);
+
   const copyExportText = async () => {
-    const text = generateExportText();
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(exportText);
     setExportCopied(true);
     setTimeout(() => setExportCopied(false), 2000);
   };
@@ -239,7 +331,19 @@ export default function PlannerPage() {
   const priorityOrder = { high: 3, medium: 2, low: 1 };
 
   const getSortedTasks = (tasksToSort: Task[]) => {
-    return [...tasksToSort].sort((a, b) => {
+    let filtered = tasksToSort;
+
+    // Filter by My Tasks
+    if (filterMyTasks && currentUserId) {
+        filtered = filtered.filter(t => t.assignee_id === currentUserId);
+    }
+
+    // Filter by Tag
+    if (filterTagId && filterTagId !== 'all') {
+        filtered = filtered.filter(t => t.tag_ids?.includes(filterTagId));
+    }
+
+    return [...filtered].sort((a, b) => {
       switch (sortBy) {
         case 'date-desc':
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -263,6 +367,40 @@ export default function PlannerPage() {
           <p className="text-slate-500">Collaborate and track tasks with your team</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* My Tasks Toggle */}
+          <button
+            onClick={() => setFilterMyTasks(!filterMyTasks)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                filterMyTasks 
+                ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <User size={16} />
+            My Tasks
+          </button>
+
+          {/* Tag Filter */}
+          <div className="flex items-center bg-white border border-slate-300 rounded-lg pr-2">
+            <select
+                value={filterTagId}
+                onChange={(e) => setFilterTagId(e.target.value)}
+                className="pl-3 py-2 text-sm bg-transparent outline-none cursor-pointer"
+            >
+                <option value="all">All Tags</option>
+                {tags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                ))}
+            </select>
+            <button 
+                onClick={() => setIsTagManagerOpen(true)}
+                className="p-1 hover:bg-slate-100 rounded ml-1 text-slate-400"
+                title="Manage Tags"
+            >
+                <TagIcon size={14} />
+            </button>
+          </div>
+
           {/* Sort Dropdown */}
           <select
             value={sortBy}
@@ -410,6 +548,25 @@ export default function PlannerPage() {
                     </div>
                     
                     <h3 className="font-medium text-slate-900 mb-1">{task.title}</h3>
+                    
+                    {/* Tags Display */}
+                    {task.tag_ids && task.tag_ids.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {task.tag_ids.map(tagId => {
+                                const tag = tags.find(t => t.id === tagId);
+                                if (!tag) return null;
+                                return (
+                                    <span key={tagId} 
+                                        className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium"
+                                        style={{ backgroundColor: tag.color + '20', borderColor: tag.color + '40', color: tag.color }}
+                                    >
+                                        {tag.name}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     {task.description && (
                       <p className="text-sm text-slate-500 mb-3 line-clamp-2">{task.description}</p>
                     )}
@@ -627,10 +784,47 @@ export default function PlannerPage() {
                                     <option value="">Unassigned</option>
                                     {collaborators.map(c => (
                                       <option key={c.id} value={c.user_id}>
-                                        {c.email || `User ${c.user_id.slice(0, 4)}`}
+                                        {c.first_name || c.last_name ? `${c.first_name} ${c.last_name}` : (c.email || `User ${c.user_id.slice(0, 4)}`)}
                                       </option>
                                     ))}
                                 </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Tags</label>
+                            <div className="flex flex-wrap gap-2">
+                                {tags.map(tag => {
+                                    const isSelected = editTags.includes(tag.id);
+                                    return (
+                                        <button
+                                            key={tag.id}
+                                            onClick={() => {
+                                                if (isSelected) setEditTags(editTags.filter(id => id !== tag.id));
+                                                else setEditTags([...editTags, tag.id]);
+                                            }}
+                                            className={`px-2 py-1 rounded-full text-xs font-medium border transition flex items-center gap-1 ${
+                                                isSelected 
+                                                ? 'ring-2 ring-offset-1' 
+                                                : 'opacity-60 hover:opacity-100'
+                                            }`}
+                                            style={{ 
+                                                backgroundColor: tag.color + '20', 
+                                                borderColor: tag.color, 
+                                                color: tag.color,
+                                                boxShadow: isSelected ? `0 0 0 2px ${tag.color}` : 'none'
+                                            }}
+                                        >
+                                            {tag.name} {isSelected && <Check size={10} />}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => { setIsTagManagerOpen(true); }}
+                                    className="px-2 py-1 rounded-full text-xs font-medium border border-slate-300 text-slate-500 hover:bg-slate-50 flex items-center gap-1"
+                                >
+                                    <Plus size={12} /> Manage Tags
+                                </button>
                             </div>
                         </div>
 
@@ -647,9 +841,25 @@ export default function PlannerPage() {
                 ) : (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 leading-tight">
+                            <h2 className="text-2xl font-bold text-slate-900 leading-tight mb-2">
                                 {selectedTask.title}
                             </h2>
+                            {selectedTask.tag_ids && selectedTask.tag_ids.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {selectedTask.tag_ids.map(tagId => {
+                                        const tag = tags.find(t => t.id === tagId);
+                                        if (!tag) return null;
+                                        return (
+                                            <span key={tagId} 
+                                                className="text-xs px-2 py-1 rounded-full border font-medium"
+                                                style={{ backgroundColor: tag.color + '20', borderColor: tag.color + '40', color: tag.color }}
+                                            >
+                                                {tag.name}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <div className="prose prose-slate max-w-none">
@@ -713,13 +923,37 @@ export default function PlannerPage() {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-4 flex-1 overflow-y-auto">
-              <p className="text-sm text-slate-500 mb-4">
+            <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-4">
+              <p className="text-sm text-slate-500">
                 Copy and paste this text into your AI code editor (Cursor, Lovable, etc.) to have it implement these tasks:
               </p>
-              <div className="bg-slate-900 rounded-lg p-4 text-sm font-mono text-slate-100 whitespace-pre-wrap overflow-y-auto max-h-[400px]">
-                {generateExportText()}
+              
+              <div className="flex gap-4">
+                 <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                    <input 
+                        type="checkbox" 
+                        checked={includeBuild} 
+                        onChange={e => setIncludeBuild(e.target.checked)}
+                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    Ask to Build
+                 </label>
+                 <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                    <input 
+                        type="checkbox" 
+                        checked={includeDeploy} 
+                        onChange={e => setIncludeDeploy(e.target.checked)}
+                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    Ask to Deploy
+                 </label>
               </div>
+
+              <textarea 
+                value={exportText}
+                onChange={(e) => setExportText(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm font-mono text-slate-900 whitespace-pre-wrap overflow-y-auto h-[400px] w-full resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              />
             </div>
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
               <span className="text-sm text-slate-500">
@@ -766,6 +1000,72 @@ export default function PlannerPage() {
                   {isDeleting ? 'Deleting...' : 'Delete Task'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tag Manager Dialog */}
+      {isTagManagerOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-lg">Manage Tags</h3>
+              <button onClick={() => setIsTagManagerOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="p-4">
+                <div className="mb-4 space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Add New Tag</label>
+                    <div className="flex gap-2">
+                        <input 
+                            value={newTagName}
+                            onChange={(e) => setNewTagName(e.target.value)}
+                            placeholder="Tag name"
+                            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button 
+                            onClick={handleCreateTag}
+                            disabled={!newTagName}
+                            className="bg-blue-600 text-white px-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            <Plus size={18} />
+                        </button>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                        {PRESET_COLORS.map(c => (
+                            <button
+                                key={c.value}
+                                onClick={() => setNewTagColor(c.value)}
+                                className={`w-6 h-6 rounded-full border-2 transition ${newTagColor === c.value ? 'border-slate-600 scale-110' : 'border-transparent hover:scale-110'}`}
+                                style={{ backgroundColor: c.value }}
+                                title={c.name}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-4">
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">Existing Tags</label>
+                    <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
+                        {tags.length === 0 && <span className="text-sm text-slate-400 italic">No tags created yet.</span>}
+                        {tags.map(tag => (
+                            <div key={tag.id} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                <span 
+                                    className="px-2 py-1 rounded-full text-xs font-medium border"
+                                    style={{ backgroundColor: tag.color + '20', borderColor: tag.color, color: tag.color }}
+                                >
+                                    {tag.name}
+                                </span>
+                                <button 
+                                    onClick={() => handleDeleteTag(tag.id)}
+                                    className="text-slate-400 hover:text-red-500"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
           </div>
         </div>

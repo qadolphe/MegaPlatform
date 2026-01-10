@@ -18,8 +18,10 @@ create table stores (
   stripe_details_submitted boolean default false,
   currency text default 'usd',
   header_config jsonb default '{}'::jsonb,      -- Global Header Configuration
-  footer_config jsonb default '{}'::jsonb       -- Global Footer Configuration
+  footer_config jsonb default '{}'::jsonb,      -- Global Footer Configuration
+  developer_mode boolean default false          -- Controls visibility of developer tools
 );
+
 
 -- 2. Pages: The "Visual Config" for the Dynamic Renderer
 create table store_pages (
@@ -483,6 +485,62 @@ create policy "Store owners can update planner tasks"
 create policy "Store owners can delete planner tasks"
   on planner_tasks for delete
   using ( has_store_access(store_id) );
+
+-- 7.1 Task Tags
+create table store_task_tags (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references stores(id) on delete cascade not null,
+  name text not null,
+  color text not null, -- e.g. '#ef4444' or 'red'
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table store_task_tags enable row level security;
+create policy "Store members can view tags" on store_task_tags for select using (has_store_access(store_id));
+create policy "Store editors can manage tags" on store_task_tags for all using (has_store_access(store_id, 'editor'));
+
+-- Add tag_ids to planner tasks (done via alter in production, here in definition for new deploys)
+-- Note: You should manually run: alter table planner_tasks add column tag_ids uuid[] default '{}';
+
+-- 7.2 Profiles (Global)
+create table if not exists public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  first_name text,
+  last_name text,
+  avatar_url text, 
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table profiles enable row level security;
+create policy "Public profiles are viewable by everyone" on profiles for select using (true);
+create policy "Users can insert their own profile" on profiles for insert with check (auth.uid() = id);
+create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+
+create or replace function public.get_store_collaborators_with_meta(store_id_param uuid)
+returns table (
+  id uuid,
+  user_id uuid,
+  role text,
+  email varchar,
+  first_name text,
+  last_name text
+)
+language plpgsql
+security definer
+as $$
+begin
+  return query
+  select
+    sc.id,
+    sc.user_id,
+    sc.role,
+    au.email::varchar,
+    p.first_name,
+    p.last_name
+  from public.store_collaborators sc
+  join auth.users au on sc.user_id = au.id
+  left join public.profiles p on sc.user_id = p.id
+  where sc.store_id = store_id_param;
+end;
+$$;
 
 -- 11. Content Packets (Reusable Content for Page Builder)
 create table content_packets (
