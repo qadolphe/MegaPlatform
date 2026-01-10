@@ -6,6 +6,125 @@ import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle
 import Link from "next/link";
 import { MediaManager } from "@/components/media-manager";
 
+const CURSOR_RULES = `# SwatBloc SDK - Cursor Rules
+
+You are building an app that uses the SwatBloc SDK for headless commerce.
+
+## Installation
+
+\`\`\`bash
+npm install @swatbloc/sdk
+\`\`\`
+
+## Initialization
+
+\`\`\`typescript
+import { SwatBloc } from '@swatbloc/sdk';
+
+// Initialize with your public API key from SwatBloc dashboard
+const swat = new SwatBloc('pk_live_YOUR_KEY_HERE');
+\`\`\`
+
+## API Reference
+
+### Products
+
+\`\`\`typescript
+// List all products
+const products = await swat.products.list();
+
+// List with options  
+const products = await swat.products.list({
+  limit: 10,
+  offset: 0,
+  category: 'shoes',
+  search: 'running'
+});
+
+// Get single product by ID or slug
+const product = await swat.products.get('prod_123');
+const product = await swat.products.get('blue-running-shoes');
+
+// Get by category
+const shoes = await swat.products.byCategory('shoes');
+
+// Search products
+const results = await swat.products.search('running shoes');
+\`\`\`
+
+### Cart
+
+\`\`\`typescript
+// Create a cart
+const cart = await swat.cart.create([
+  { productId: 'prod_123', quantity: 2 },
+  { productId: 'prod_456', quantity: 1 }
+]);
+
+// Get existing cart
+const cart = await swat.cart.get('cart_abc123');
+
+// Add items
+const cart = await swat.cart.addItems('cart_abc123', [
+  { productId: 'prod_789', quantity: 1 }
+]);
+
+// Update quantity
+const cart = await swat.cart.updateItem('cart_abc123', 'prod_123', 3);
+
+// Remove item
+const cart = await swat.cart.removeItem('cart_abc123', 'prod_123');
+\`\`\`
+
+### Checkout
+
+\`\`\`typescript
+// Create checkout session (redirects to Stripe)
+const checkout = await swat.checkout.create('cart_abc123', {
+  successUrl: 'https://mysite.com/success',
+  cancelUrl: 'https://mysite.com/cart'
+});
+
+// Redirect user to checkout
+window.location.href = checkout.url;
+\`\`\`
+
+### Store Info
+
+\`\`\`typescript
+// Get store details
+const store = await swat.store.info();
+console.log(store.name);       // "My Store"
+console.log(store.currency);   // "usd"
+console.log(store.colors);     // { primary: "#3B82F6", ... }
+\`\`\`
+
+## Types
+
+All responses are fully typed. Import types if needed:
+
+\`\`\`typescript
+import type { Product, Cart, CheckoutSession, StoreInfo } from '@swatbloc/sdk';
+\`\`\`
+
+## Error Handling
+
+\`\`\`typescript
+try {
+  const product = await swat.products.get('invalid-id');
+} catch (error) {
+  console.error(error.message); // "Product not found: invalid-id"
+}
+\`\`\`
+
+## Important Notes
+
+- Always use the PUBLIC key (pk_live_...) in client-side code
+- Never expose your SECRET key (sk_live_...) in frontend code
+- Cart IDs persist across sessions - save them to localStorage
+- Checkout URLs expire after 24 hours
+`;
+
 interface StoreSettings {
     id: string;
     name: string;
@@ -1000,6 +1119,31 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                     <p className="text-sm text-slate-500 mb-6">Manage API keys for headless integrations with Cursor, Lovable, or custom apps.</p>
 
                                     <div className="space-y-6">
+                                        {/* Cursor Rules */}
+                                        <div className="p-4 bg-slate-900 border border-slate-700 rounded-xl relative group">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="font-medium text-white flex items-center gap-2">
+                                                    <span className="bg-white/10 p-1 rounded"><Code2 size={16} className="text-blue-400" /></span>
+                                                    Cursor AI Rules
+                                                </h3>
+                                                <button 
+                                                    onClick={() => copyToClipboard(CURSOR_RULES)} 
+                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition border border-transparent hover:border-slate-600 flex items-center gap-2 text-xs"
+                                                >
+                                                    <Copy size={14} />
+                                                    Copy Rules
+                                                </button>
+                                            </div>
+                                            <p className="text-sm text-slate-400 mb-3">
+                                                Copy these rules into a <code className="bg-slate-800 px-1 py-0.5 rounded text-slate-300 text-xs">.cursorrules</code> file in your project root to teach Cursor AI how to use the SwatBloc SDK.
+                                            </p>
+                                            <div className="relative">
+                                                <pre className="text-xs text-slate-300 font-mono bg-black/50 p-4 rounded-lg overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap border border-slate-800 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                                                    {CURSOR_RULES}
+                                                </pre>
+                                            </div>
+                                        </div>
+
                                         {/* Generate New Key */}
                                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                                             <h3 className="font-medium text-slate-900 mb-4 flex items-center gap-2">

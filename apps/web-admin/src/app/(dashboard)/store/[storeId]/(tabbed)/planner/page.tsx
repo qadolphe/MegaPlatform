@@ -12,7 +12,14 @@ interface Task {
   description: string;
   status: 'todo' | 'in-progress' | 'done';
   priority: 'low' | 'medium' | 'high';
+  assignee_id?: string;
   created_at: string;
+}
+
+interface Collaborator {
+  id: string;
+  user_id: string;
+  email?: string;
 }
 
 const COLUMNS = [
@@ -32,6 +39,7 @@ export default function PlannerPage() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
 
   // Dialog State
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -40,6 +48,8 @@ export default function PlannerPage() {
   const [editDesc, setEditDesc] = useState("");
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [editStatus, setEditStatus] = useState<'todo' | 'in-progress' | 'done'>('todo');
+  const [editAssignee, setEditAssignee] = useState<string>("");
+
 
   // Selection & Export State
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -50,12 +60,24 @@ export default function PlannerPage() {
   // Delete Dialog State
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
 
   // Sorting State
-  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'priority-high' | 'priority-low'>('date-desc');
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'priority-high' | 'priority-low'>('priority-high');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('planner-sort-preference');
+    if (saved) setSortBy(saved as any);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('planner-sort-preference', sortBy);
+  }, [sortBy]);
 
   useEffect(() => {
     fetchTasks();
+    fetchCollaborators();
   }, [storeId]);
 
   const fetchTasks = async () => {
@@ -69,6 +91,11 @@ export default function PlannerPage() {
     setLoading(false);
   };
 
+  const fetchCollaborators = async () => {
+    const { data } = await supabase.from('store_collaborators').select('*').eq('store_id', storeId);
+    if (data) setCollaborators(data);
+  };
+
   const createTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
@@ -80,7 +107,8 @@ export default function PlannerPage() {
         title: newTaskTitle,
         description: newTaskDesc,
         priority: newTaskPriority,
-        status: 'todo'
+        status: 'todo',
+        assignee_id: newTaskAssignee || null
       })
       .select()
       .single();
@@ -89,6 +117,7 @@ export default function PlannerPage() {
       setTasks([data as Task, ...tasks]);
       setNewTaskTitle("");
       setNewTaskDesc("");
+      setNewTaskAssignee("");
       setIsCreateOpen(false);
     }
   };
@@ -124,6 +153,12 @@ export default function PlannerPage() {
     }
   };
 
+  const getAssigneeName = (userId: string) => {
+    const c = collaborators.find(c => c.user_id === userId);
+    if (!c) return null;
+    return c.email ? c.email.split('@')[0] : `User ${userId.slice(0, 2)}`;
+  };
+
   const openTaskDialog = (task: Task) => {
     setSelectedTask(task);
     setIsEditMode(false);
@@ -131,6 +166,7 @@ export default function PlannerPage() {
     setEditDesc(task.description);
     setEditPriority(task.priority);
     setEditStatus(task.status);
+    setEditAssignee(task.assignee_id || "");
   };
 
   const saveTaskChanges = async () => {
@@ -141,7 +177,8 @@ export default function PlannerPage() {
       title: editTitle,
       description: editDesc,
       priority: editPriority,
-      status: editStatus
+      status: editStatus,
+      assignee_id: editAssignee || undefined
     };
 
     setTasks(tasks.map(t => t.id === selectedTask.id ? updatedTask : t));
@@ -154,7 +191,8 @@ export default function PlannerPage() {
         title: editTitle,
         description: editDesc,
         priority: editPriority,
-        status: editStatus
+        status: editStatus,
+        assignee_id: editAssignee || null
       })
       .eq('id', selectedTask.id);
   };
@@ -311,8 +349,13 @@ export default function PlannerPage() {
                         </div>
                       )}
                       <h3 className="font-medium text-slate-900 flex-1 truncate">{task.title}</h3>
-                      <div className="text-xs text-slate-400 flex-shrink-0">
-                        {new Date(task.created_at).toLocaleDateString()}
+                      <div className="flex items-center gap-2 text-xs text-slate-400 flex-shrink-0">
+                        <span>{new Date(task.created_at).toLocaleDateString()}</span>
+                        {task.assignee_id && (
+                             <span className="bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[80px]" title="Assignee">
+                                {getAssigneeName(task.assignee_id)}
+                             </span>
+                        )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button 
@@ -372,8 +415,14 @@ export default function PlannerPage() {
                     )}
                     
                     <div className="flex justify-between items-center pt-2 border-t border-slate-50 mt-2">
-                      <div className="text-xs text-slate-400">
-                        {new Date(task.created_at).toLocaleDateString()}
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <span>{new Date(task.created_at).toLocaleDateString()}</span>
+                        {task.assignee_id && (
+                          <span className="bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded flex items-center gap-1 border border-slate-100" title="Assignee">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                            {getAssigneeName(task.assignee_id) || 'Unknown'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-1">
                         {col.id !== 'todo' && (
@@ -457,6 +506,22 @@ export default function PlannerPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Assignee</label>
+                <select
+                  value={newTaskAssignee}
+                  onChange={e => setNewTaskAssignee(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                >
+                  <option value="">Unassigned</option>
+                  {collaborators.map(c => (
+                    <option key={c.id} value={c.user_id}>
+                      {c.email || `User ${c.user_id.slice(0, 4)}`}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="pt-2">
                 <button 
@@ -550,6 +615,21 @@ export default function PlannerPage() {
                                     <option value="low">Low</option>
                                     <option value="medium">Medium</option>
                                     <option value="high">High</option>
+                                </select>
+                            </div>
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Assignee</label>
+                                <select 
+                                    value={editAssignee}
+                                    onChange={e => setEditAssignee(e.target.value)}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                >
+                                    <option value="">Unassigned</option>
+                                    {collaborators.map(c => (
+                                      <option key={c.id} value={c.user_id}>
+                                        {c.email || `User ${c.user_id.slice(0, 4)}`}
+                                      </option>
+                                    ))}
                                 </select>
                             </div>
                         </div>

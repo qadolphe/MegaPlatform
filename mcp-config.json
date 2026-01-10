@@ -1,0 +1,7 @@
+{
+  "name": "swatbloc-local",
+  "command": "node",
+  "args": [
+    "/Users/quentinadolphe/My Projects/MegaPlatform/packages/mcp-server/dist/index.js"
+  ]
+}
