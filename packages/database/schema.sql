@@ -19,7 +19,7 @@ create table if not exists public.stores (
   colors jsonb default '{"primary": "#000000", "secondary": "#ffffff", "accent": "#3b82f6", "background": "#ffffff", "text": "#000000"}'::jsonb,
   logo_url text,
   favicon_url text,
-  is_visible boolean default true,
+  is_visible boolean not null default true,
   stripe_account_id text,
   stripe_details_submitted boolean default false,
   currency text default 'usd',
@@ -27,6 +27,11 @@ create table if not exists public.stores (
   footer_config jsonb default '{}'::jsonb,
   developer_mode boolean default false
 );
+
+-- Keep existing DBs aligned (idempotent)
+alter table public.stores alter column is_visible set default true;
+update public.stores set is_visible = true where is_visible is null;
+alter table public.stores alter column is_visible set not null;
 
 -- Profiles (Global)
 create table if not exists public.profiles (
@@ -400,31 +405,63 @@ begin
 end;
 $$;
 
--- DEBUG FUNCTION (Remove in production)
-create or replace function public.debug_user_access()
-returns jsonb
+-- Debug helper (keep dropped in production)
+drop function if exists public.debug_user_access();
+
+-- Public storefront lookup (returns ONLY non-sensitive store fields)
+drop function if exists public.get_storefront_store_by_domain(text);
+create or replace function public.get_storefront_store_by_domain(host text)
+returns table (
+  id uuid,
+  subdomain text,
+  custom_domain text,
+  name text,
+  theme text,
+  colors jsonb,
+  logo_url text,
+  favicon_url text,
+  currency text,
+  header_config jsonb,
+  footer_config jsonb
+)
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
-  result jsonb;
+  sub text;
 begin
-  select jsonb_build_object(
-    'user_id', auth.uid(),
-    'collaborator_records', (
-      select jsonb_agg(jsonb_build_object('store_id', store_id, 'role', role))
-      from public.store_collaborators
-      where user_id = auth.uid()
-    ),
-    'owned_stores', (
-      select jsonb_agg(jsonb_build_object('id', id, 'name', name))
-      from public.stores
-      where owner_id = auth.uid()
+  if host like '%.hoodieplatform.com' or host like '%.swatbloc.com' then
+    sub := split_part(host, '.', 1);
+  else
+    sub := null;
+  end if;
+
+  return query
+  select
+    s.id,
+    s.subdomain,
+    s.custom_domain,
+    s.name,
+    s.theme,
+    s.colors,
+    s.logo_url,
+    s.favicon_url,
+    s.currency,
+    s.header_config,
+    s.footer_config
+  from public.stores s
+  where s.is_visible = true
+    and (
+      (sub is not null and s.subdomain = sub)
+      or (sub is null and s.custom_domain = host)
     )
-  ) into result;
-  return result;
+  limit 1;
 end;
 $$;
+
+-- Allow storefront clients to call this RPC
+grant execute on function public.get_storefront_store_by_domain(text) to anon, authenticated;
 drop function if exists public.match_knowledge(vector(768), float, int, uuid);
 create or replace function public.match_knowledge (
   query_embedding vector(768),
@@ -452,19 +489,94 @@ $$;
 -- 6. POLICIES
 -- ==========================================
 
+-- Helper function to avoid RLS recursion
+drop function if exists public.is_collaborator_lookup(uuid, uuid);
+create or replace function public.is_collaborator_lookup(_store_id uuid, _user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.store_collaborators 
+    where store_id = _store_id 
+    and user_id = _user_id
+  );
+end;
+$$;
+
+drop function if exists public.is_editor_lookup(uuid, uuid);
+create or replace function public.is_editor_lookup(_store_id uuid, _user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.store_collaborators
+    where store_id = _store_id
+      and user_id = _user_id
+      and role = 'editor'
+  );
+end;
+$$;
+
 -- Stores
 drop policy if exists "Public stores viewable" on public.stores;
-create policy "Public stores viewable" on public.stores for select using (true); 
--- NOTE: Ideally 'Public stores viewable' might be too broad if we want private stores. 
--- But existing schema had it. We will replace the "authenticated" logic below.
-
 drop policy if exists "Owners manage own stores" on public.stores;
-create policy "Owners manage own stores" on public.stores for all to authenticated using (owner_id = auth.uid());
-
 drop policy if exists "Collaborators view stores" on public.stores;
--- Use security definer function to strictly bypass RLS recursion issues
-create policy "Collaborators view stores" on public.stores for select to authenticated using (
-  has_store_access(id, 'viewer')
+drop policy if exists "Users can view stores" on public.stores;
+drop policy if exists "Owners and editors can update stores" on public.stores;
+drop policy if exists "Owners can delete their own stores" on public.stores;
+drop policy if exists "Authenticated users can create stores" on public.stores;
+drop policy if exists "Enable read access for all users" on public.stores;
+drop policy if exists "Anyone can view visible stores" on public.stores;
+drop policy if exists "Visible stores are public" on public.stores;
+drop policy if exists "Owners can see their own stores" on public.stores;
+
+-- SELECT (Admin/App): Only owners + collaborators, and only visible stores
+create policy "Users can view stores"
+on public.stores for select
+to authenticated
+using (
+  is_visible = true
+  and (
+    owner_id = auth.uid()
+    or is_collaborator_lookup(id, auth.uid())
+  )
+);
+
+-- UPDATE: Owner OR Editor
+create policy "Owners and editors can update stores"
+on public.stores for update
+to authenticated
+using (
+  owner_id = auth.uid() 
+  or is_editor_lookup(id, auth.uid())
+)
+with check (
+  -- Owners can update anything (including soft-delete)
+  owner_id = auth.uid()
+  -- Editors can update only while the store stays visible
+  or (is_editor_lookup(id, auth.uid()) and is_visible = true)
+);
+
+-- DELETE: Owner Only
+create policy "Owners can delete their own stores"
+on public.stores for delete
+to authenticated
+using (
+  owner_id = auth.uid()
+);
+
+-- INSERT: Any authenticated user can create
+create policy "Authenticated users can create stores"
+on public.stores for insert
+to authenticated
+with check (
+  owner_id = auth.uid()
 );
 
 -- Profiles

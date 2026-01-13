@@ -3,19 +3,6 @@ import { notFound } from "next/navigation";
 import { extractPacketIds, fetchPackets, hydrateBlockWithPackets } from "@/lib/packet-hydration";
 import { LayoutRenderer } from "@/components/layout-renderer";
 
-// Helper to parse the domain
-const getSubdomain = (host: string) => {
-  if (host.includes("localhost")) {
-    const parts = host.split(".");
-    if (parts.length === 1 || parts[0] === "localhost") return null;
-    return parts[0];
-  }
-  if (host.includes("hoodieplatform.com") || host.includes("swatbloc.com")) {
-    return host.split(".")[0];
-  }
-  return null;
-};
-
 export default async function DynamicPage({
   params,
 }: {
@@ -23,23 +10,20 @@ export default async function DynamicPage({
 }) {
   const { domain: rawDomain, slug: slugArray } = await params;
   const host = decodeURIComponent(rawDomain);
-  const subdomain = getSubdomain(host);
+  const { data, error } = await supabase.rpc("get_storefront_store_by_domain", { host });
+  const store = error ? null : (data?.[0] ?? null);
+  if (error || !store) return notFound();
+
+  const { data: storePages } = await supabase
+    .from("store_pages")
+    .select("layout_config, slug, is_home")
+    .eq("store_id", store.id);
+
+  const storeWithPages = { ...store, store_pages: storePages ?? [] };
 
   // Construct the slug string (e.g. "about" or "shop/hoodies")
   // My admin currently creates flat slugs like "about-us", so we just join them just in case
   const targetSlug = slugArray.join('/');
-
-  const query = supabase.from("stores").select("id, name, theme, colors, header_config, footer_config, store_pages(layout_config, slug, is_home)");
-
-  if (subdomain) {
-    query.eq('subdomain', subdomain);
-  } else {
-    query.eq('custom_domain', host);
-  }
-
-  const { data: store, error } = await query.single();
-
-  if (error || !store) return notFound();
 
   // Check if we should show the cart (if any product exists or any page has add-to-cart)
   const { count: productCount } = await supabase
@@ -51,7 +35,7 @@ export default async function DynamicPage({
   const hasProducts = productCount !== null && productCount > 0;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hasStaticAddToCart = (store.store_pages as any[]).some(page =>
+  const hasStaticAddToCart = (storeWithPages.store_pages as any[]).some(page =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     page.layout_config?.some((b: any) =>
       b.type === 'ProductDetail' && (b.props?.buttonAction === 'addToCart' || !b.props?.buttonAction)
@@ -61,7 +45,7 @@ export default async function DynamicPage({
   const shouldShowCart = hasProducts || hasStaticAddToCart;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pages = store.store_pages as any[] || [];
+  const pages = storeWithPages.store_pages as any[] || [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let layout: any[] = [];
 

@@ -3,25 +3,6 @@ import { notFound } from "next/navigation";
 import { extractPacketIds, fetchPackets, hydrateBlockWithPackets } from "../../lib/packet-hydration";
 import { LayoutRenderer } from "../../components/layout-renderer";
 
-// Helper to parse the domain
-const getSubdomain = (host: string) => {
-  // 1. Localhost Support (e.g. "bob.localhost:3000")
-  if (host.includes("localhost")) {
-    const parts = host.split(".");
-    // If just "localhost:3000", there is no subdomain -> return null
-    if (parts.length === 1 || parts[0] === "localhost") return null;
-    return parts[0];
-  }
-
-  // 2. Production Support (e.g. "bob.hoodieplatform.com" or "bob.swatbloc.com")
-  if (host.includes("hoodieplatform.com") || host.includes("swatbloc.com")) {
-    return host.split(".")[0];
-  }
-
-  // 3. Custom Domain (e.g. "bob-hoodies.com")
-  return null; // It's a custom domain, return null to signal "use full host"
-};
-
 export default async function DomainPage({
   params,
 }: {
@@ -30,19 +11,17 @@ export default async function DomainPage({
   // DECODE the domain (Next.js passes it URL-encoded)
   const { domain: rawDomain } = await params;
   const host = decodeURIComponent(rawDomain);
-  const subdomain = getSubdomain(host);
-
-  const query = supabase.from("stores").select("id, name, theme, colors, header_config, footer_config, store_pages(layout_config, slug, is_home)");
-
-  if (subdomain) {
-    query.eq('subdomain', subdomain);
-  } else {
-    query.eq('custom_domain', host);
-  }
-
-  const { data: store, error } = await query.single();
-
+  const { data, error } = await supabase.rpc("get_storefront_store_by_domain", { host });
+  const store = error ? null : (data?.[0] ?? null);
   if (error || !store) return notFound();
+
+  const { data: storePages } = await supabase
+    .from("store_pages")
+    .select("layout_config, slug, is_home")
+    .eq("store_id", store.id);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pages = (storePages as any[]) ?? [];
 
   // Check if we should show the cart (if any product exists or any page has add-to-cart)
   const { count: productCount } = await supabase
@@ -54,7 +33,7 @@ export default async function DomainPage({
   const hasProducts = productCount !== null && productCount > 0;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hasStaticAddToCart = (store.store_pages as any[]).some(page =>
+  const hasStaticAddToCart = (pages as any[]).some(page =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     page.layout_config?.some((b: any) =>
       b.type === 'ProductDetail' && (b.props?.buttonAction === 'addToCart' || !b.props?.buttonAction)
@@ -64,8 +43,6 @@ export default async function DomainPage({
   const shouldShowCart = hasProducts || hasStaticAddToCart;
 
   // 3. Get the "Home" page layout
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pages = store.store_pages as any[] || [];
   const homePage = pages.find(p => p.is_home) || pages.find(p => p.slug === 'home') || pages[0];
   const layout = homePage?.layout_config || [];
 

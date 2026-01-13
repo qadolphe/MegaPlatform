@@ -6,29 +6,8 @@ export async function generateMetadata({ params }: { params: Promise<{ domain: s
     const { domain: rawDomain } = await params;
     const host = decodeURIComponent(rawDomain);
 
-    // Helper to parse the domain (duplicated from page.tsx, ideally shared)
-    const getSubdomain = (host: string) => {
-        if (host.includes("localhost")) {
-            const parts = host.split(".");
-            if (parts.length === 1 || parts[0] === "localhost") return null;
-            return parts[0]; 
-        }
-        if (host.includes("hoodieplatform.com") || host.includes("swatbloc.com")) {
-            return host.split(".")[0];
-        }
-        return null;
-    };
-
-    const subdomain = getSubdomain(host);
-    const query = supabase.from("stores").select("name, favicon_url");
-    
-    if (subdomain) {
-        query.eq('subdomain', subdomain);
-    } else {
-        query.eq('custom_domain', host);
-    }
-
-    const { data: store } = await query.single();
+  const { data, error } = await supabase.rpc("get_storefront_store_by_domain", { host });
+  const store = error ? null : (data?.[0] ?? null);
 
     if (store) {
         return {

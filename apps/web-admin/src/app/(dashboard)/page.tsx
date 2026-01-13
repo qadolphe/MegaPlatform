@@ -54,32 +54,28 @@ export default function Dashboard() {
     }
 
     const checkUser = async () => {
-      console.log("[Dashboard] 1. Starting user check...");
-      const { data: { user }, error: authError } = await memoizedSupabase.auth.getUser();
-
-      if (authError) {
-        console.error("[Dashboard] Auth Error:", authError);
-      }
+      const { data: { user } } = await memoizedSupabase.auth.getUser();
 
       if (!user) {
-        console.log("[Dashboard] No user found, redirecting...");
         router.push("/login");
         return;
       }
       
-      console.log("[Dashboard] 2. User found:", user.id);
       setCurrentUser(user);
 
-      // Test if memoization/re-creation helps
-      console.log("[Dashboard] 3. Calling RPC get_my_stores...");
-      const rpcResult = await memoizedSupabase.rpc("get_my_stores");
-      console.log("[Dashboard] 4. RPC Raw Result:", rpcResult);
+      try {
+        const { data: stores, error } = await memoizedSupabase
+          .rpc("get_my_stores")
+          // get_my_stores already filters for owner/collaborator and is_visible = true
+          .order("created_at", { ascending: false });
 
-      if (rpcResult.error) {
-          console.error("[Dashboard] RPC Error details:", rpcResult.error);
-      } else {
-          console.log("[Dashboard] 5. Stores found:", rpcResult.data?.length);
-          setStores(rpcResult.data || []);
+        if (error) {
+          console.error("[Dashboard] Fetch Error:", error);
+        } else {
+          setStores((stores || []).filter((s: any) => s?.is_visible === true));
+        }
+      } catch (e) {
+        console.error("[Dashboard] Exception fetching stores:", e);
       }
       
       setLoading(false);
@@ -104,11 +100,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-1">My Stores (v3)</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-1">My Stores</h1>
           <p className="text-slate-500">Create and manage your AI-powered storefronts</p>
-          <div className="text-xs text-slate-400 mt-1">
-             Debug: {stores.length} stores loaded. User: {currentUser?.id || 'None'}.
-          </div>
         </div>
         <Link
           href="/new-store"
