@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ExternalLink, Edit, Plus, FileText, Package, Trash2, MoreVertical, X, Sparkles, ArrowRight, TrendingUp } from "lucide-react";
 import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,18 +13,29 @@ type Store = any;
 
 export default function Dashboard() {
   const [stores, setStores] = useState<Store[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [baseDomain, setBaseDomain] = useState("localhost:3000");
   const [activeMenuStoreId, setActiveMenuStoreId] = useState<string | null>(null);
   const [deleteModalStoreId, setDeleteModalStoreId] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoizedSupabase = useMemo(() => supabase, []);
 
   const handleDelete = async (storeId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await memoizedSupabase.auth.getUser();
     console.log("Debug - Deleting Store:", { storeId, userId: user?.id });
 
-    const { error } = await supabase
+    // Verify ownership before attempting delete
+    const store = stores.find(s => s.id === storeId);
+    if (!store || store.owner_id !== user?.id) {
+      console.error("Unauthorized: Only owners can delete stores");
+      setDeleteModalStoreId(null);
+      return;
+    }
+
+    const { error } = await memoizedSupabase
       .from("stores")
       .update({ is_visible: false })
       .eq("id", storeId);
@@ -43,29 +54,39 @@ export default function Dashboard() {
     }
 
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log("[Dashboard] 1. Starting user check...");
+      const { data: { user }, error: authError } = await memoizedSupabase.auth.getUser();
+
+      if (authError) {
+        console.error("[Dashboard] Auth Error:", authError);
+      }
 
       if (!user) {
+        console.log("[Dashboard] No user found, redirecting...");
         router.push("/login");
         return;
       }
+      
+      console.log("[Dashboard] 2. User found:", user.id);
+      setCurrentUser(user);
 
-      const { data: stores, error } = await supabase
-        .from("stores")
-        .select("*")
-        .eq("owner_id", user.id)
-        .eq("is_visible", true);
+      // Test if memoization/re-creation helps
+      console.log("[Dashboard] 3. Calling RPC get_my_stores...");
+      const rpcResult = await memoizedSupabase.rpc("get_my_stores");
+      console.log("[Dashboard] 4. RPC Raw Result:", rpcResult);
 
-      if (error) {
-        console.error(error);
+      if (rpcResult.error) {
+          console.error("[Dashboard] RPC Error details:", rpcResult.error);
       } else {
-        setStores(stores || []);
+          console.log("[Dashboard] 5. Stores found:", rpcResult.data?.length);
+          setStores(rpcResult.data || []);
       }
+      
       setLoading(false);
     };
 
     checkUser();
-  }, [router, supabase]);
+  }, [router, memoizedSupabase]);
 
   if (loading) {
     return (
@@ -83,8 +104,11 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-1">My Stores</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-1">My Stores (v3)</h1>
           <p className="text-slate-500">Create and manage your AI-powered storefronts</p>
+          <div className="text-xs text-slate-400 mt-1">
+             Debug: {stores.length} stores loaded. User: {currentUser?.id || 'None'}.
+          </div>
         </div>
         <Link
           href="/new-store"
@@ -173,30 +197,32 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                        Active
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${store.owner_id === currentUser?.id ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-blue-50 text-blue-700 ring-blue-600/20'}`}>
+                        {store.owner_id === currentUser?.id ? 'Owner' : 'Editor'}
                       </span>
-                      <div className="relative">
-                        <button
-                          onClick={() => setActiveMenuStoreId(activeMenuStoreId === store.id ? null : store.id)}
-                          className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                        >
-                          <MoreVertical size={18} />
-                        </button>
-                        {activeMenuStoreId === store.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 z-10 py-1 overflow-hidden">
-                            <button
-                              onClick={() => {
-                                setDeleteModalStoreId(store.id);
-                                setActiveMenuStoreId(null);
-                              }}
-                              className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
-                            >
-                              <Trash2 size={14} /> Delete Store
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      {store.owner_id === currentUser?.id && (
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveMenuStoreId(activeMenuStoreId === store.id ? null : store.id)}
+                            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                          >
+                            <MoreVertical size={18} />
+                          </button>
+                          {activeMenuStoreId === store.id && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 z-10 py-1 overflow-hidden">
+                              <button
+                                onClick={() => {
+                                  setDeleteModalStoreId(store.id);
+                                  setActiveMenuStoreId(null);
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                              >
+                                <Trash2 size={14} /> Delete Store
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <h2 className="text-xl font-semibold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">{store.name}</h2>

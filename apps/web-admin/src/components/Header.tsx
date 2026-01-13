@@ -33,9 +33,10 @@ export function Header() {
   }, []);
 
   const fetchProfileName = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('first_name, last_name').eq('id', userId).single();
-    if (data && (data.first_name || data.last_name)) {
-        setProfileName(`${data.first_name || ''} ${data.last_name || ''}`.trim());
+    const { data } = await supabase.from('profiles').select('first_name, last_name').eq('id', userId).limit(1);
+    if (data && data.length > 0) {
+        const profile = data[0];
+        setProfileName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim());
     }
   };
 

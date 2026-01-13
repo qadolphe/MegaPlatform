@@ -32,24 +32,24 @@ export function ProfileSettingsDialog({ user, isOpen, onClose, onProfileUpdate }
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .limit(1); // Relaxed from .single() to avoid 406 on missing rows
     
-    if (data) {
-      setFirstName(data.first_name || "");
-      setLastName(data.last_name || "");
+    if (data && data.length > 0) {
+      setFirstName(data[0].first_name || "");
+      setLastName(data[0].last_name || "");
     }
-    // If no data, fields remain empty, ready for creation
     setFetching(false);
   };
 
   const handleSave = async () => {
     setLoading(true);
     
-    // Check if profile exists
-    const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).single();
+    // Check if profile exists safely
+    const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).limit(1);
+    const exists = existing && existing.length > 0;
 
     let error;
-    if (existing) {
+    if (exists) {
        const { error: updateError } = await supabase
         .from('profiles')
         .update({ first_name: firstName, last_name: lastName })

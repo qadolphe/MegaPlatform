@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle, Loader2, ExternalLink, Copy, RefreshCw, Image as ImageIcon, Users, Trash2, UserPlus, Code2, Eye, EyeOff, Key } from "lucide-react";
+import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle, Loader2, ExternalLink, Copy, RefreshCw, Image as ImageIcon, Users, Trash2, UserPlus, Code2, Eye, EyeOff, Key, Mail } from "lucide-react";
 import Link from "next/link";
 import { MediaManager } from "@/components/media-manager";
 import { DeveloperSettings } from "@/components/developer-settings";
@@ -25,6 +25,7 @@ interface StoreSettings {
     stripe_account_id: string | null;
     stripe_details_submitted: boolean;
     currency: string;
+    owner_id: string;
 }
 
 interface Collaborator {
@@ -43,10 +44,13 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     const supabase = createClient();
 
     const [settings, setSettings] = useState<StoreSettings | null>(null);
+    const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const isOwner = settings?.owner_id === currentUser?.id;
 
     // Media Manager State
     const [isMediaOpen, setIsMediaOpen] = useState(false);
@@ -67,65 +71,86 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     const [inviteEmail, setInviteEmail] = useState("");
     const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
     const [inviting, setInviting] = useState(false);
-
-
+    
+    // Invite Dialog State
+    const [showInviteDialog, setShowInviteDialog] = useState(false);
+    const [pendingInviteEmail, setPendingInviteEmail] = useState("");
 
     useEffect(() => {
-        fetchSettings();
-        fetchEmailDomains();
-        fetchCollaborators();
+        const load = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) setCurrentUser({ id: user.id });
+            
+            await Promise.all([
+                fetchSettings(),
+                fetchEmailDomains(),
+                fetchCollaborators()
+            ]);
+            setLoading(false);
+        };
+        load();
     }, [storeId]);
 
     const fetchCollaborators = async () => {
-        // For now, we just show who has access - in a real app, you'd join with auth.users to get emails
-        const { data } = await supabase
-            .from("store_collaborators")
-            .select("*")
-            .eq("store_id", storeId);
-        if (data) setCollaborators(data);
+        const { data, error } = await supabase
+            .rpc('get_store_collaborators_with_meta', { store_id_param: storeId });
+        
+        if (error) {
+            console.error("Error fetching collaborators:", error);
+        } else if (data) {
+            setCollaborators(data);
+        }
     };
 
     const handleInviteCollaborator = async () => {
         if (!inviteEmail) return;
         setInviting(true);
 
-        // Note: This is a simplified version - in production you'd:
-        // 1. Look up the user by email in auth.users
-        // 2. If not found, send an invite email
-        // 3. Create a pending invitation record
-
-        // For now, we'll try to find an existing user
-        const { data: userData, error: userError } = await supabase
+        // Check if user exists first
+        const { data: existingUserId } = await supabase
             .rpc('get_user_id_by_email', { email_param: inviteEmail })
             .single();
 
-        if (userError || !userData) {
-            // If the RPC doesn't exist or user not found, show a message
-            setMessage({ type: 'error', text: 'User not found. They must have an account first.' });
+        if (!existingUserId) {
+            // User doesn't exist - prompt for invite
+            setPendingInviteEmail(inviteEmail);
+            setShowInviteDialog(true);
             setInviting(false);
             return;
         }
 
-        const { error } = await supabase
-            .from("store_collaborators")
-            .insert({
-                store_id: storeId,
-                user_id: userData,
-                role: inviteRole
-            });
+        // User exists - add directly
+        await executeInvite(inviteEmail);
+    };
 
-        if (error) {
-            if (error.code === '23505') {
-                setMessage({ type: 'error', text: 'This user is already a collaborator.' });
+    const confirmInvite = async () => {
+        setShowInviteDialog(false);
+        setInviting(true);
+        await executeInvite(pendingInviteEmail);
+        setPendingInviteEmail("");
+    };
+
+    const executeInvite = async (email: string) => {
+        try {
+            const res = await fetch('/api/team/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, storeId, role: inviteRole }),
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                setMessage({ type: 'success', text: data.isNewUser ? 'Invitation sent!' : 'Collaborator added successfully!' });
+                setInviteEmail("");
+                fetchCollaborators();
             } else {
-                setMessage({ type: 'error', text: error.message });
+                 setMessage({ type: 'error', text: data.error || 'Failed to add collaborator' });
             }
-        } else {
-            setMessage({ type: 'success', text: 'Collaborator added successfully!' });
-            setInviteEmail("");
-            fetchCollaborators();
+        } catch (e) {
+            setMessage({ type: 'error', text: 'An unexpected error occurred' });
+        } finally {
+            setInviting(false);
         }
-        setInviting(false);
     };
 
     const handleRemoveCollaborator = async (collaboratorId: string) => {
@@ -214,7 +239,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
         setSettings(data);
         setCustomDomain(data.custom_domain || "");
-        setLoading(false);
     };
 
     const saveSettings = async (updates: Partial<StoreSettings>) => {
@@ -290,8 +314,10 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         { id: 'general', label: 'General', icon: <Shield size={18} /> },
         { id: 'domains', label: 'Domains', icon: <Globe size={18} /> },
         { id: 'theme', label: 'Theme', icon: <Palette size={18} /> },
-        { id: 'billing', label: 'Billing', icon: <CreditCard size={18} /> },
-        { id: 'team', label: 'Team', icon: <Users size={18} /> },
+        ...(isOwner ? [
+            { id: 'billing', label: 'Billing', icon: <CreditCard size={18} /> } as const,
+            { id: 'team', label: 'Team', icon: <Users size={18} /> } as const,
+        ] : []),
         { id: 'developer', label: 'Developer', icon: <Code2 size={18} /> },
     ];
 
@@ -798,43 +824,45 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
                                     <div className="space-y-6">
                                         {/* Invite Collaborator */}
-                                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                            <h3 className="font-medium text-slate-900 mb-4">Invite Team Member</h3>
-                                            <div className="flex gap-3">
-                                                <div className="flex-1">
-                                                    <input
-                                                        type="email"
-                                                        value={inviteEmail}
-                                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                                        placeholder="team@example.com"
-                                                        className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                                    />
+                                        {isOwner && (
+                                            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                                <h3 className="font-medium text-slate-900 mb-4">Invite Team Member</h3>
+                                                <div className="flex gap-3">
+                                                    <div className="flex-1">
+                                                        <input
+                                                            type="email"
+                                                            value={inviteEmail}
+                                                            onChange={(e) => setInviteEmail(e.target.value)}
+                                                            placeholder="team@example.com"
+                                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                                        />
+                                                    </div>
+                                                    <select
+                                                        value={inviteRole}
+                                                        onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
+                                                        className="px-4 py-2.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                                    >
+                                                        <option value="editor">Editor</option>
+                                                        <option value="viewer">Viewer</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={handleInviteCollaborator}
+                                                        disabled={inviting || !inviteEmail}
+                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {inviting ? (
+                                                            <Loader2 className="animate-spin" size={16} />
+                                                        ) : (
+                                                            <UserPlus size={16} />
+                                                        )}
+                                                        Invite
+                                                    </button>
                                                 </div>
-                                                <select
-                                                    value={inviteRole}
-                                                    onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
-                                                    className="px-4 py-2.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                                >
-                                                    <option value="editor">Editor</option>
-                                                    <option value="viewer">Viewer</option>
-                                                </select>
-                                                <button
-                                                    onClick={handleInviteCollaborator}
-                                                    disabled={inviting || !inviteEmail}
-                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {inviting ? (
-                                                        <Loader2 className="animate-spin" size={16} />
-                                                    ) : (
-                                                        <UserPlus size={16} />
-                                                    )}
-                                                    Invite
-                                                </button>
+                                                <p className="text-xs text-slate-500 mt-2">
+                                                    Editors can manage products, orders, and content. Viewers have read-only access.
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-2">
-                                                Editors can manage products, orders, and content. Viewers have read-only access.
-                                            </p>
-                                        </div>
+                                        )}
 
                                         {/* Team Members List */}
                                         <div>
@@ -847,7 +875,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                             <Users size={18} className="text-blue-600" />
                                                         </div>
                                                         <div>
-                                                            <p className="font-medium text-slate-900">You (Owner)</p>
+                                                            <p className="font-medium text-slate-900">{isOwner ? 'You (Owner)' : 'Store Owner'}</p>
                                                             <p className="text-sm text-slate-500">Full access to all settings</p>
                                                         </div>
                                                     </div>
@@ -884,13 +912,15 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                                                     }`}>
                                                                     {collab.role === 'editor' ? 'Editor' : 'Viewer'}
                                                                 </span>
-                                                                <button
-                                                                    onClick={() => handleRemoveCollaborator(collab.id)}
-                                                                    className="p-2 text-slate-400 hover:text-red-500 transition"
-                                                                    title="Remove collaborator"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
+                                                                {isOwner && (
+                                                                    <button
+                                                                        onClick={() => handleRemoveCollaborator(collab.id)}
+                                                                        className="p-2 text-slate-400 hover:text-red-500 transition"
+                                                                        title="Remove collaborator"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     ))
@@ -952,6 +982,37 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                     setIsMediaOpen(false);
                 }}
             />
+
+            {/* Invite Confirmation Dialog */}
+            {showInviteDialog && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                            <Mail size={24} className="text-blue-600" />
+                        </div>
+                        <h3 className="font-bold text-lg mb-2 text-slate-900">Invite to SwatBloc?</h3>
+                        <p className="text-slate-500 text-sm mb-6">
+                            The email <span className="font-medium text-slate-800">{pendingInviteEmail}</span> does not have a SwatBloc account.
+                            <br /><br />
+                            Would you like to send them an invite to join your team?
+                        </p>
+                        <div className="flex gap-3 justify-center">
+                            <button
+                                onClick={() => { setShowInviteDialog(false); setPendingInviteEmail(""); }}
+                                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmInvite}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2"
+                            >
+                                Send Invite
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

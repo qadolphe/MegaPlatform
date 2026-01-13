@@ -1,349 +1,44 @@
--- Enable pgvector for embeddings
+-- ==========================================
+-- 1. EXTENSIONS
+-- ==========================================
 create extension if not exists vector;
 
--- 1. Stores: Who owns what?
-create table stores (
-  id uuid default gen_random_uuid() primary key,
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  owner_id uuid references auth.users not null, -- Links to Supabase Auth
-  subdomain text unique not null,               -- e.g. "bob-hoodies"
-  custom_domain text unique,                    -- e.g. "bobhoodies.com"
-  name text not null,
-  theme text default 'simple',                  -- Global animation theme
-  colors jsonb default '{"primary": "#000000", "secondary": "#ffffff", "accent": "#3b82f6", "background": "#ffffff", "text": "#000000"}'::jsonb, -- Global color scheme
-  logo_url text,                                -- Store Logo URL
-  favicon_url text,                             -- Store Favicon URL
-  is_visible boolean default true,              -- Soft delete flag
-  stripe_account_id text,                       -- Stripe Connect Account ID
-  stripe_details_submitted boolean default false,
-  currency text default 'usd',
-  header_config jsonb default '{}'::jsonb,      -- Global Header Configuration
-  footer_config jsonb default '{}'::jsonb,      -- Global Footer Configuration
-  developer_mode boolean default false          -- Controls visibility of developer tools
-);
-
-
--- 2. Pages: The "Visual Config" for the Dynamic Renderer
-create table store_pages (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  name text,                                    -- e.g. "Home Page"
-  slug text not null,                           -- e.g. "home", "about"
-  layout_config jsonb default '[]'::jsonb,      -- THE MAGIC COLUMN
-  published boolean default false,
-  is_home boolean default false,                -- New: Marks the landing page
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  updated_at timestamp with time zone default timezone('utc'::text, now()),
-  unique(store_id, slug)
-);
-
--- 3. Products (Expanded)
-create table products (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  title text not null,
-  slug text not null,
-  description text,
-  price integer not null default 0, -- Base price in cents
-  compare_at_price integer,         -- Original price for sales
-  images text[] default '{}',       -- Array of image URLs
-  options jsonb default '[]'::jsonb,-- e.g. [{"name": "Size", "values": ["S", "M"]}]
-  metafields jsonb default '[]'::jsonb, -- Custom fields e.g. [{"key": "cpu_speed", "label": "CPU Speed", "value": "3.5GHz", "type": "text"}]
-  published boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  updated_at timestamp with time zone default timezone('utc'::text, now()),
-  unique(store_id, slug)
-);
-
--- 4. Product Variants
-create table product_variants (
-  id uuid default gen_random_uuid() primary key,
-  product_id uuid references products(id) on delete cascade not null,
-  title text not null,              -- e.g. "Small / Red"
-  sku text,
-  price integer not null,           -- Variant specific price
-  inventory_quantity integer default 0,
-  options jsonb default '{}'::jsonb, -- e.g. {"Size": "Small", "Color": "Red"}
-  description text,                 -- Variant specific description
-  image_url text,                   -- Variant specific image (legacy single image)
-  images text[] default '{}'         -- Variant specific images (preferred)
-);
-
--- 5. Collections
-create table collections (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  title text not null,
-  slug text not null,
-  description text,
-  image_url text,
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  unique(store_id, slug)
-);
-
--- 6. Product <-> Collection Junction
-create table product_collections (
-  product_id uuid references products(id) on delete cascade not null,
-  collection_id uuid references collections(id) on delete cascade not null,
-  primary key (product_id, collection_id)
-);
-
--- 7. Customers (Store-specific)
-create table customers (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  email text not null,
-  first_name text,
-  last_name text,
-  phone text,
-  metafields jsonb default '[]'::jsonb, -- Custom fields e.g. [{"key": "loyalty_tier", "label": "Loyalty Tier", "value": "Gold", "type": "text"}]
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  updated_at timestamp with time zone default timezone('utc'::text, now()),
-  unique(store_id, email)
-);
-
--- 8. Orders
-create table orders (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  customer_id uuid references customers(id) on delete set null,
-  
-  -- Stripe References
-  stripe_checkout_session_id text, 
-  stripe_payment_intent_id text,
-  
-  -- Financials
-  subtotal_amount integer not null, -- sum of items
-  shipping_amount integer default 0,
-  tax_amount integer default 0,
-  total_amount integer not null,    -- final charge in cents
-  currency text default 'usd',
-  
-  -- State
-  status text default 'pending', -- pending, paid, unfulfilled, fulfilled, cancelled, refunded
-  payment_status text default 'unpaid', -- unpaid, paid, failed, refunded
-  fulfillment_status text default 'unfulfilled', -- unfulfilled, fulfilled, partial
-  
-  -- Data Snapshots
-  shipping_address jsonb,
-  billing_address jsonb,
-  metafields jsonb default '[]'::jsonb, -- Custom fields e.g. [{"key": "gift_message", "label": "Gift Message", "value": "Happy Birthday!", "type": "text"}]
-  
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  updated_at timestamp with time zone default timezone('utc'::text, now())
-);
-
--- 9. Order Items
-create table order_items (
-  id uuid default gen_random_uuid() primary key,
-  order_id uuid references orders(id) on delete cascade not null,
-  product_id uuid references products(id) on delete set null,
-  variant_id uuid references product_variants(id) on delete set null,
-  
-  quantity integer not null default 1,
-  price_at_purchase integer not null, -- In cents
-  
-  product_name text not null,
-  variant_name text,
-  image_url text
-);
-
-create table store_email_domains (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  domain text not null,           -- 'bob-hoodies.com'
-  resend_domain_id text not null, -- ID from Resend API
-  status text default 'pending',  -- 'pending', 'verified', 'failed'
-  dns_records jsonb,              -- Store the SPF/DKIM records here to show in UI
-  created_at timestamp with time zone default now()
-);
-
--- 10. Enable RLS
-alter table stores enable row level security;
-alter table store_pages enable row level security;
-alter table products enable row level security;
-alter table product_variants enable row level security;
-alter table collections enable row level security;
-alter table product_collections enable row level security;
-alter table customers enable row level security;
-alter table orders enable row level security;
-alter table order_items enable row level security;
-alter table store_email_domains enable row level security;
-
--- 11. Policies
+-- ==========================================
+-- 2. TABLES
+-- ==========================================
 
 -- Stores
-create policy "Public stores are viewable by everyone"
-on stores for select
-to public
-using (true);
-
-create policy "Users can create their own stores"
-on stores for insert
-to authenticated
-with check (auth.uid() = owner_id);
-
-create policy "Users can update their own stores"
-on stores for update
-to authenticated
-using (has_store_access(id, 'editor'));
-
-create policy "Users can delete their own stores"
-on stores for delete
-to authenticated
-using (auth.uid() = owner_id);
-
--- Store Pages
-create policy "Public pages are viewable by everyone"
-on store_pages for select
-to public
-using (true);
-
-create policy "Users can manage pages for their stores"
-on store_pages for all
-to authenticated
-using (has_store_access(store_id, 'editor'));
-
--- Products
-create policy "Public products are viewable by everyone"
-on products for select
-to public
-using (true);
-
-create policy "Users can manage products for their stores"
-on products for all
-to authenticated
-using (has_store_access(store_id, 'editor'));
-
--- Product Variants
-create policy "Public variants are viewable by everyone"
-on product_variants for select
-to public
-using (true);
-
-create policy "Users can manage variants for their stores"
-on product_variants for all
-to authenticated
-using (
-  exists (
-    select 1 from products
-    where products.id = product_variants.product_id
-    and has_store_access(products.store_id, 'editor')
-  )
-);
-
--- Collections
-create policy "Public collections are viewable by everyone"
-on collections for select
-to public
-using (true);
-
-create policy "Users can manage collections for their stores"
-on collections for all
-to authenticated
-using (has_store_access(store_id, 'editor'));
-
--- Product Collections
-create policy "Public product collections are viewable by everyone"
-on product_collections for select
-to public
-using (true);
-
-create policy "Users can manage product collections for their stores"
-on product_collections for all
-to authenticated
-using (
-  exists (
-    select 1 from products
-    where products.id = product_collections.product_id
-    and has_store_access(products.store_id, 'editor')
-  )
-);
-
--- Customers
-create policy "Store owners can manage their customers"
-on customers for all
-to authenticated
-using (has_store_access(store_id, 'editor'));
-
--- Orders
-create policy "Store owners can manage their orders"
-on orders for all
-to authenticated
-using (has_store_access(store_id, 'editor'));
-
--- Order Items
-create policy "Store owners can manage their order items"
-on order_items for all
-to authenticated
-using (
-  exists (
-    select 1 from orders
-    where orders.id = order_items.order_id
-    and has_store_access(orders.store_id, 'editor')
-  )
-);
-
--- 9. Knowledge Base (AI)
-create table knowledge_items (
+create table if not exists public.stores (
   id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  content text not null,           -- The actual text chunk
-  metadata jsonb default '{}',     -- Source url, page number, etc.
-  embedding vector(768),           -- Gemini embedding dimension (text-embedding-004)
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  owner_id uuid references auth.users not null,
+  subdomain text unique not null,
+  custom_domain text unique,
+  name text not null,
+  theme text default 'simple',
+  colors jsonb default '{"primary": "#000000", "secondary": "#ffffff", "accent": "#3b82f6", "background": "#ffffff", "text": "#000000"}'::jsonb,
+  logo_url text,
+  favicon_url text,
+  is_visible boolean default true,
+  stripe_account_id text,
+  stripe_details_submitted boolean default false,
+  currency text default 'usd',
+  header_config jsonb default '{}'::jsonb,
+  footer_config jsonb default '{}'::jsonb,
+  developer_mode boolean default false
+);
+
+-- Profiles (Global)
+create table if not exists public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  first_name text,
+  last_name text,
+  avatar_url text, 
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
-create index on knowledge_items using ivfflat (embedding vector_cosine_ops)
-with (lists = 100);
-
-create or replace function match_knowledge (
-  query_embedding vector(768),
-  match_threshold float,
-  match_count int,
-  filter_store_id uuid
-)
-returns table (
-  id uuid,
-  content text,
-  similarity float
-)
-language plpgsql
-as $$
-begin
-  return query
-  select
-    knowledge_items.id,
-    knowledge_items.content,
-    1 - (knowledge_items.embedding <=> query_embedding) as similarity
-  from knowledge_items
-  where 1 - (knowledge_items.embedding <=> query_embedding) > match_threshold
-  and knowledge_items.store_id = filter_store_id
-  order by knowledge_items.embedding <=> query_embedding
-  limit match_count;
-end;
-$$;
-
-alter table knowledge_items enable row level security;
-
-create policy "Users can view their own store knowledge"
-  on knowledge_items for select
-  using (has_store_access(store_id, 'viewer'));
-
-create policy "Users can insert their own store knowledge"
-  on knowledge_items for insert
-  with check (has_store_access(store_id, 'editor'));
-
-create policy "Users can update their own store knowledge"
-  on knowledge_items for update
-  using (has_store_access(store_id, 'editor'));
-
-create policy "Users can delete their own store knowledge"
-  on knowledge_items for delete
-  using (has_store_access(store_id, 'editor'));
-
--- 10. Store Collaborators
-create table public.store_collaborators (
+-- Store Collaborators
+create table if not exists public.store_collaborators (
   id uuid not null default gen_random_uuid (),
   store_id uuid not null references public.stores (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -353,56 +48,210 @@ create table public.store_collaborators (
   unique (store_id, user_id)
 );
 
+-- Store Pages
+create table if not exists public.store_pages (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  name text,
+  slug text not null,
+  layout_config jsonb default '[]'::jsonb,
+  published boolean default false,
+  is_home boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(store_id, slug)
+);
+
+-- Products
+create table if not exists public.products (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  title text not null,
+  slug text not null,
+  description text,
+  price integer not null default 0,
+  compare_at_price integer,
+  images text[] default '{}',
+  options jsonb default '[]'::jsonb,
+  metafields jsonb default '[]'::jsonb,
+  published boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(store_id, slug)
+);
+
+-- Product Variants
+create table if not exists public.product_variants (
+  id uuid default gen_random_uuid() primary key,
+  product_id uuid references public.products(id) on delete cascade not null,
+  title text not null,
+  sku text,
+  price integer not null,
+  inventory_quantity integer default 0,
+  options jsonb default '{}'::jsonb,
+  description text,
+  image_url text,
+  images text[] default '{}'
+);
+
+-- Collections
+create table if not exists public.collections (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  title text not null,
+  slug text not null,
+  description text,
+  image_url text,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(store_id, slug)
+);
+
+-- Product <-> Collection Junction
+create table if not exists public.product_collections (
+  product_id uuid references public.products(id) on delete cascade not null,
+  collection_id uuid references public.collections(id) on delete cascade not null,
+  primary key (product_id, collection_id)
+);
+
+-- Customers
+create table if not exists public.customers (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  email text not null,
+  first_name text,
+  last_name text,
+  phone text,
+  metafields jsonb default '[]'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(store_id, email)
+);
+
+-- Orders
+create table if not exists public.orders (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  customer_id uuid references public.customers(id) on delete set null,
+  stripe_checkout_session_id text, 
+  stripe_payment_intent_id text,
+  subtotal_amount integer not null,
+  shipping_amount integer default 0,
+  tax_amount integer default 0,
+  total_amount integer not null,
+  currency text default 'usd',
+  status text default 'pending',
+  payment_status text default 'unpaid',
+  fulfillment_status text default 'unfulfilled',
+  shipping_address jsonb,
+  billing_address jsonb,
+  metafields jsonb default '[]'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Order Items
+create table if not exists public.order_items (
+  id uuid default gen_random_uuid() primary key,
+  order_id uuid references public.orders(id) on delete cascade not null,
+  product_id uuid references public.products(id) on delete set null,
+  variant_id uuid references public.product_variants(id) on delete set null,
+  quantity integer not null default 1,
+  price_at_purchase integer not null,
+  product_name text not null,
+  variant_name text,
+  image_url text
+);
+
+-- Email Domains
+create table if not exists public.store_email_domains (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  domain text not null,
+  resend_domain_id text not null,
+  status text default 'pending',
+  dns_records jsonb,
+  created_at timestamp with time zone default now()
+);
+
+-- Knowledge Base (AI)
+create table if not exists public.knowledge_items (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  content text not null,
+  metadata jsonb default '{}',
+  embedding vector(768),
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Planner Tasks
+create table if not exists public.planner_tasks (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  title text not null,
+  description text,
+  status text default 'todo',
+  priority text default 'medium',
+  assignee_id uuid references auth.users,
+  due_date timestamp with time zone,
+  tag_ids uuid[] default '{}',
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Task Tags
+create table if not exists public.store_task_tags (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  name text not null,
+  color text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Content Packets
+create table if not exists public.content_packets (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  type text not null,
+  name text not null,
+  data jsonb not null default '{}',
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- ==========================================
+-- 3. INDEXES
+-- ==========================================
+create index if not exists knowledge_items_embedding_idx on public.knowledge_items 
+using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+
+create index if not exists content_packets_store_type_idx on public.content_packets(store_id, type);
+
+-- ==========================================
+-- 4. RLS ENABLE
+-- ==========================================
+alter table public.stores enable row level security;
+alter table public.profiles enable row level security;
 alter table public.store_collaborators enable row level security;
+alter table public.store_pages enable row level security;
+alter table public.products enable row level security;
+alter table public.product_variants enable row level security;
+alter table public.collections enable row level security;
+alter table public.product_collections enable row level security;
+alter table public.customers enable row level security;
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+alter table public.store_email_domains enable row level security;
+alter table public.knowledge_items enable row level security;
+alter table public.planner_tasks enable row level security;
+alter table public.store_task_tags enable row level security;
+alter table public.content_packets enable row level security;
 
-create policy "Owners can view collaborators"
-  on public.store_collaborators
-  for select
-  using (
-    exists (
-      select 1 from public.stores
-      where id = store_collaborators.store_id
-      and user_id = auth.uid()
-    )
-    or user_id = auth.uid()
-  );
+-- ==========================================
+-- 5. FUNCTIONS
+-- ==========================================
 
-create policy "Owners can add collaborators"
-  on public.store_collaborators
-  for insert
-  with check (
-    exists (
-      select 1 from public.stores
-      where id = store_collaborators.store_id
-      and user_id = auth.uid()
-    )
-  );
-
-create policy "Owners can remove collaborators"
-  on public.store_collaborators
-  for delete
-  using (
-    exists (
-      select 1 from public.stores
-      where id = store_collaborators.store_id
-      and user_id = auth.uid()
-    )
-  );
-
--- 12. Helper Functions for Collaboration
-create or replace function public.get_user_id_by_email(email_param text)
-returns uuid
-language plpgsql
-security definer
-as $$
-declare
-  ret_id uuid;
-begin
-  select id into ret_id from auth.users where email = email_param;
-  return ret_id;
-end;
-$$;
-
+-- Check if user has access to a store
+drop function if exists public.has_store_access(uuid, text) cascade;
 create or replace function public.has_store_access(check_store_id uuid, required_role text default 'viewer')
 returns boolean
 language plpgsql
@@ -420,7 +269,7 @@ begin
     where store_id = check_store_id 
     and user_id = auth.uid()
     and (
-      required_role = 'viewer' -- viewer role allows access if user has any role
+      required_role = 'viewer'
       or (required_role = 'editor' and role = 'editor')
     )
   ) then
@@ -431,89 +280,41 @@ begin
 end;
 $$;
 
-insert into storage.buckets (id, name, public)
-values ('site-assets', 'site-assets', true)
-on conflict (id) do nothing;
+-- Get User ID from Email
+drop function if exists public.get_user_id_by_email(text);
+create or replace function public.get_user_id_by_email(email_param text)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare ret_id uuid;
+begin
+  select id into ret_id from auth.users where email = email_param;
+  return ret_id;
+end;
+$$;
 
-create policy "Public Access"
-  on storage.objects for select
-  using ( bucket_id = 'site-assets' );
+-- Securely add/update collaborators
+drop function if exists public.add_store_collaborator(uuid, uuid, text);
+create or replace function public.add_store_collaborator(target_store_id uuid, target_user_id uuid, target_role text)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  if not exists (select 1 from public.stores where id = target_store_id and owner_id = auth.uid()) then
+    raise exception 'Unauthorized: Only the store owner can manage the team.';
+  end if;
 
-create policy "Authenticated Upload"
-  on storage.objects for insert
-  to authenticated
-  with check ( bucket_id = 'site-assets' );
+  insert into public.store_collaborators (store_id, user_id, role)
+  values (target_store_id, target_user_id, target_role)
+  on conflict (store_id, user_id) 
+  do update set role = target_role;
+end;
+$$;
 
-create policy "Authenticated Delete"
-  on storage.objects for delete
-  to authenticated
-  using ( bucket_id = 'site-assets' );
-
-create policy "Owners can manage email domains"
-  on store_email_domains for all
-  to authenticated
-  using (has_store_access(store_id, 'editor'));
--- 7. Planner Tasks
-create table planner_tasks (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  title text not null,
-  description text,
-  status text default 'todo', -- 'todo', 'in-progress', 'done'
-  priority text default 'medium', -- 'low', 'medium', 'high'
-  assignee_id uuid references auth.users,
-  due_date timestamp with time zone,
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  updated_at timestamp with time zone default timezone('utc'::text, now())
-);
-
--- RLS for Planner
-alter table planner_tasks enable row level security;
-
-create policy "Store owners can view planner tasks"
-  on planner_tasks for select
-  using ( has_store_access(store_id) );
-
-create policy "Store owners can insert planner tasks"
-  on planner_tasks for insert
-  with check ( has_store_access(store_id) );
-
-create policy "Store owners can update planner tasks"
-  on planner_tasks for update
-  using ( has_store_access(store_id) );
-
-create policy "Store owners can delete planner tasks"
-  on planner_tasks for delete
-  using ( has_store_access(store_id) );
-
--- 7.1 Task Tags
-create table store_task_tags (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  name text not null,
-  color text not null, -- e.g. '#ef4444' or 'red'
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
-alter table store_task_tags enable row level security;
-create policy "Store members can view tags" on store_task_tags for select using (has_store_access(store_id));
-create policy "Store editors can manage tags" on store_task_tags for all using (has_store_access(store_id, 'editor'));
-
--- Add tag_ids to planner tasks (done via alter in production, here in definition for new deploys)
--- Note: You should manually run: alter table planner_tasks add column tag_ids uuid[] default '{}';
-
--- 7.2 Profiles (Global)
-create table if not exists public.profiles (
-  id uuid references auth.users on delete cascade primary key,
-  first_name text,
-  last_name text,
-  avatar_url text, 
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
-alter table profiles enable row level security;
-create policy "Public profiles are viewable by everyone" on profiles for select using (true);
-create policy "Users can insert their own profile" on profiles for insert with check (auth.uid() = id);
-create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
-
+-- Get collaborators with profiles
+drop function if exists public.get_store_collaborators_with_meta(uuid);
 create or replace function public.get_store_collaborators_with_meta(store_id_param uuid)
 returns table (
   id uuid,
@@ -521,7 +322,8 @@ returns table (
   role text,
   email varchar,
   first_name text,
-  last_name text
+  last_name text,
+  avatar_url text
 )
 language plpgsql
 security definer
@@ -529,12 +331,9 @@ as $$
 begin
   return query
   select
-    sc.id,
-    sc.user_id,
-    sc.role,
+    sc.id, sc.user_id, sc.role,
     au.email::varchar,
-    p.first_name,
-    p.last_name
+    p.first_name, p.last_name, p.avatar_url
   from public.store_collaborators sc
   join auth.users au on sc.user_id = au.id
   left join public.profiles p on sc.user_id = p.id
@@ -542,36 +341,231 @@ begin
 end;
 $$;
 
--- 11. Content Packets (Reusable Content for Page Builder)
-create table content_packets (
-  id uuid default gen_random_uuid() primary key,
-  store_id uuid references stores(id) on delete cascade not null,
-  type text not null, -- 'feature', 'testimonial', 'faq', 'text_block', 'media', 'stat'
-  name text not null, -- Internal name for selection
-  data jsonb not null default '{}', -- Type-specific content
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  updated_at timestamp with time zone default timezone('utc'::text, now())
+-- Get stores the user has access to
+drop function if exists public.get_my_stores();
+create or replace function public.get_my_stores()
+returns table (
+  id uuid,
+  created_at timestamptz,
+  owner_id uuid,
+  subdomain text,
+  custom_domain text,
+  name text,
+  theme text,
+  colors jsonb,
+  logo_url text,
+  favicon_url text,
+  is_visible boolean,
+  stripe_account_id text,
+  stripe_details_submitted boolean,
+  currency text,
+  header_config jsonb,
+  footer_config jsonb,
+  developer_mode boolean
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  return query
+  select 
+    s.id,
+    s.created_at,
+    s.owner_id,
+    s.subdomain,
+    s.custom_domain,
+    s.name,
+    s.theme,
+    s.colors,
+    s.logo_url,
+    s.favicon_url,
+    s.is_visible,
+    s.stripe_account_id,
+    s.stripe_details_submitted,
+    s.currency,
+    s.header_config,
+    s.footer_config,
+    s.developer_mode
+  from public.stores s
+  where (
+    s.owner_id = auth.uid()
+    or exists (
+      select 1 from public.store_collaborators sc 
+      where sc.store_id = s.id 
+      and sc.user_id = auth.uid()
+    )
+  )
+  and s.is_visible = true;
+end;
+$$;
+
+-- DEBUG FUNCTION (Remove in production)
+create or replace function public.debug_user_access()
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  result jsonb;
+begin
+  select jsonb_build_object(
+    'user_id', auth.uid(),
+    'collaborator_records', (
+      select jsonb_agg(jsonb_build_object('store_id', store_id, 'role', role))
+      from public.store_collaborators
+      where user_id = auth.uid()
+    ),
+    'owned_stores', (
+      select jsonb_agg(jsonb_build_object('id', id, 'name', name))
+      from public.stores
+      where owner_id = auth.uid()
+    )
+  ) into result;
+  return result;
+end;
+$$;
+drop function if exists public.match_knowledge(vector(768), float, int, uuid);
+create or replace function public.match_knowledge (
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int,
+  filter_store_id uuid
+)
+returns table (id uuid, content text, similarity float)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    ki.id, ki.content,
+    1 - (ki.embedding <=> query_embedding) as similarity
+  from public.knowledge_items ki
+  where 1 - (ki.embedding <=> query_embedding) > match_threshold
+  and ki.store_id = filter_store_id
+  order by ki.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+
+-- ==========================================
+-- 6. POLICIES
+-- ==========================================
+
+-- Stores
+drop policy if exists "Public stores viewable" on public.stores;
+create policy "Public stores viewable" on public.stores for select using (true); 
+-- NOTE: Ideally 'Public stores viewable' might be too broad if we want private stores. 
+-- But existing schema had it. We will replace the "authenticated" logic below.
+
+drop policy if exists "Owners manage own stores" on public.stores;
+create policy "Owners manage own stores" on public.stores for all to authenticated using (owner_id = auth.uid());
+
+drop policy if exists "Collaborators view stores" on public.stores;
+-- Use security definer function to strictly bypass RLS recursion issues
+create policy "Collaborators view stores" on public.stores for select to authenticated using (
+  has_store_access(id, 'viewer')
 );
 
--- Index for faster lookups by store and type
-create index content_packets_store_type_idx on content_packets(store_id, type);
+-- Profiles
+drop policy if exists "Public profiles viewable" on public.profiles;
+create policy "Public profiles viewable" on public.profiles for select using (true);
 
--- RLS for Content Packets
-alter table content_packets enable row level security;
+drop policy if exists "Users manage own profile" on public.profiles;
+create policy "Users manage own profile" on public.profiles for all using (id = auth.uid());
 
-create policy "Public content packets are viewable by everyone"
-  on content_packets for select
-  to public
-  using (true);
+-- Store Collaborators
+drop policy if exists "View collaborators" on public.store_collaborators;
+create policy "View collaborators" on public.store_collaborators for select to authenticated 
+using (has_store_access(store_id) or user_id = auth.uid());
 
-create policy "Store owners can insert content packets"
-  on content_packets for insert
-  with check ( has_store_access(store_id, 'editor') );
+drop policy if exists "Owners manage collaborators" on public.store_collaborators;
+create policy "Owners manage collaborators" on public.store_collaborators for all to authenticated
+using (
+  exists (
+    select 1 from public.stores 
+    where stores.id = store_collaborators.store_id 
+    and stores.owner_id = auth.uid()
+  )
+);
 
-create policy "Store owners can update content packets"
-  on content_packets for update
-  using ( has_store_access(store_id, 'editor') );
+-- Pages / Products / Collections
+drop policy if exists "Public viewable" on public.store_pages;
+create policy "Public viewable" on public.store_pages for select using (true);
+drop policy if exists "Public viewable" on public.products;
+create policy "Public viewable" on public.products for select using (true);
+drop policy if exists "Public viewable" on public.collections;
+create policy "Public viewable" on public.collections for select using (true);
 
-create policy "Store owners can delete content packets"
-  on content_packets for delete
-  using ( has_store_access(store_id, 'editor') );
+drop policy if exists "Admins manage content" on public.store_pages;
+create policy "Admins manage content" on public.store_pages for all to authenticated using (has_store_access(store_id, 'editor'));
+drop policy if exists "Admins manage content" on public.products;
+create policy "Admins manage content" on public.products for all to authenticated using (has_store_access(store_id, 'editor'));
+drop policy if exists "Admins manage content" on public.collections;
+create policy "Admins manage content" on public.collections for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Product Variants
+drop policy if exists "Public viewable" on public.product_variants;
+create policy "Public viewable" on public.product_variants for select using (true);
+drop policy if exists "Admins manage variants" on public.product_variants;
+create policy "Admins manage variants" on public.product_variants for all to authenticated using (
+  exists (
+    select 1 from public.products
+    where products.id = product_variants.product_id
+    and has_store_access(products.store_id, 'editor')
+  )
+);
+
+-- Product Collections
+drop policy if exists "Public viewable" on public.product_collections;
+create policy "Public viewable" on public.product_collections for select using (true);
+drop policy if exists "Admins manage product collections" on public.product_collections;
+create policy "Admins manage product collections" on public.product_collections for all to authenticated using (
+  exists (
+    select 1 from public.products
+    where products.id = product_collections.product_id
+    and has_store_access(products.store_id, 'editor')
+  )
+);
+
+-- Order Items
+drop policy if exists "Admins manage order items" on public.order_items;
+create policy "Admins manage order items" on public.order_items for all to authenticated using (
+  exists (
+    select 1 from public.orders
+    where orders.id = order_items.order_id
+    and has_store_access(orders.store_id, 'editor')
+  )
+);
+
+-- Email Domains
+drop policy if exists "Admins manage email domains" on public.store_email_domains;
+create policy "Admins manage email domains" on public.store_email_domains for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Task Tags
+drop policy if exists "Member view tags" on public.store_task_tags;
+create policy "Member view tags" on public.store_task_tags for select to authenticated using (has_store_access(store_id));
+drop policy if exists "Admins manage tags" on public.store_task_tags;
+create policy "Admins manage tags" on public.store_task_tags for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Customers / Orders
+drop policy if exists "Admins manage sales" on public.customers;
+create policy "Admins manage sales" on public.customers for all to authenticated using (has_store_access(store_id, 'editor'));
+drop policy if exists "Admins manage sales" on public.orders;
+create policy "Admins manage sales" on public.orders for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Knowledge Base
+drop policy if exists "View knowledge" on public.knowledge_items;
+create policy "View knowledge" on public.knowledge_items for select using (has_store_access(store_id));
+drop policy if exists "Manage knowledge" on public.knowledge_items;
+create policy "Manage knowledge" on public.knowledge_items for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Planner
+drop policy if exists "Member planner access" on public.planner_tasks;
+create policy "Member planner access" on public.planner_tasks for all to authenticated using (has_store_access(store_id));
+
+-- Content Packets
+drop policy if exists "Public viewable" on public.content_packets;
+create policy "Public viewable" on public.content_packets for select using (true);
+drop policy if exists "Manage content packets" on public.content_packets;
+create policy "Manage content packets" on public.content_packets for all to authenticated using (has_store_access(store_id, 'editor'));
