@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft, Pencil, X, Save, Copy, FileText, Check, ArrowUpDown, AlertTriangle, Tag as TagIcon, Filter, User, PlayCircle, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
-import { motion } from "framer-motion";
+import { Plus, MoreHorizontal, CheckCircle2, Circle, Clock, Trash2, ArrowRight, ArrowLeft, Pencil, X, Save, Copy, FileText, Check, ArrowUpDown, AlertTriangle, Tag as TagIcon, Filter, User, PlayCircle, ChevronLeft, ChevronRight, CheckSquare, Ghost } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { sendTaskAssignmentEmail } from "./actions";
 
 interface Task {
   id: string;
@@ -16,6 +17,7 @@ interface Task {
   tag_ids?: string[];
   predecessor_id?: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface Tag {
@@ -146,6 +148,7 @@ export default function PlannerPage() {
   
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState("Store");
 
   // Filter State
   const [filterMyTasks, setFilterMyTasks] = useState(false);
@@ -156,6 +159,16 @@ export default function PlannerPage() {
 
   // Sorting State
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'priority-high' | 'priority-low'>('priority-high');
+
+  // Abyss State (Tasks completed > 2 days ago)
+  const [isAbyssOpen, setIsAbyssOpen] = useState(false);
+
+  const isInAbyss = (task: Task) => {
+      if (task.status !== 'done') return false;
+      const doneDate = new Date(task.updated_at).getTime();
+      const twoDaysAgo = new Date().getTime() - (2 * 24 * 60 * 60 * 1000);
+      return doneDate < twoDaysAgo;
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('planner-sort-preference');
@@ -171,7 +184,13 @@ export default function PlannerPage() {
     fetchTags();
     fetchCollaborators();
     fetchCurrentUser();
+    fetchStoreName();
   }, [storeId]);
+
+  const fetchStoreName = async () => {
+    const { data } = await supabase.from('stores').select('name').eq('id', storeId).single();
+    if (data) setStoreName(data.name);
+  };
 
   const fetchCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -195,15 +214,46 @@ export default function PlannerPage() {
   };
 
   const fetchCollaborators = async () => {
+    let allCollaborators: Collaborator[] = [];
+
     // Try to fetch with emails via RPC first
     const { data, error } = await supabase.rpc('get_store_collaborators_with_meta', { store_id_param: storeId });
     if (!error && data) {
-      setCollaborators(data);
+      allCollaborators = [...data];
     } else {
         // Fallback to basic fetch if RPC missing
         const { data: basicData } = await supabase.from('store_collaborators').select('*').eq('store_id', storeId);
-        if (basicData) setCollaborators(basicData);
+        if (basicData) allCollaborators = [...basicData];
     }
+
+    // Add Owner to list if not present
+    const { data: store } = await supabase.from('stores').select('owner_id').eq('id', storeId).single();
+    if (store) {
+        const isOwnerInList = allCollaborators.some(c => c.user_id === store.owner_id);
+        if (!isOwnerInList) {
+             const { data: { user } } = await supabase.auth.getUser();
+             if (user && user.id === store.owner_id) {
+                 allCollaborators.push({
+                     id: 'owner-placeholder',
+                     user_id: user.id,
+                     email: user.email,
+                     first_name: user.user_metadata?.first_name || 'Store',
+                     last_name: user.user_metadata?.last_name || 'Owner'
+                 });
+             } else {
+                 // Placeholder if we can't see owner details
+                 allCollaborators.push({
+                     id: 'owner-placeholder',
+                     user_id: store.owner_id,
+                     first_name: 'Store',
+                     last_name: 'Owner',
+                     email: ''
+                 });
+             }
+        }
+    }
+    
+    setCollaborators(allCollaborators);
   };
 
   const handleCreateTag = async () => {
@@ -220,6 +270,27 @@ export default function PlannerPage() {
         setNewTagColor(PRESET_COLORS[0].value);
         setIsTagManagerOpen(false);
     }
+  };
+
+  const notifyAssignee = async (assigneeId: string, taskTitle: string) => {
+    if (!assigneeId || assigneeId === currentUserId) return;
+    
+    const collaborator = collaborators.find(c => c.user_id === assigneeId);
+    if (!collaborator?.email) return;
+
+    const currentUserProfile = collaborators.find(c => c.user_id === currentUserId);
+    const assignerName = currentUserProfile 
+        ? (currentUserProfile.first_name || currentUserProfile.last_name 
+            ? `${currentUserProfile.first_name} ${currentUserProfile.last_name}`.trim() 
+            : currentUserProfile.email) 
+        : "Someone";
+
+    await sendTaskAssignmentEmail({
+      toEmail: collaborator.email,
+      taskTitle,
+      storeName,
+      assignerName: assignerName || "Co-worker",
+    });
   };
 
   const handleDeleteTag = async (id: string) => {
@@ -249,6 +320,9 @@ export default function PlannerPage() {
 
     if (data) {
       setTasks([data as Task, ...tasks]);
+      if (newTaskAssignee) {
+          notifyAssignee(newTaskAssignee, newTaskTitle);
+      }
       setNewTaskTitle("");
       setNewTaskDesc("");
       setNewTaskAssignee("");
@@ -317,6 +391,11 @@ export default function PlannerPage() {
 
   const saveTaskChanges = async () => {
     if (!selectedTask || !editTitle.trim()) return;
+
+    // Notify if assignee changed
+    if (editAssignee && editAssignee !== selectedTask.assignee_id) {
+        notifyAssignee(editAssignee, editTitle);
+    }
 
     const updatedTask = {
       ...selectedTask,
@@ -595,22 +674,27 @@ export default function PlannerPage() {
 
       {/* Kanban Board */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden h-full">
-        {COLUMNS.map(col => (
+        {COLUMNS.map(col => {
+          const visibleTasks = col.id === 'done' 
+             ? tasks.filter(t => t.status === 'done' && !isInAbyss(t))
+             : tasks.filter(t => t.status === col.id);
+
+          return (
           <div key={col.id} className="flex flex-col h-full bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
             <div className={`p-4 border-b border-slate-200 flex items-center justify-between ${col.color} bg-opacity-50`}>
               <div className="flex items-center gap-2 font-semibold">
                 <col.icon size={18} />
                 {col.title}
                 <span className="bg-white bg-opacity-50 px-2 py-0.5 rounded-full text-xs">
-                  {tasks.filter(t => t.status === col.id).length}
+                  {visibleTasks.length}
                 </span>
               </div>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {(col.id === 'done' 
-                 ? groupCompletedTasks(tasks.filter(t => t.status === 'done'))
-                 : getSortedTasks(tasks.filter(t => t.status === col.id)).map(t => [t])
+                 ? groupCompletedTasks(visibleTasks)
+                 : getSortedTasks(visibleTasks).map(t => [t])
               ).map(group => (
                   <div key={group[0].id + '-group'} className={group.length > 1 ? "relative pl-3 space-y-3" : ""}>
                     {group.length > 1 && (
@@ -760,14 +844,68 @@ export default function PlannerPage() {
                   </div>
               ))}
               
-              {tasks.filter(t => t.status === col.id).length === 0 && (
+              {visibleTasks.length === 0 && (
                 <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-lg">
                   No tasks
                 </div>
               )}
             </div>
           </div>
-        ))}
+        );
+        })}
+      </div>
+
+      {/* Abyss Section */}
+      <div className="mt-8 border-t border-slate-200 pt-4 pb-8">
+        <button 
+            onClick={() => setIsAbyssOpen(!isAbyssOpen)}
+            className="flex items-center gap-2 text-slate-400 hover:text-slate-600 font-medium transition w-full group"
+        >
+            <Ghost size={20} className="text-slate-300 group-hover:text-purple-400 transition" />
+            <span className="group-hover:text-purple-600 transition">The Abyss</span>
+            <div className="h-px bg-slate-200 flex-1 ml-4 group-hover:bg-purple-100 transition" />
+            <span className="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500">
+                {tasks.filter(isInAbyss).length}
+            </span>
+            <ChevronRight size={16} className={`transition-transform duration-300 ${isAbyssOpen ? 'rotate-90' : ''}`} />
+        </button>
+
+        <AnimatePresence>
+            {isAbyssOpen && (
+                <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                >
+                    <div className="py-4 space-y-2">
+                        {tasks.filter(isInAbyss).length === 0 ? (
+                            <p className="text-slate-400 italic text-center py-8">The abyss is empty... for now.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed inner-shadow-sm">
+                                {tasks.filter(isInAbyss).map(task => (
+                                    <div key={task.id} className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between gap-3 text-slate-500 grayscale hover:grayscale-0 transition duration-300 hover:shadow-sm">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                           <CheckSquare size={16} className="flex-shrink-0" />
+                                           <span className="truncate line-through decoration-slate-300 text-sm select-all">{task.title}</span>
+                                        </div>
+                                        <div className="flex gap-2 text-xs">
+                                            <button 
+                                                onClick={() => updateTaskStatus(task.id, 'in-progress')}
+                                                className="text-slate-400 hover:text-blue-600"
+                                                title="Revive Task"
+                                            >
+                                                Revive
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
       </div>
 
       {/* Create Modal */}

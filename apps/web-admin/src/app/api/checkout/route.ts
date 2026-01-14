@@ -135,9 +135,6 @@ export async function POST(request: Request) {
             line_items: lineItems,
             payment_intent_data: {
                 application_fee_amount: applicationFeeAmount,
-                transfer_data: {
-                    destination: store.stripe_account_id,
-                },
             },
             success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${origin}${returnUrl || '/'}`,
@@ -145,6 +142,8 @@ export async function POST(request: Request) {
                 storeId: store.id,
                 items: JSON.stringify(items.map(i => ({ id: i.id, qty: i.quantity, price: i.price }))),
             },
+        }, {
+            stripeAccount: store.stripe_account_id,
         });
 
         console.log('Stripe session created:', session.id);

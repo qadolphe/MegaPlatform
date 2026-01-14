@@ -203,6 +203,17 @@ create table if not exists public.planner_tasks (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- Carts
+create table if not exists public.carts (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  items jsonb default '[]'::jsonb,
+  subtotal integer default 0,
+  currency text default 'usd',
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
 -- Task Tags
 create table if not exists public.store_task_tags (
   id uuid default gen_random_uuid() primary key,
@@ -248,6 +259,7 @@ alter table public.order_items enable row level security;
 alter table public.store_email_domains enable row level security;
 alter table public.knowledge_items enable row level security;
 alter table public.planner_tasks enable row level security;
+alter table public.carts enable row level security;
 alter table public.store_task_tags enable row level security;
 alter table public.content_packets enable row level security;
 
@@ -672,9 +684,17 @@ create policy "View knowledge" on public.knowledge_items for select using (has_s
 drop policy if exists "Manage knowledge" on public.knowledge_items;
 create policy "Manage knowledge" on public.knowledge_items for all to authenticated using (has_store_access(store_id, 'editor'));
 
--- Planner
+-- Member planner access
 drop policy if exists "Member planner access" on public.planner_tasks;
 create policy "Member planner access" on public.planner_tasks for all to authenticated using (has_store_access(store_id));
+
+-- Carts
+drop policy if exists "Public viewable" on public.carts;
+create policy "Public viewable" on public.carts for select using (true);
+drop policy if exists "Public insert" on public.carts;
+create policy "Public insert" on public.carts for insert with check (true);
+drop policy if exists "Public update" on public.carts;
+create policy "Public update" on public.carts for update using (true);
 
 -- Content Packets
 drop policy if exists "Public viewable" on public.content_packets;

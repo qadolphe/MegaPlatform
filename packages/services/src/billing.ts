@@ -7,12 +7,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export const createConnectAccount = async (email: string) => {
   try {
     const account = await stripe.accounts.create({
-      type: 'express',
+      type: 'standard', 
       email,
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
     });
     return account;
   } catch (error) {
@@ -60,9 +56,6 @@ export const createCheckoutSession = async ({
       line_items: lineItems,
       payment_intent_data: {
         application_fee_amount: applicationFeeAmount,
-        transfer_data: {
-          destination: stripeAccountId,
-        },
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -70,6 +63,8 @@ export const createCheckoutSession = async ({
       metadata: {
         storeId,
       },
+    }, {
+      stripeAccount: stripeAccountId,
     });
     return session;
   } catch (error) {
