@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateApiKey } from '../../shared';
+import { validateApiKey, validateContentItem } from '../../shared';
 
 export async function GET(
     request: NextRequest,
@@ -75,7 +75,16 @@ export async function POST(
     if (!model) return NextResponse.json({ error: `Collection '${slug}' not found` }, { status: 404 });
     
     // 2. Validate Data
-    const itemData = body.data || body;
+    const rawData = body.data || body;
+    let validatedData, references;
+
+    try {
+        const result = validateContentItem(model.schema, rawData);
+        validatedData = result.validatedData;
+        references = result.references;
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+    }
     
     // 3. Insert
     const { data: newItem, error } = await supabase
@@ -83,7 +92,8 @@ export async function POST(
         .insert({
             store_id: storeId,
             model_id: model.id,
-            data: itemData
+            data: validatedData,
+            "references": references
         })
         .select()
         .single();

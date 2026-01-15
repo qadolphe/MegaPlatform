@@ -251,6 +251,7 @@ create table if not exists public.content_items (
   model_id uuid references public.content_models(id) on delete cascade not null,
   store_id uuid references public.stores(id) on delete cascade not null,
   data jsonb not null default '{}'::jsonb,
+  "references" uuid[] default '{}',
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
@@ -262,6 +263,8 @@ create index if not exists knowledge_items_embedding_idx on public.knowledge_ite
 using ivfflat (embedding vector_cosine_ops) with (lists = 100);
 
 create index if not exists content_packets_store_type_idx on public.content_packets(store_id, type);
+create index if not exists idx_content_items_data on public.content_items using gin (data);
+create index if not exists idx_content_items_references on public.content_items using gin ("references");
 
 -- ==========================================
 -- 4. RLS ENABLE

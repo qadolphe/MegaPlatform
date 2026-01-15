@@ -68,7 +68,7 @@ export interface SwatBlocConfig {
 
 export interface ContentModelField {
     key: string;
-    type: 'text' | 'number' | 'boolean' | 'image' | 'date' | 'json';
+    type: 'text' | 'number' | 'boolean' | 'image' | 'date' | 'json' | 'reference';
     label?: string;
     required?: boolean;
 }
@@ -90,6 +90,7 @@ export interface ContentItem {
     model_id: string;
     store_id: string;
     data: Record<string, any>;
+    references: string[];
     created_at: string;
     updated_at: string;
 }

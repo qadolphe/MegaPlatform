@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 
 export async function validateApiKey(request: NextRequest) {
     const apiKey = request.headers.get('X-SwatBloc-Key');
@@ -32,4 +33,63 @@ export async function validateApiKey(request: NextRequest) {
     }
 
     return { storeId: keyData.store_id, supabase };
+}
+
+export function validateContentItem(schemaDef: any, data: any) {
+    const shape: Record<string, z.ZodTypeAny> = {};
+    const referenceFields: string[] = [];
+    const fields = schemaDef?.fields || [];
+
+    for (const field of fields) {
+        let validator: z.ZodTypeAny;
+
+        switch (field.type) {
+            case 'text':
+            case 'image':
+            case 'date': 
+                validator = z.string();
+                break;
+            case 'number':
+                validator = z.number();
+                break;
+            case 'boolean':
+                validator = z.boolean();
+                break;
+            case 'json':
+                validator = z.any();
+                break;
+            case 'reference':
+                validator = z.string();
+                referenceFields.push(field.key);
+                break;
+            default:
+                validator = z.any();
+        }
+
+        if (!field.required) {
+            validator = validator.optional().nullable();
+        }
+
+        shape[field.key] = validator;
+    }
+
+    const zodSchema = z.object(shape);
+
+    const result = zodSchema.safeParse(data);
+
+    if (!result.success) {
+        throw new Error(result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+    }
+
+    const validatedData = result.data;
+    const references: string[] = [];
+
+    for (const key of referenceFields) {
+        const val = validatedData[key];
+        if (typeof val === 'string' && val) {
+            references.push(val);
+        }
+    }
+
+    return { validatedData, references };
 }

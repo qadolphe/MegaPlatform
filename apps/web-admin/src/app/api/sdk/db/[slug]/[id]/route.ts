@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateApiKey } from '../../../shared';
+import { validateApiKey, validateContentItem } from '../../../shared';
 
 export async function GET(
     request: NextRequest,
@@ -37,19 +37,38 @@ export async function PATCH(
 
     const { data: existing } = await supabase
         .from('content_items')
-        .select('data')
+        .select('data, model_id')
         .eq('store_id', storeId)
         .eq('id', id)
         .single();
         
     if (!existing) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+
+    // Fetch Model Schema for validation
+    const { data: model } = await supabase
+        .from('content_models')
+        .select('schema')
+        .eq('id', existing.model_id)
+        .single();
+
+    if (!model) return NextResponse.json({ error: 'Model definition not found' }, { status: 500 });
     
     const newData = { ...existing.data, ...updates };
+    let validatedData, references;
+
+    try {
+        const result = validateContentItem(model.schema, newData);
+        validatedData = result.validatedData;
+        references = result.references;
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+    }
     
     const { data: updated, error } = await supabase
         .from('content_items')
         .update({ 
-            data: newData,
+            data: validatedData,
+            "references": references,
             updated_at: new Date().toISOString()
         })
         .eq('id', id)
