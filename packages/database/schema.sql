@@ -234,6 +234,27 @@ create table if not exists public.content_packets (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- Custom Content Models (The Schema Definition)
+create table if not exists public.content_models (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  name text not null,
+  slug text not null,
+  schema jsonb not null default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(store_id, slug)
+);
+
+-- Custom Content Items (The Data)
+create table if not exists public.content_items (
+  id uuid default gen_random_uuid() primary key,
+  model_id uuid references public.content_models(id) on delete cascade not null,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
 -- ==========================================
 -- 3. INDEXES
 -- ==========================================
@@ -262,6 +283,8 @@ alter table public.planner_tasks enable row level security;
 alter table public.carts enable row level security;
 alter table public.store_task_tags enable row level security;
 alter table public.content_packets enable row level security;
+alter table public.content_models enable row level security;
+alter table public.content_items enable row level security;
 
 -- ==========================================
 -- 5. FUNCTIONS
@@ -701,3 +724,15 @@ drop policy if exists "Public viewable" on public.content_packets;
 create policy "Public viewable" on public.content_packets for select using (true);
 drop policy if exists "Manage content packets" on public.content_packets;
 create policy "Manage content packets" on public.content_packets for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Content Models
+drop policy if exists "Public viewable" on public.content_models;
+create policy "Public viewable" on public.content_models for select using (true);
+drop policy if exists "Manage content models" on public.content_models;
+create policy "Manage content models" on public.content_models for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Content Items
+drop policy if exists "Public viewable" on public.content_items;
+create policy "Public viewable" on public.content_items for select using (true);
+drop policy if exists "Manage content items" on public.content_items;
+create policy "Manage content items" on public.content_items for all to authenticated using (has_store_access(store_id, 'editor'));

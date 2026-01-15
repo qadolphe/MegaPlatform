@@ -65,3 +65,38 @@ export interface StoreInfo {
 export interface SwatBlocConfig {
     baseUrl?: string;
 }
+
+export interface ContentModelField {
+    key: string;
+    type: 'text' | 'number' | 'boolean' | 'image' | 'date' | 'json';
+    label?: string;
+    required?: boolean;
+}
+
+export interface ContentModelSchema {
+    fields: ContentModelField[];
+}
+
+export interface ContentModel {
+    id: string;
+    name: string;
+    slug: string;
+    schema: ContentModelSchema;
+    created_at: string;
+}
+
+export interface ContentItem {
+    id: string;
+    model_id: string;
+    store_id: string;
+    data: Record<string, any>;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ContentListOptions {
+    limit?: number;
+    offset?: number;
+    sort?: string;
+    filter?: Record<string, any>;
+}
