@@ -86,3 +86,55 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
+export async function POST(request: NextRequest) {
+    try {
+        const validation = await validateApiKey(request);
+        if ('error' in validation) {
+            return NextResponse.json({ error: validation.error }, { status: validation.status });
+        }
+
+        const { storeId, supabase } = validation;
+        const body = await request.json();
+
+        // Basic Validation
+        if (!body.title) {
+             return NextResponse.json({ error: 'Product title is required' }, { status: 400 });
+        }
+
+        const productData = {
+            store_id: storeId,
+            title: body.title,
+            description: body.description || '',
+            price: body.price || 0,
+            compare_at_price: body.compare_at_price || null,
+            images: body.images || [],
+            category: body.category || null,
+            inventory_count: body.inventory_count || 0,
+            sku: body.sku || null,
+            barcode: body.barcode || null,
+            weight: body.weight || null,
+            weight_unit: body.weight_unit || 'kg',
+            slug: body.slug || body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
+            published: body.published !== undefined ? body.published : true,
+            metadata: body.metadata || {}
+        };
+
+        const { data: product, error } = await supabase
+            .from('products')
+            .insert(productData)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('SDK create product error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json(product);
+
+    } catch (error) {
+        console.error('SDK create product error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}

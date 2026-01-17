@@ -7,6 +7,28 @@ export class ProductsAPI {
     ) { }
 
     /**
+     * Create a new product
+     */
+    async create(data: Partial<Product>): Promise<Product> {
+        const url = `${this.baseUrl}/api/sdk/products`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-SwatBloc-Key': this.publicKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `Failed to create product: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
      * List all products for the store
      */
     async list(options: ProductListOptions = {}): Promise<Product[]> {
