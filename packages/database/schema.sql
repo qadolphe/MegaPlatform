@@ -251,7 +251,7 @@ create table if not exists public.content_items (
   model_id uuid references public.content_models(id) on delete cascade not null,
   store_id uuid references public.stores(id) on delete cascade not null,
   data jsonb not null default '{}'::jsonb,
-  "references" uuid[] default '{}',
+  "references" text[] default '{}',
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );

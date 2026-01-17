@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload, Wand2, Loader2, BarChart3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { DatabaseManager } from "@/components/database-manager";
+
 type ContentPacket = {
     id: string;
     type: string;
@@ -14,7 +16,7 @@ type ContentPacket = {
     created_at: string;
 };
 
-type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media" | "stat";
+type PacketType = "feature" | "testimonial" | "faq" | "text_block" | "media" | "stat" | "database";
 
 const PACKET_TYPES: { key: PacketType; label: string; singular: string; icon: any; description: string }[] = [
     { key: "feature", label: "Features", singular: "Feature", icon: Sparkles, description: "Benefit cards with icons" },
@@ -23,6 +25,7 @@ const PACKET_TYPES: { key: PacketType; label: string; singular: string; icon: an
     { key: "text_block", label: "Text Blocks", singular: "Text Block", icon: FileText, description: "Reusable copy" },
     { key: "media", label: "Media", singular: "Media", icon: Image, description: "Images & videos" },
     { key: "stat", label: "Webstore Stats", singular: "Stat", icon: BarChart3, description: "Store metrics used in Stats sections" },
+    { key: "database", label: "Databases", singular: "Database", icon: BarChart3, description: "Custom data collections" },
 ];
 
 const DEFAULT_DATA: Record<PacketType, any> = {
@@ -32,6 +35,7 @@ const DEFAULT_DATA: Record<PacketType, any> = {
     text_block: { title: "", body: "" },
     media: { url: "", alt: "", caption: "", mediaType: "image" },
     stat: { label: "", value: "", prefix: "", suffix: "" },
+    database: {},
 };
 
 const AI_MEDIA_MODELS = [
@@ -628,77 +632,82 @@ export default function ContentManagerPage() {
                 </div>
             )}
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-2 gap-4">
-                {/* Create Button */}
-                <motion.button
-                    onClick={() => {
-                        setIsCreating(true);
-                        setNewData(DEFAULT_DATA[activeType]);
-                    }}
-                    className="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50/50 transition text-slate-500 hover:text-blue-600"
-                >
-                    <Plus size={24} />
-                    <span className="text-sm font-medium">Add {PACKET_TYPES.find((t) => t.key === activeType)?.singular}</span>
-                </motion.button>
+            {/* Custom Database Manager */}
+            {activeType === 'database' ? (
+                <DatabaseManager storeId={storeId} />
+            ) : (
+                /* Content Grid */
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Create Button */}
+                    <motion.button
+                        onClick={() => {
+                            setIsCreating(true);
+                            setNewData(DEFAULT_DATA[activeType]);
+                        }}
+                        className="bg-white border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50/50 transition text-slate-500 hover:text-blue-600"
+                    >
+                        <Plus size={24} />
+                        <span className="text-sm font-medium">Add {PACKET_TYPES.find((t) => t.key === activeType)?.singular}</span>
+                    </motion.button>
 
-                {/* Existing Packets */}
-                <AnimatePresence mode="popLayout">
-                    {filteredPackets.map((packet) => (
-                        <motion.div
-                            key={packet.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"
-                        >
-                            {editingId === packet.id ? (
-                                <div className="space-y-4">
-                                    {renderDataEditor(editData, setEditData, activeType)}
-                                    <div className="flex justify-end gap-2">
-                                        <button
-                                            onClick={() => setEditingId(null)}
-                                            className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={() => handleUpdate(packet.id)}
-                                            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"
-                                        >
-                                            <Save size={14} /> Save
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex items-start justify-between gap-2 mb-3">
-                                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                                            {packet.name}
-                                        </span>
-                                        <div className="flex gap-1">
+                    {/* Existing Packets */}
+                    <AnimatePresence mode="popLayout">
+                        {filteredPackets.map((packet) => (
+                            <motion.div
+                                key={packet.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"
+                            >
+                                {editingId === packet.id ? (
+                                    <div className="space-y-4">
+                                        {renderDataEditor(editData, setEditData, activeType)}
+                                        <div className="flex justify-end gap-2">
                                             <button
-                                                onClick={() => startEditing(packet)}
-                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                                onClick={() => setEditingId(null)}
+                                                className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
                                             >
-                                                <Edit2 size={14} />
+                                                Cancel
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(packet.id)}
-                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                onClick={() => handleUpdate(packet.id)}
+                                                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"
                                             >
-                                                <Trash2 size={14} />
+                                                <Save size={14} /> Save
                                             </button>
                                         </div>
                                     </div>
-                                    {renderPreview(packet)}
-                                </>
-                            )}
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
+                                ) : (
+                                    <>
+                                        <div className="flex items-start justify-between gap-2 mb-3">
+                                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                                                {packet.name}
+                                            </span>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    onClick={() => startEditing(packet)}
+                                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                                >
+                                                    <Edit2 size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(packet.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {renderPreview(packet)}
+                                    </>
+                                )}
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
+            )}
 
             {/* Create Modal */}
             <AnimatePresence>

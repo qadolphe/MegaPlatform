@@ -1,4 +1,4 @@
-import { ContentItem, ContentListOptions } from './types';
+import { ContentItem, ContentListOptions, ContentModel } from './types';
 
 export class Collection {
     constructor(
@@ -67,5 +67,46 @@ export class DBAPI {
 
     collection(slug: string): Collection {
         return new Collection(slug, this.publicKey, this.baseUrl);
+    }
+    
+    /**
+     * Create a new content model (database table) if it doesn't exist.
+     * Idempotent: returns existing model if slug matches.
+     */
+    async createModel(name: string, slug: string, schema: ContentModel['schema']): Promise<ContentModel> {
+        const url = `${this.baseUrl}/api/sdk/models`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-SwatBloc-Key': this.publicKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, slug, schema })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `DB Error: ${response.status}`);
+        }
+        
+        return response.json();
+    }
+    
+    async listModels(): Promise<ContentModel[]> {
+        const url = `${this.baseUrl}/api/sdk/models`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-SwatBloc-Key': this.publicKey,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `DB Error: ${response.status}`);
+        }
+        
+        return response.json();
     }
 }
