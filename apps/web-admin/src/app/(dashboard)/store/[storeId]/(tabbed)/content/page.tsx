@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload, Wand2, Loader2, BarChart3 } from "lucide-react";
+import { Sparkles, MessageSquare, HelpCircle, FileText, Plus, Trash2, Edit2, Save, X, Image, Video, Upload, Wand2, Loader2, BarChart3, Database } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { DatabaseManager } from "@/components/database-manager";
@@ -25,7 +25,7 @@ const PACKET_TYPES: { key: PacketType; label: string; singular: string; icon: an
     { key: "text_block", label: "Text Blocks", singular: "Text Block", icon: FileText, description: "Reusable copy" },
     { key: "media", label: "Media", singular: "Media", icon: Image, description: "Images & videos" },
     { key: "stat", label: "Webstore Stats", singular: "Stat", icon: BarChart3, description: "Store metrics used in Stats sections" },
-    { key: "database", label: "Databases", singular: "Database", icon: BarChart3, description: "Custom data collections" },
+    { key: "database", label: "Databases", singular: "Database", icon: Database, description: "Custom data collections" },
 ];
 
 const DEFAULT_DATA: Record<PacketType, any> = {

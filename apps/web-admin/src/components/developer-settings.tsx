@@ -3,26 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Copy, Loader2, Key, Check, Code2 } from "lucide-react";
-
-const FALLBACK_RULES = `# SwatBloc SDK - Cursor Rules
-
-You are building an app that uses the SwatBloc SDK for headless commerce.
-
-## Installation
-
-\`\`\`bash
-npm install @swatbloc/sdk
-\`\`\`
-
-## Initialization
-
-\`\`\`typescript
-import { SwatBloc } from '@swatbloc/sdk';
-
-// Initialize with your public API key
-const swat = new SwatBloc('pk_live_xxxxx');
-\`\`\`
-`;
+import { CURSOR_RULES_FALLBACK } from "@repo/config";
 
 interface ApiKey {
     id: string;
@@ -40,7 +21,7 @@ export function DeveloperSettings({ storeId }: { storeId: string }) {
     const [newKeyName, setNewKeyName] = useState("");
     const [newlyCreatedKey, setNewlyCreatedKey] = useState<{ publicKey: string; secretKey: string } | null>(null);
     const [copied, setCopied] = useState(false);
-    const [cursorRules, setCursorRules] = useState(FALLBACK_RULES);
+    const [cursorRules, setCursorRules] = useState(CURSOR_RULES_FALLBACK);
 
     useEffect(() => {
         fetchApiKeys();

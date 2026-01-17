@@ -3,54 +3,16 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Hero, InfoGrid, ProductGrid, Header, Footer, ProductDetail, TextContent, VideoGrid, ImageBox, Newsletter, CustomerProfile, Testimonials, FAQ, Banner, LogoCloud, Countdown, Features, UniversalGrid, PricingTable, StatsSection, CallToAction, Divider, Spacer, Gallery, Accordion, Tabs, Timeline, TeamGrid, ContactForm, ComparisonTable } from "@repo/ui-bricks";
 import { useEditorStore } from "@/lib/store/editor-store";
-import { COMPONENT_DEFINITIONS, COMPONENT_CATEGORIES } from "@/config/component-registry";
-import { Save, Plus, Trash, Image as ImageIcon, Layers, Monitor, Smartphone, Settings, ChevronLeft, Upload, PanelLeftClose, PanelLeftOpen, ArrowUp, ArrowDown, Undo, Redo, Rocket, Palette, ExternalLink, Home, LayoutDashboard, Sparkles, Wand2, Loader2, Bot, Wrench } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
-import { MediaManager } from "@/components/media-manager";
-import { CounterInput } from "@/components/ui/counter-input";
-import { PacketSelector } from "@/components/packet-selector";
-import { ProductPicker } from "@/components/product-picker";
-import { PacketEditorDialog } from "@/components/packet-editor-dialog";
-import { getAllPacketTypesForBlock, getPacketTypeForBlock, extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
+import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
+import { extractPacketIds, hydrateBlockWithPackets, ContentPacket } from "@/lib/packet-hydration";
 import { LayoutBlockSchema } from "@/lib/schemas/component-props";
-import Link from "next/link";
-
-// Mapping for rendering on the Canvas
-const RENDER_MAP: Record<string, any> = {
-    Header,
-    Footer,
-    Hero,
-    BenefitsGrid: InfoGrid,
-    InfoGrid,
-    ProductGrid,
-    ProductDetail,
-    TextContent,
-    VideoGrid,
-    ImageBox,
-    Newsletter,
-    CustomerProfile,
-    Testimonials,
-    FAQ,
-    Banner,
-    LogoCloud,
-    Countdown,
-    Features,
-    UniversalGrid,
-    PricingTable,
-    StatsSection,
-    CallToAction,
-    Divider,
-    Spacer,
-    Gallery,
-    Accordion,
-    Tabs,
-    Timeline,
-    TeamGrid,
-    ContactForm,
-    ComparisonTable
-};
+import { EditorHeader } from "@/components/editor/header";
+import { EditorCanvas } from "@/components/editor/canvas";
+import { EditorSidebar } from "@/components/editor/sidebar";
+import { EditorModals } from "@/components/editor/modals";
+import { DeployValidationModal } from "@/components/editor/validation-modal";
+import { RENDER_MAP } from "@/components/editor/render-map";
 
 export default function EditorPage() {
     const params = useParams();
@@ -852,7 +814,7 @@ export default function EditorPage() {
         }
     };
 
-    const openMediaManager = (propName: string) => {
+    const openMediaManager = (propName: string | null) => {
         setActivePropName(propName);
         setIsMediaManagerOpen(true);
     };
@@ -872,1258 +834,130 @@ export default function EditorPage() {
 
     return (
         <>
-            <AnimatePresence>
-                {deployValidationOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4"
-                        onClick={() => setDeployValidationOpen(false)}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-                            transition={{ duration: 0.15 }}
-                            className="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-xl"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="p-6 border-b border-slate-200 flex items-start justify-between gap-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-slate-900">Cannot deploy</h3>
-                                    <p className="text-sm text-slate-500">Fix the blocks below, then deploy again.</p>
-                                </div>
-                                <button
-                                    onClick={() => setDeployValidationOpen(false)}
-                                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-                                >
-                                    Close
-                                </button>
-                            </div>
-
-                            <div className="p-6 max-h-[60vh] overflow-auto space-y-4">
-                                {deployValidationErrors.map((b) => (
-                                    <div key={b.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                        <div className="flex items-center justify-between gap-4">
-                                            <div>
-                                                <div className="text-sm font-semibold text-slate-900">{b.type}</div>
-                                                <div className="text-xs text-slate-500">Block ID: {b.id}</div>
-                                            </div>
-                                            <div className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-lg">
-                                                {b.issues.length} issue{b.issues.length === 1 ? "" : "s"}
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-3 space-y-2">
-                                            {b.issues.map((issue, idx) => (
-                                                <div key={idx} className="text-sm text-slate-700">
-                                                    <span className="font-mono text-xs bg-white border border-slate-200 rounded px-2 py-0.5 mr-2">{issue.path}</span>
-                                                    <span className="text-red-700">{issue.message}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <DeployValidationModal
+                isOpen={deployValidationOpen}
+                onClose={() => setDeployValidationOpen(false)}
+                errors={deployValidationErrors}
+            />
 
             <div className="flex h-screen bg-slate-100 overflow-hidden font-sans text-slate-900 pl-16">
-            {/* --- HEADER --- */}
-            <header className="fixed top-0 left-16 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-50 shadow-md">
-                <div className="flex items-center gap-4">
-                    <Link href={`/store/${storeId}/pages`} className="text-slate-400 hover:text-white transition flex items-center gap-2 text-sm font-medium">
-                        <ChevronLeft size={18} />
-                        <span className="hidden md:inline">Back to Store</span>
-                    </Link>
-
-                    <div className="relative ml-4">
-                        <select
-                            value={pageSlug}
-                            onChange={(e) => {
-                                const newSlug = e.target.value;
-                                if (newSlug === 'new_page_action') {
-                                    setIsCreatePageOpen(true);
-                                } else {
-                                    // Navigate to new page
-                                    router.push(`/editor/${storeId}?slug=${newSlug}`);
-                                }
-                            }}
-                            className="appearance-none bg-slate-800 text-white text-sm border border-slate-700 rounded pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer hover:bg-slate-700 transition min-w-[200px]"
-                        >
-                            {availablePages.map(p => (
-                                <option key={p.slug} value={p.slug}>{p.name} (/{p.slug})</option>
-                            ))}
-                            <option disabled>──────────</option>
-                            <option value="new_page_action">+ Create New Page</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
-                        <button
-                            onClick={undo}
-                            disabled={!canUndo()}
-                            className={`p-1.5 rounded transition ${!canUndo() ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                            title="Undo"
-                        >
-                            <Undo size={16} />
-                        </button>
-                        <button
-                            onClick={redo}
-                            disabled={!canRedo()}
-                            className={`p-1.5 rounded transition ${!canRedo() ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                            title="Redo"
-                        >
-                            <Redo size={16} />
-                        </button>
-                    </div>
-                    <div className="h-6 w-px bg-slate-700 mx-2"></div>
-                    <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                        <button
-                            onClick={() => setViewMode('desktop')}
-                            className={`p-1.5 rounded transition ${viewMode === 'desktop' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                        >
-                            <Monitor size={16} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('mobile')}
-                            className={`p-1.5 rounded transition ${viewMode === 'mobile' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                        >
-                            <Smartphone size={16} />
-                        </button>
-                    </div>
-                    <div className="h-6 w-px bg-slate-700 mx-2"></div>
-                    {/* AI Mode / Advanced Toggle */}
-                    <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                        <button
-                            onClick={() => {
-                                setEditorMode('ai');
-                                setActiveSidebarTab('ai');
-                            }}
-                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded transition text-xs font-medium ${editorMode === 'ai' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                            title="AI Mode"
-                        >
-                            <Sparkles size={14} />
-                            <span className="hidden lg:inline">AI Mode</span>
-                        </button>
-                        <button
-                            onClick={() => {
-                                setEditorMode('advanced');
-                                setActiveSidebarTab('components');
-                            }}
-                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded transition text-xs font-medium ${editorMode === 'advanced' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                            title="Advanced Tweaks"
-                        >
-                            <Wrench size={14} />
-                            <span className="hidden lg:inline">Advanced</span>
-                        </button>
-                    </div>
-                    <div className="h-6 w-px bg-slate-700 mx-2"></div>
-                    <a
-                        href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${storeSubdomain}` : `//${storeSubdomain}.${baseDomain}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 bg-slate-800 text-slate-300 border border-slate-700 px-3 py-2 rounded-md hover:bg-slate-700 hover:text-white transition text-sm font-medium"
-                    >
-                        <ExternalLink size={16} /> Preview
-                    </a>
-                    <button
-                        onClick={handleDeploy}
-                        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition text-sm font-medium shadow-sm"
-                    >
-                        <Rocket size={16} /> Deploy
-                    </button>
-                </div>
-            </header>
+            <EditorHeader
+                storeId={storeId}
+                pageSlug={pageSlug}
+                pageName={pageName}
+                availablePages={availablePages}
+                router={router}
+                setIsCreatePageOpen={setIsCreatePageOpen}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                editorMode={editorMode}
+                setEditorMode={setEditorMode}
+                setActiveSidebarTab={setActiveSidebarTab}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                undo={undo}
+                redo={redo}
+                handleDeploy={handleDeploy}
+                baseDomain={baseDomain}
+                storeSubdomain={storeSubdomain}
+            />
 
             <div className="flex flex-1 pt-16 w-full overflow-hidden relative">
-                {/* --- CENTER: CANVAS --- */}
-                <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-100/50">
-                    <div className="flex-1 overflow-y-auto p-8">
-                        {/* Mobile Mode: Use iframe for true responsive preview */}
-                        {viewMode === 'mobile' ? (
-                            <div className="w-[375px] h-[667px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 bg-white">
-                                <iframe
-                                    ref={previewIframeRef}
-                                    src={`/preview/${storeId}?slug=${pageSlug}`}
-                                    className="w-full h-full border-0"
-                                    title="Mobile Preview"
-                                />
-                            </div>
-                        ) : (
-                            /* Desktop Mode: Direct rendering with selection overlays */
-                            <div className={`bg-slate-950 min-h-[800px] mx-auto shadow-xl shadow-slate-200/60 rounded-xl overflow-hidden border border-slate-200/60 transition-all duration-300 w-full max-w-6xl
-            }`}
-                                style={{
-                                    transform: 'scale(1)',
-                                    '--color-primary': storeColors.primary,
-                                    '--color-secondary': storeColors.secondary,
-                                    '--color-accent': storeColors.accent,
-                                    '--color-background': storeColors.background,
-                                    '--color-text': storeColors.text,
-                                    backgroundColor: storeColors.background,
-                                    color: storeColors.text
-                                } as React.CSSProperties}
-                                onClickCapture={(e) => {
-                                    const link = (e.target as HTMLElement).closest('a');
-                                    if (link) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const href = link.getAttribute('href');
-                                        if (href && href.startsWith('/')) {
-                                            const slug = href === '/' ? 'home' : href.substring(1);
+                <EditorCanvas
+                    viewMode={viewMode}
+                    previewIframeRef={previewIframeRef}
+                    storeId={storeId}
+                    pageSlug={pageSlug}
+                    storeColors={storeColors}
+                    blocks={blocks}
+                    hydratedBlocks={hydratedBlocks}
+                    selectedBlockId={selectedBlockId}
+                    selectBlock={selectBlock}
+                    moveBlock={moveBlock}
+                    removeBlock={removeBlock}
+                    setActiveSidebarTab={setActiveSidebarTab}
+                    setChatInput={setChatInput}
+                    setInsertIndex={setInsertIndex}
+                    isSidebarOpen={isSidebarOpen}
+                    setIsSidebarOpen={setIsSidebarOpen}
+                    storeProducts={storeProducts}
+                    storeTheme={storeTheme}
+                />
 
-                                            // Special handling for product pages
-                                            if (slug.startsWith('products/')) {
-                                                // Always allow navigation to product pages, even if not in availablePages list yet
-                                                // (because they might be dynamically generated or just created)
-                                                router.push(`/editor/${storeId}?slug=${slug}`);
-                                                return;
-                                            }
-
-                                            // Check if page exists
-                                            const pageExists = availablePages.some(p => p.slug === slug);
-                                            if (pageExists) {
-                                                router.push(`/editor/${storeId}?slug=${slug}`);
-                                            } else {
-                                                setMissingPagePath(href);
-                                            }
-                                        }
-                                    }
-                                }}
-                            >
-                                {blocks.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 p-20 gap-4">
-                                        <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
-                                            <Layers size={32} className="opacity-50" />
-                                        </div>
-                                        <p>Your canvas is empty. Add components from the left.</p>
-                                    </div>
-                                ) : (
-                                    (hydratedBlocks.length > 0 ? hydratedBlocks : blocks).map((block, index) => {
-                                        const Component = RENDER_MAP[block.type];
-                                        const isSelected = block.id === selectedBlockId;
-                                        const isHeader = block.type === 'Header';
-                                        const isFooter = block.type === 'Footer';
-                                        const isFirstContentBlock = !isHeader && (index === 0 || (index === 1 && blocks[0].type === 'Header'));
-
-                                        // Inject Preview Data
-                                        let previewProps = { ...block.props };
-
-                                        // Inject showCart for Header in Editor
-                                        if (isHeader) {
-                                            const hasProducts = storeProducts.length > 0;
-                                            const hasStaticAddToCart = blocks.some(b => b.type === 'ProductDetail' && (b.props?.buttonAction === 'addToCart' || !b.props?.buttonAction));
-                                            previewProps.showCart = hasProducts || hasStaticAddToCart;
-                                        }
-
-                                        // Inject Global Theme (matches Storefront behavior)
-                                        if (previewProps.animationStyle === 'theme') {
-                                            previewProps.animationStyle = storeTheme;
-                                        }
-
-                                        if (block.type === 'ProductGrid') {
-                                            if (block.props?.sourceType === 'manual' && Array.isArray(block.props?.productIds)) {
-                                                const selectedIds = block.props.productIds;
-                                                previewProps.products = storeProducts
-                                                    .filter(p => selectedIds.includes(p.id))
-                                                    .sort((a, b) => selectedIds.indexOf(a.id) - selectedIds.indexOf(b.id)); // Preserve order
-                                            } else {
-                                                const collectionId = block.props.collectionId || 'all';
-                                                let filtered = [];
-                                                if (collectionId === 'all') {
-                                                    filtered = storeProducts;
-                                                } else {
-                                                    filtered = storeProducts.filter(p => p.collectionIds.includes(collectionId));
-                                                }
-                                                if (filtered.length > 0) {
-                                                    previewProps.products = filtered.slice(0, 8);
-                                                }
-                                            }
-                                        }
-
-                                        if (block.type === 'ProductDetail') {
-                                            if (pageSlug.startsWith('products/')) {
-                                                const productSlug = pageSlug.replace('products/', '');
-                                                const product = storeProducts.find(p => p.slug === productSlug);
-                                                if (product) {
-                                                    previewProps.product = product;
-                                                }
-                                            } else if (storeProducts.length > 0) {
-                                                // Fallback: Show first product if not on a specific product page
-                                                previewProps.product = storeProducts[0];
-                                            }
-                                        }
-
-                                        if (block.type === 'UniversalGrid') {
-                                            previewProps.products = storeProducts;
-                                        }
-
-                                        return (
-                                            <div key={block.id}>
-                                                {/* Insert Zone - Hide before Header */}
-                                                {!isHeader && (
-                                                    <div className="h-4 -my-2 relative z-20 flex items-center justify-center group/insert opacity-0 hover:opacity-100 transition-all">
-                                                        <div className="w-full h-0.5 bg-blue-500 absolute top-1/2 left-0 right-0"></div>
-                                                        <button
-                                                            onClick={() => {
-                                                                setInsertIndex(index);
-                                                                setActiveSidebarTab('components');
-                                                                if (!isSidebarOpen) setIsSidebarOpen(true);
-                                                            }}
-                                                            className="relative z-10 bg-blue-600 text-white rounded-full p-1 shadow-sm transform hover:scale-110 transition"
-                                                            title="Insert Component Here"
-                                                        >
-                                                            <Plus size={14} />
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                                <div
-                                                    onClick={(e) => { e.stopPropagation(); selectBlock(block.id); }}
-                                                    className={`relative group transition-all duration-200 ${isSelected
-                                                        ? "ring-2 ring-blue-500 ring-inset z-10"
-                                                        : "hover:ring-1 hover:ring-blue-300 hover:ring-inset"
-                                                        }`}
-                                                >
-                                                    {/* Render the actual UI Block */}
-                                                    {Component ? <Component {...previewProps} /> : <div className="p-4 bg-red-50 text-red-500">Unknown Block</div>}
-
-                                                    {/* Actions Overlay */}
-                                                    {isSelected && !isHeader && !isFooter && (
-                                                        <div className={`absolute right-4 flex gap-1.5 z-[60] ${isFirstContentBlock ? 'top-20' : 'top-4'}`}>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setActiveSidebarTab('ai');
-                                                                    if (!isSidebarOpen) setIsSidebarOpen(true);
-                                                                    setChatInput(`I want to edit the ${block.type} section. `);
-                                                                }}
-                                                                className="bg-purple-600/90 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-purple-500 transition"
-                                                                title="Edit with AI"
-                                                            >
-                                                                <Sparkles size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
-                                                                className="bg-slate-900/80 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-slate-800 transition"
-                                                                title="Move Up"
-                                                            >
-                                                                <ArrowUp size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'down'); }}
-                                                                className="bg-slate-900/80 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-slate-800 transition"
-                                                                title="Move Down"
-                                                            >
-                                                                <ArrowDown size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
-                                                                className="bg-red-600/90 backdrop-blur-sm text-white border border-white/10 p-2 rounded-lg shadow-lg hover:bg-red-500 transition"
-                                                                title="Remove Block"
-                                                            >
-                                                                <Trash size={16} />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                )}
-
-                                {/* Add at bottom button - Insert BEFORE Footer */}
-                                {/* REMOVED as per user request */}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* --- RIGHT: SIDEBAR (Floating Card) --- */}
-                <div
-                    className={`bg-white border border-slate-200 flex flex-col shadow-xl z-40 m-4 rounded-xl overflow-hidden transition-all duration-300 ${editorMode === 'ai' ? 'w-96' : 'w-80'}`}
-                >
-                    {/* Tabs - Show different tabs based on editor mode */}
-                    <div className="flex border-b border-slate-200">
-                        {editorMode === 'advanced' && (
-                            <>
-                                <button
-                                    onClick={() => setActiveSidebarTab('components')}
-                                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'components' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                                    title="Components"
-                                >
-                                    <Layers size={20} />
-                                    {activeSidebarTab === 'components' && (
-                                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveSidebarTab('properties')}
-                                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'properties' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                                    title="Properties"
-                                >
-                                    <Settings size={20} />
-                                    {activeSidebarTab === 'properties' && (
-                                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveSidebarTab('media')}
-                                    className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'media' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                                    title="Media"
-                                >
-                                    <ImageIcon size={20} />
-                                    {activeSidebarTab === 'media' && (
-                                        <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                                    )}
-                                </button>
-                            </>
-                        )}
-                        <button
-                            onClick={() => setActiveSidebarTab('ai')}
-                            className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'ai' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                            title="AI Assistant"
-                        >
-                            <Bot size={20} />
-                            {editorMode === 'ai' && <span className="ml-2 text-sm font-medium">AI Assistant</span>}
-                            {activeSidebarTab === 'ai' && (
-                                <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveSidebarTab('theme')}
-                            className={`flex-1 h-12 flex items-center justify-center transition-colors relative ${activeSidebarTab === 'theme' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                            title="Theme"
-                        >
-                            <Palette size={20} />
-                            {editorMode === 'ai' && <span className="ml-2 text-sm font-medium">Theme</span>}
-                            {activeSidebarTab === 'theme' && (
-                                <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-blue-600"></div>
-                            )}
-                        </button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4">
-                        <AnimatePresence mode="wait">
-                            {activeSidebarTab === 'theme' && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="flex flex-col gap-5"
-                                >
-                                    <div className="pb-4 border-b border-slate-100">
-                                        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded">
-                                            Global Theme
-                                        </span>
-                                        <p className="text-xs text-slate-500 mt-2">
-                                            This theme controls the default animation style for all components set to "Theme Default".
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-                                            Animation Style
-                                        </label>
-                                        <select
-                                            className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                            value={storeTheme}
-                                            onChange={async (e) => {
-                                                const newTheme = e.target.value;
-                                                setStoreTheme(newTheme);
-                                                await supabase
-                                                    .from("stores")
-                                                    .update({ theme: newTheme })
-                                                    .eq("id", storeId);
-                                            }}
-                                        >
-                                            <option value="simple">Simple (Fade Up)</option>
-                                            <option value="playful">Playful (Scale Up)</option>
-                                            <option value="elegant">Elegant (Fade In)</option>
-                                            <option value="dynamic">Dynamic (Slide In)</option>
-                                            <option value="none">None</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="pt-4 border-t border-slate-100">
-                                        <button
-                                            onClick={() => setColorsExpanded(!colorsExpanded)}
-                                            className="w-full flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-slate-700"
-                                        >
-                                            Global Colors
-                                            <ChevronLeft size={14} className={`transform transition ${colorsExpanded ? '-rotate-90' : 'rotate-0'}`} />
-                                        </button>
-                                        <AnimatePresence>
-                                            {colorsExpanded && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <div className="space-y-3 mt-3">
-                                                        {Object.entries(storeColors).map(([key, value]) => (
-                                                            <div key={key} className="flex items-center justify-between">
-                                                                <span className="text-sm capitalize text-slate-700">{key}</span>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xs text-slate-400 uppercase">{value}</span>
-                                                                    <input
-                                                                        type="color"
-                                                                        value={value}
-                                                                        onChange={(e) => {
-                                                                            const newColors = { ...storeColors, [key]: e.target.value };
-                                                                            setStoreColors(newColors, false);
-                                                                        }}
-                                                                        onBlur={async () => {
-                                                                            setStoreColors(storeColors, true);
-                                                                            await supabase
-                                                                                .from("stores")
-                                                                                .update({ colors: storeColors })
-                                                                                .eq("id", storeId);
-                                                                        }}
-                                                                        className="h-8 w-8 rounded cursor-pointer border-0 p-0"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {activeSidebarTab === 'ai' && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="flex flex-col h-full"
-                                >
-                                    <div className="pb-4 border-b border-slate-100 mb-4">
-                                        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded">
-                                            Smart Assistant
-                                        </span>
-                                    </div>
-
-                                    {/* Model Selector */}
-                                    <div className="pb-4 border-b border-slate-100 mb-4 space-y-2">
-                                        <label className="text-xs font-medium text-slate-600">AI Model</label>
-                                        <div className="flex gap-2">
-                                            <select
-                                                value={selectedAiProvider}
-                                                onChange={(e) => {
-                                                    const provider = e.target.value as 'gemini' | 'openai' | 'anthropic';
-                                                    setSelectedAiProvider(provider);
-                                                    setSelectedAiModel(AI_MODELS[provider][0].id);
-                                                }}
-                                                className="flex-1 text-xs p-2 border border-slate-200 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            >
-                                                <option value="gemini">Gemini</option>
-                                                <option value="openai">OpenAI</option>
-                                                <option value="anthropic">Anthropic</option>
-                                            </select>
-                                            <select
-                                                value={selectedAiModel}
-                                                onChange={(e) => setSelectedAiModel(e.target.value)}
-                                                className="flex-1 text-xs p-2 border border-slate-200 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            >
-                                                {AI_MODELS[selectedAiProvider].map(model => (
-                                                    <option key={model.id} value={model.id}>{model.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 flex flex-col overflow-hidden">
-                                        <div className="flex-1 overflow-y-auto space-y-4 p-1 mb-4">
-                                            {chatMessages.map((msg, i) => (
-                                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                                    <div className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.role === 'user'
-                                                        ? 'bg-blue-600 text-white rounded-br-none'
-                                                        : 'bg-slate-100 text-slate-800 rounded-bl-none'
-                                                        }`}>
-                                                        {msg.content}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {isChatLoading && (
-                                                <div className="flex justify-start">
-                                                    <div className="bg-slate-100 text-slate-500 p-3 rounded-lg rounded-bl-none text-sm flex items-center gap-2">
-                                                        <Loader2 size={14} className="animate-spin" /> Thinking...
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <form onSubmit={handleAiChat} className="border-t border-slate-100 pt-4">
-                                            <div className="relative">
-                                                <textarea
-                                                    value={chatInput}
-                                                    onChange={(e) => setChatInput(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                                            e.preventDefault();
-                                                            handleAiChat();
-                                                        }
-                                                    }}
-                                                    placeholder="Ask me to add a section, change colors, or edit a block..."
-                                                    className="w-full p-3 pr-10 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24"
-                                                    disabled={isChatLoading}
-                                                />
-                                                <button
-                                                    type="submit"
-                                                    disabled={isChatLoading || !chatInput.trim()}
-                                                    className="absolute bottom-2 right-2 p-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                    <Sparkles size={16} />
-                                                </button>
-                                            </div>
-                                            <p className="text-[10px] text-slate-400 mt-2 text-center">
-                                                AI can make mistakes. Review generated changes.
-                                            </p>
-                                        </form>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {activeSidebarTab === 'components' && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="space-y-4"
-                                >
-                                    {Object.entries(COMPONENT_CATEGORIES)
-                                        .sort(([, a], [, b]) => a.order - b.order)
-                                        .map(([categoryKey, categoryInfo]) => {
-                                            const componentsInCategory = Object.entries(COMPONENT_DEFINITIONS)
-                                                .filter(([key, def]) => key !== 'Header' && key !== 'Footer' && def.category === categoryKey)
-                                                .sort((a, b) => a[1].label.localeCompare(b[1].label));
-
-                                            if (componentsInCategory.length === 0) return null;
-
-                                            return (
-                                                <div key={categoryKey}>
-                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{categoryInfo.label}</p>
-                                                    <div className="grid gap-2">
-                                                        {componentsInCategory.map(([key, def]) => (
-                                                            <button
-                                                                key={key}
-                                                                onClick={() => {
-                                                                    if (insertIndex !== null) {
-                                                                        insertBlock(insertIndex, key, def.defaultProps);
-                                                                        setInsertIndex(null);
-                                                                    } else {
-                                                                        const footerIndex = blocks.findIndex(b => b.type === 'Footer');
-                                                                        if (footerIndex !== -1) {
-                                                                            insertBlock(footerIndex, key, def.defaultProps);
-                                                                        } else {
-                                                                            addBlock(key, def.defaultProps);
-                                                                        }
-                                                                    }
-                                                                }}
-                                                                className="flex items-center gap-3 p-2.5 border border-slate-200 rounded-lg hover:border-blue-400 hover:shadow-sm hover:bg-blue-50/30 transition text-left group bg-white"
-                                                            >
-                                                                <div className="h-7 w-7 bg-slate-100 rounded flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                                                    <Plus size={14} />
-                                                                </div>
-                                                                <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700">{def.label}</span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                </motion.div>
-                            )}
-
-                            {activeSidebarTab === 'media' && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="flex flex-col gap-4"
-                                >
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => { setActivePropName(null); setIsMediaManagerOpen(true); }}
-                                            className="flex-1 py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition text-sm font-medium flex items-center justify-center gap-2"
-                                        >
-                                            <Upload size={16} /> Upload
-                                        </button>
-                                        <button
-                                            onClick={syncMediaToPackets}
-                                            className="flex-1 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:text-blue-600 hover:border-blue-300 transition text-sm font-medium flex items-center justify-center gap-2 shadow-sm"
-                                            title="Create packets for existing files"
-                                        >
-                                            <LayoutDashboard size={16} /> Sync
-                                        </button>
-                                    </div>
-
-                                    {/* AI Media Generation */}
-                                    <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200/50">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <Sparkles size={16} className="text-purple-600" />
-                                            <span className="text-sm font-semibold text-purple-900">AI Generate</span>
-                                        </div>
-
-                                        <select
-                                            value={mediaGenModel}
-                                            onChange={(e) => setMediaGenModel(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-2"
-                                            disabled={mediaGenLoading}
-                                        >
-                                            <option value="gemini-2.5-flash-image">🖼️ Gemini 2.5 Flash (Fast)</option>
-                                            <option value="gemini-3-pro-image-preview">🖼️ Gemini 3 Pro (Quality)</option>
-                                            <option value="veo-3.1-generate-preview">🎬 Veo 3.1 (Video)</option>
-                                        </select>
-
-                                        <textarea
-                                            value={mediaGenPrompt}
-                                            onChange={(e) => setMediaGenPrompt(e.target.value)}
-                                            placeholder="Describe the image or video you want to generate..."
-                                            className="w-full px-3 py-2 text-sm border border-purple-200 rounded-lg resize-none h-20 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                            disabled={mediaGenLoading}
-                                        />
-
-                                        <button
-                                            onClick={handleGenerateMedia}
-                                            disabled={mediaGenLoading || !mediaGenPrompt.trim()}
-                                            className="w-full mt-2 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:from-purple-500 hover:to-blue-500 transition disabled:opacity-50"
-                                        >
-                                            {mediaGenLoading ? (
-                                                <>
-                                                    <Loader2 size={14} className="animate-spin" />
-                                                    Generating...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Wand2 size={14} />
-                                                    Generate
-                                                </>
-                                            )}
-                                        </button>
-
-                                        {mediaGenResult && mediaGenResult.type !== 'processing' && (
-                                            <div className="mt-3 p-2 bg-white rounded-lg border border-green-200">
-                                                <img src={mediaGenResult.url} alt="Generated" className="w-full rounded" />
-                                                <button
-                                                    onClick={() => navigator.clipboard.writeText(mediaGenResult.url)}
-                                                    className="w-full mt-2 py-1.5 bg-green-50 text-green-700 rounded text-xs font-medium hover:bg-green-100 transition"
-                                                >
-                                                    Copy URL
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {mediaGenResult?.type === 'processing' && (
-                                            <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-700 flex items-center gap-2">
-                                                <Loader2 size={14} className="animate-spin" />
-                                                Video is processing... Check back soon.
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {mediaPreview.map((img) => (
-                                            <div key={img.name} className="aspect-square relative group rounded-md overflow-hidden border border-slate-200 bg-slate-50">
-                                                <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            navigator.clipboard.writeText(img.url);
-                                                            const btn = e.currentTarget;
-                                                            const originalText = btn.innerText;
-                                                            btn.innerText = "Copied!";
-                                                            setTimeout(() => btn.innerText = originalText, 1000);
-                                                        }}
-                                                        className="text-xs bg-white text-slate-800 px-2 py-1 rounded shadow-sm font-medium"
-                                                    >
-                                                        Copy
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {activeSidebarTab === 'properties' && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    {selectedBlock && selectedDef ? (
-                                        <div className="flex flex-col gap-5">
-                                            <div className="pb-4 border-b border-slate-100">
-                                                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded">
-                                                    {selectedDef.label}
-                                                </span>
-                                            </div>
-
-                                            {/* Group fields by section */}
-                                            {(() => {
-                                                const fieldsBySection: Record<string, any[]> = {};
-                                                selectedDef.fields.forEach((field: any) => {
-                                                    const section = field.section || "Other";
-                                                    if (!fieldsBySection[section]) fieldsBySection[section] = [];
-                                                    fieldsBySection[section].push(field);
-                                                });
-
-                                                return Object.entries(fieldsBySection).map(([sectionName, fields]) => {
-                                                    const isOpen = openSections[sectionName] ?? (sectionName === "Content");
-
-                                                    return (
-                                                        <div key={sectionName} className="border border-slate-200 rounded-lg overflow-hidden bg-white">
-                                                            <button
-                                                                onClick={() => setOpenSections(prev => ({ ...prev, [sectionName]: !prev[sectionName] }))}
-                                                                className="w-full bg-slate-50 px-3 py-2 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition"
-                                                            >
-                                                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sectionName}</span>
-                                                                <ChevronLeft size={14} className={`text-slate-400 transform transition-transform duration-200 ${isOpen ? '-rotate-90' : 'rotate-0'}`} />
-                                                            </button>
-                                                            <AnimatePresence initial={false}>
-                                                                {isOpen && (
-                                                                    <motion.div
-                                                                        initial={{ height: 0, opacity: 0 }}
-                                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                                        exit={{ height: 0, opacity: 0 }}
-                                                                        transition={{ duration: 0.2 }}
-                                                                        className="overflow-hidden"
-                                                                    >
-                                                                        <div className="p-3 space-y-4">
-                                                                            {fields.map((field, fieldIndex) => {
-                                                                                // Hide animation style for expandable cards
-                                                                                if (field.name === 'animationStyle' && selectedBlock.props.layout === 'expandable') {
-                                                                                    return null;
-                                                                                }
-
-                                                                                // Show PacketSelector after title/subtitle fields
-                                                                                const showPacketSelector = sectionName === "Content" &&
-                                                                                    getAllPacketTypesForBlock(selectedBlock.type).length > 0 &&
-                                                                                    (field.name === 'subtitle' || (field.name === 'title' && !fields.some(f => f.name === 'subtitle')));
-
-                                                                                return (
-                                                                                    <div key={field.name}>
-                                                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-                                                                                            {field.name === 'columns' && selectedBlock.props.layout === 'expandable' ? 'Products per row' : field.label}
-                                                                                        </label>
-
-                                                                                        {field.type === 'collection-select' ? (
-                                                                                            <select
-                                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                                                                                value={selectedBlock.props[field.name] || "all"}
-                                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                            >
-                                                                                                <option value="all">All Products</option>
-                                                                                                {collections.map(c => (
-                                                                                                    <option key={c.id} value={c.id}>{c.title}</option>
-                                                                                                ))}
-                                                                                            </select>
-                                                                                        ) : field.type === 'product-picker' ? (
-                                                                                            <ProductPicker
-                                                                                                storeId={storeId}
-                                                                                                selectedIds={selectedBlock.props[field.name] || []}
-                                                                                                onChange={(ids) => updateBlockProps(selectedBlock.id, { [field.name]: ids })}
-                                                                                            />
-                                                                                        ) : field.type === 'select' ? (
-                                                                                            <select
-                                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                                                                                value={selectedBlock.props[field.name] || ""}
-                                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                            >
-                                                                                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                                                                {(field as any).options?.map((opt: any) => (
-                                                                                                    <option key={opt.value} value={opt.value}>
-                                                                                                        {opt.value === 'theme' ? `Theme Default (${storeTheme})` : opt.label}
-                                                                                                    </option>
-                                                                                                ))}
-                                                                                            </select>
-                                                                                        ) : field.type === 'array' ? (
-                                                                                            <div className="space-y-3">
-                                                                                                {(selectedBlock.props[field.name] || []).map((item: any, index: number) => (
-                                                                                                    <div key={index} className="border border-slate-200 rounded p-3 bg-slate-50">
-                                                                                                        <div className="flex justify-between items-center mb-2">
-                                                                                                            <span className="text-xs font-bold text-slate-400">Item {index + 1}</span>
-                                                                                                            <button onClick={() => {
-                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                newItems.splice(index, 1);
-                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                            }} className="text-red-400 hover:text-red-600"><Trash size={12} /></button>
-                                                                                                        </div>
-                                                                                                        {/* Render sub-fields */}
-                                                                                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                                                                        {(field as any).itemSchema?.map((subField: any) => (
-                                                                                                            <div key={subField.name} className="mb-2">
-                                                                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">{subField.label}</label>
-                                                                                                                {subField.type === 'image' ? (
-                                                                                                                    <div className="flex gap-2">
-                                                                                                                        <input
-                                                                                                                            type="text"
-                                                                                                                            className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none"
-                                                                                                                            value={item[subField.name] || ""}
-                                                                                                                            onChange={(e) => {
-                                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                                            }}
-                                                                                                                        />
-                                                                                                                        <button
-                                                                                                                            onClick={() => {
-                                                                                                                                openMediaManager(`${field.name}:${index}:${subField.name}`);
-                                                                                                                            }}
-                                                                                                                            className="bg-slate-100 border border-slate-300 rounded-md px-2 hover:bg-slate-200 text-slate-600"
-                                                                                                                        >
-                                                                                                                            <Upload size={12} />
-                                                                                                                        </button>
-                                                                                                                    </div>
-                                                                                                                ) : subField.type === 'product-select' ? (
-                                                                                                                    <select
-                                                                                                                        className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none bg-white"
-                                                                                                                        value={item[subField.name] || ""}
-                                                                                                                        onChange={(e) => {
-                                                                                                                            const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                            newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                                        }}
-                                                                                                                    >
-                                                                                                                        <option value="">Select a product...</option>
-                                                                                                                        {storeProducts.map(p => (
-                                                                                                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                                                                                                        ))}
-                                                                                                                    </select>
-                                                                                                                ) : (
-                                                                                                                    subField.type === 'number' ? (
-                                                                                                                        <CounterInput
-                                                                                                                            value={parseInt(item[subField.name] || "0")}
-                                                                                                                            onChange={(val) => {
-                                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: val };
-                                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                                            }}
-                                                                                                                            min={(subField as any).min}
-                                                                                                                            className="w-full"
-                                                                                                                        />
-                                                                                                                    ) : (
-                                                                                                                        <input
-                                                                                                                            type="text"
-                                                                                                                            className="w-full border border-slate-300 rounded-md p-1.5 text-xs outline-none focus:border-blue-500"
-                                                                                                                            value={item[subField.name] || ""}
-                                                                                                                            onChange={(e) => {
-                                                                                                                                const newItems = [...(selectedBlock.props[field.name] || [])];
-                                                                                                                                newItems[index] = { ...newItems[index], [subField.name]: e.target.value };
-                                                                                                                                updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                                            }}
-                                                                                                                        />
-                                                                                                                    )
-                                                                                                                )}
-                                                                                                            </div>
-                                                                                                        ))}
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                                <button onClick={() => {
-                                                                                                    const newItems = [...(selectedBlock.props[field.name] || []), {}];
-                                                                                                    updateBlockProps(selectedBlock.id, { [field.name]: newItems });
-                                                                                                }} className="w-full py-2 text-xs font-medium text-blue-600 border border-dashed border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center gap-1">
-                                                                                                    <Plus size={12} /> Add Item
-                                                                                                </button>
-                                                                                            </div>
-                                                                                        ) : field.type === 'page-link' ? (
-                                                                                            <div className="flex flex-col gap-2">
-                                                                                                <select
-                                                                                                    className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                                                                                                    value={selectedBlock.props[field.name] || ""}
-                                                                                                    onChange={(e) => {
-                                                                                                        if (e.target.value === 'CREATE_NEW') {
-                                                                                                            setIsCreatePageOpen(true);
-                                                                                                        } else {
-                                                                                                            updateBlockProps(selectedBlock.id, { [field.name]: e.target.value });
-                                                                                                        }
-                                                                                                    }}
-                                                                                                >
-                                                                                                    <option value="">Select a page...</option>
-                                                                                                    {availablePages.map((page) => (
-                                                                                                        <option key={page.slug} value={`/${page.slug}`}>
-                                                                                                            {page.name || page.slug} (/{page.slug})
-                                                                                                        </option>
-                                                                                                    ))}
-                                                                                                    <option value="CREATE_NEW" className="font-bold text-blue-600">+ Create New Page</option>
-                                                                                                </select>
-                                                                                                <input
-                                                                                                    type="text"
-                                                                                                    className="w-full border border-slate-300 rounded-md p-2 text-xs text-slate-500 focus:text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                                                                                                    value={selectedBlock.props[field.name] || ""}
-                                                                                                    onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                                    placeholder="Or type custom URL..."
-                                                                                                />
-                                                                                            </div>
-                                                                                        ) : field.type === 'image' ? (
-                                                                                            <div className="flex gap-2">
-                                                                                                <div className="relative flex-1">
-                                                                                                    <input
-                                                                                                        type="text"
-                                                                                                        className="w-full border border-slate-300 rounded-md p-2 text-sm pl-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                                                                                        value={selectedBlock.props[field.name] || ""}
-                                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                                    />
-                                                                                                    <div className="absolute left-2.5 top-2.5 text-slate-400">
-                                                                                                        <ImageIcon size={14} />
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                                <button
-                                                                                                    onClick={() => openMediaManager(field.name)}
-                                                                                                    className="bg-slate-100 border border-slate-300 rounded-md px-3 hover:bg-slate-200 text-slate-600 transition"
-                                                                                                    title="Select Image"
-                                                                                                >
-                                                                                                    <Upload size={16} />
-                                                                                                </button>
-                                                                                            </div>
-                                                                                        ) : field.type === 'number' ? (
-                                                                                            <CounterInput
-                                                                                                value={parseInt(selectedBlock.props[field.name] || "0")}
-                                                                                                onChange={(val) => updateBlockProps(selectedBlock.id, { [field.name]: val })}
-                                                                                                min={(field as any).min}
-                                                                                                className="w-full"
-                                                                                            />
-                                                                                        ) : field.type === 'color' ? (
-                                                                                            <div className="flex gap-2">
-                                                                                                <div className="relative">
-                                                                                                    <input
-                                                                                                        type="color"
-                                                                                                        className="h-9 w-9 rounded cursor-pointer border border-slate-300 p-0.5 overflow-hidden"
-                                                                                                        value={selectedBlock.props[field.name] || "#000000"}
-                                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                                    />
-                                                                                                </div>
-                                                                                                <div className="flex-1 flex gap-1">
-                                                                                                    <input
-                                                                                                        type="text"
-                                                                                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                                                                                        value={selectedBlock.props[field.name] || ""}
-                                                                                                        onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                                        placeholder="Default (Global)"
-                                                                                                    />
-                                                                                                    {selectedBlock.props[field.name] && (
-                                                                                                        <button
-                                                                                                            onClick={() => updateBlockProps(selectedBlock.id, { [field.name]: undefined })}
-                                                                                                            className="p-2 text-slate-400 hover:text-red-500"
-                                                                                                            title="Reset to Global Default"
-                                                                                                        >
-                                                                                                            <Undo size={14} />
-                                                                                                        </button>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        ) : (
-                                                                                            <input
-                                                                                                type="text"
-                                                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                                                                                value={selectedBlock.props[field.name] || ""}
-                                                                                                onChange={(e) => updateBlockProps(selectedBlock.id, { [field.name]: e.target.value })}
-                                                                                            />
-                                                                                        )}
-
-                                                                                        {/* Insert PacketSelector after title/subtitle */}
-                                                                                        {showPacketSelector && (
-                                                                                            <div className="mt-4 pt-4 border-t border-slate-200">
-                                                                                                <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-                                                                                                    Content Library
-                                                                                                </label>
-                                                                                                <PacketSelector
-                                                                                                    storeId={storeId}
-                                                                                                    allowedTypes={getAllPacketTypesForBlock(selectedBlock.type)}
-                                                                                                    selectedIds={selectedBlock.props.packetIds || []}
-                                                                                                    onChange={(ids) => updateBlockProps(selectedBlock.id, { packetIds: ids })}
-                                                                                                    onEdit={(packetId) => setEditingPacketId(packetId)}
-                                                                                                />
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-                                                            </AnimatePresence>
-                                                        </div>
-                                                    );
-                                                });
-                                            })()}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-64 text-slate-400 text-center p-4">
-                                            <Settings size={32} className="mb-3 opacity-20" />
-                                            <p className="text-sm">Select a block on the canvas to edit its properties.</p>
-                                        </div>
-                                    )}
-
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
-
+                <EditorSidebar
+                    editorMode={editorMode}
+                    activeSidebarTab={activeSidebarTab as any}
+                    setActiveSidebarTab={setActiveSidebarTab as any}
+                    insertIndex={insertIndex}
+                    setInsertIndex={setInsertIndex}
+                    insertBlock={insertBlock}
+                    addBlock={addBlock}
+                    blocks={blocks}
+                    selectedBlock={selectedBlock}
+                    selectedDef={selectedDef}
+                    openSections={openSections}
+                    setOpenSections={setOpenSections}
+                    updateBlockProps={updateBlockProps}
+                    storeId={storeId}
+                    collections={collections}
+                    storeProducts={storeProducts}
+                    availablePages={availablePages}
+                    setIsCreatePageOpen={setIsCreatePageOpen}
+                    openMediaManager={openMediaManager}
+                    syncMediaToPackets={syncMediaToPackets}
+                    mediaGenModel={mediaGenModel}
+                    setMediaGenModel={setMediaGenModel}
+                    mediaGenLoading={mediaGenLoading}
+                    mediaGenPrompt={mediaGenPrompt}
+                    setMediaGenPrompt={setMediaGenPrompt}
+                    handleGenerateMedia={handleGenerateMedia}
+                    mediaGenResult={mediaGenResult}
+                    mediaPreview={mediaPreview}
+                    storeTheme={storeTheme}
+                    setStoreTheme={setStoreTheme}
+                    storeColors={storeColors}
+                    setStoreColors={setStoreColors}
+                    colorsExpanded={colorsExpanded}
+                    setColorsExpanded={setColorsExpanded}
+                    supabase={supabase}
+                    selectedAiProvider={selectedAiProvider}
+                    setSelectedAiProvider={setSelectedAiProvider}
+                    selectedAiModel={selectedAiModel}
+                    setSelectedAiModel={setSelectedAiModel}
+                    AI_MODELS={AI_MODELS}
+                    chatMessages={chatMessages}
+                    isChatLoading={isChatLoading}
+                    chatInput={chatInput}
+                    setChatInput={setChatInput}
+                    handleAiChat={handleAiChat}
+                    setEditingPacketId={setEditingPacketId}
+                    refreshPackets={refreshPackets}
+                />
             </div>
 
-            <MediaManager
-                isOpen={isMediaManagerOpen}
-                onClose={() => setIsMediaManagerOpen(false)}
-                onSelect={handleImageSelect}
-            />
-
-            {/* Edit existing packet */}
-            <PacketEditorDialog
-                isOpen={!!editingPacketId}
-                onClose={() => setEditingPacketId(null)}
-                packetId={editingPacketId}
-                packetType={selectedBlock ? (getPacketTypeForBlock(selectedBlock.type) || 'text_block') : 'text_block'}
+            <EditorModals
+                isMediaManagerOpen={isMediaManagerOpen}
+                setIsMediaManagerOpen={setIsMediaManagerOpen}
+                handleImageSelect={handleImageSelect}
+                editingPacketId={editingPacketId}
+                setEditingPacketId={setEditingPacketId}
+                selectedBlock={selectedBlock}
                 storeId={storeId}
-                maxColumns={selectedBlock?.props?.columns}
-                onSave={() => {
-                    refreshPackets();
-                }}
+                refreshPackets={refreshPackets}
+                missingPagePath={missingPagePath}
+                setMissingPagePath={setMissingPagePath}
+                setIsCreatePageOpen={setIsCreatePageOpen}
+                setNewPageSlug={setNewPageSlug}
+                setNewPageName={setNewPageName}
+                isCreatePageOpen={isCreatePageOpen}
+                newPageName={newPageName}
+                newPageSlug={newPageSlug}
+                handleCreatePage={handleCreatePage}
+                deploySuccess={deploySuccess}
+                setDeploySuccess={setDeploySuccess}
+                baseDomain={baseDomain}
+                storeSubdomain={storeSubdomain}
             />
-
-            {/* Missing Page Dialog */}
-            {
-                missingPagePath && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
-                        <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-                            <h3 className="text-lg font-bold mb-2">Page Not Found</h3>
-                            <p className="text-slate-600 mb-6">
-                                The page <code className="bg-slate-100 px-1 py-0.5 rounded text-sm">{missingPagePath}</code> hasn't been created yet.
-                                Would you like to create it now?
-                            </p>
-                            <div className="flex justify-end gap-2">
-                                <button
-                                    onClick={() => setMissingPagePath(null)}
-                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (!missingPagePath) return;
-                                        const slug = missingPagePath.startsWith('/') ? missingPagePath.substring(1) : missingPagePath;
-                                        const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                        setNewPageSlug(slug);
-                                        setNewPageName(name);
-                                        setMissingPagePath(null);
-                                        setIsCreatePageOpen(true);
-                                    }}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                    Create Page
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Create Page Modal */}
-            {
-                isCreatePageOpen && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-                        <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-                            <h3 className="text-lg font-bold mb-4">Create New Page</h3>
-                            <form onSubmit={handleCreatePage}>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Page Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full border border-slate-300 rounded p-2"
-                                        value={newPageName}
-                                        onChange={(e) => {
-                                            setNewPageName(e.target.value);
-                                            if (!newPageSlug) setNewPageSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
-                                        }}
-                                        placeholder="e.g. Contact Us"
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Slug</label>
-                                    <input
-                                        type="text"
-                                        className="w-full border border-slate-300 rounded p-2 bg-slate-50"
-                                        value={newPageSlug}
-                                        onChange={(e) => setNewPageSlug(e.target.value)}
-                                        placeholder="e.g. contact-us"
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCreatePageOpen(false)}
-                                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                    >
-                                        Create Page
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
-
-
-
-            {/* Deploy Success Modal */}
-            {
-                deploySuccess && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]">
-                        <div className="bg-white rounded-lg p-8 w-96 shadow-2xl text-center">
-                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Rocket size={32} />
-                            </div>
-                            <h3 className="text-xl font-bold mb-2 text-slate-900">Deployment Successful!</h3>
-                            <p className="text-slate-500 mb-6">
-                                Your changes are now live. It may take a few moments for the cache to clear.
-                            </p>
-                            <div className="flex flex-col gap-3">
-                                <a
-                                    href={baseDomain.includes("cloudfront.net") ? `/?preview_store=${storeSubdomain}` : `//${storeSubdomain}.${baseDomain}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
-                                >
-                                    <ExternalLink size={18} /> View Storefront
-                                </a>
-                                <button
-                                    onClick={() => setDeploySuccess(false)}
-                                    className="w-full py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
-                                >
-                                    Continue Editing
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
         </div>
         </>
     );

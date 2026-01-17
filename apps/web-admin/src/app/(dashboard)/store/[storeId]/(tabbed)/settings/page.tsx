@@ -2,42 +2,15 @@
 
 import { useState, useEffect, use } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Globe, Palette, CreditCard, Bell, Shield, Check, AlertCircle, Loader2, ExternalLink, Copy, RefreshCw, Image as ImageIcon, Users, Trash2, UserPlus, Code2, Eye, EyeOff, Key, Mail } from "lucide-react";
-import Link from "next/link";
+import { Globe, Palette, CreditCard, Shield, Check, AlertCircle, Loader2, Users, Code2, Mail } from "lucide-react";
 import { MediaManager } from "@/components/media-manager";
 import { DeveloperSettings } from "@/components/developer-settings";
-
-interface StoreSettings {
-    id: string;
-    name: string;
-    subdomain: string;
-    custom_domain: string | null;
-    theme: string;
-    colors: {
-        primary: string;
-        secondary: string;
-        accent: string;
-        background: string;
-        text: string;
-    };
-    logo_url: string | null;
-    favicon_url: string | null;
-    stripe_account_id: string | null;
-    stripe_details_submitted: boolean;
-    currency: string;
-    owner_id: string;
-}
-
-interface Collaborator {
-    id: string;
-    user_id: string;
-    role: 'owner' | 'editor' | 'viewer';
-    email?: string;
-}
-
-type SettingsTab = 'general' | 'domains' | 'theme' | 'billing' | 'team' | 'developer';
-
-
+import { GeneralSettings } from "@/components/settings/general-settings";
+import { DomainSettings } from "@/components/settings/domain-settings";
+import { ThemeSettings } from "@/components/settings/theme-settings";
+import { BillingSettings } from "@/components/settings/billing-settings";
+import { TeamSettings } from "@/components/settings/team-settings";
+import { StoreSettings, Collaborator, SettingsTab } from "@/components/settings/types";
 
 export default function StoreSettingsPage({ params }: { params: Promise<{ storeId: string }> }) {
     const { storeId } = use(params);
@@ -370,155 +343,33 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                     {/* Content */}
                     <div className="flex-1">
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-                            {/* General Settings */}
                             {activeTab === 'general' && (
-                                <div className="p-6">
-                                    <h2 className="text-lg font-semibold text-slate-900 mb-6">General Settings</h2>
-
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                Store Name
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={settings.name}
-                                                onChange={(e) => setSettings(prev => prev ? { ...prev, name: e.target.value } : null)}
-                                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                            />
-                                            <p className="text-xs text-slate-500 mt-1">This will be used as the browser title.</p>
-                                        </div>
-
-                                        {/* Logo & Favicon */}
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Store Logo
-                                                </label>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="h-20 w-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden relative group">
-                                                        {settings.logo_url ? (
-                                                            <img src={settings.logo_url} alt="Logo" className="h-full w-full object-contain p-2" />
-                                                        ) : (
-                                                            <ImageIcon className="text-slate-300" size={24} />
-                                                        )}
-                                                        <button
-                                                            onClick={() => { setMediaTarget('logo'); setIsMediaOpen(true); }}
-                                                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <span className="text-white text-xs font-medium">Change</span>
-                                                        </button>
-                                                    </div>
-                                                    {settings.logo_url && (
-                                                        <button
-                                                            onClick={() => setSettings(prev => prev ? { ...prev, logo_url: null } : null)}
-                                                            className="text-sm text-red-600 hover:text-red-700"
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Favicon
-                                                </label>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="h-20 w-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden relative group">
-                                                        {settings.favicon_url ? (
-                                                            <img src={settings.favicon_url} alt="Favicon" className="h-8 w-8 object-contain" />
-                                                        ) : (
-                                                            <Globe className="text-slate-300" size={24} />
-                                                        )}
-                                                        <button
-                                                            onClick={() => { setMediaTarget('favicon'); setIsMediaOpen(true); }}
-                                                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <span className="text-white text-xs font-medium">Change</span>
-                                                        </button>
-                                                    </div>
-                                                    {settings.favicon_url && (
-                                                        <button
-                                                            onClick={() => setSettings(prev => prev ? { ...prev, favicon_url: null } : null)}
-                                                            className="text-sm text-red-600 hover:text-red-700"
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                Currency
-                                            </label>
-                                            <select
-                                                value={settings.currency}
-                                                onChange={(e) => setSettings(prev => prev ? { ...prev, currency: e.target.value } : null)}
-                                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                                            >
-                                                <option value="usd">USD ($)</option>
-                                                <option value="eur">EUR (€)</option>
-                                                <option value="gbp">GBP (£)</option>
-                                                <option value="cad">CAD ($)</option>
-                                                <option value="aud">AUD ($)</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="pt-4 border-t border-slate-200">
-                                            <button
-                                                onClick={() => saveSettings({
-                                                    name: settings.name,
-                                                    currency: settings.currency,
-                                                    logo_url: settings.logo_url,
-                                                    favicon_url: settings.favicon_url
-                                                })}
-                                                disabled={saving}
-                                                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 flex items-center gap-2"
-                                            >
-                                                {saving && <Loader2 className="animate-spin" size={16} />}
-                                                Save Changes
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <GeneralSettings
+                                    settings={settings}
+                                    setSettings={setSettings}
+                                    saveSettings={saveSettings}
+                                    saving={saving}
+                                    setMediaTarget={setMediaTarget}
+                                    setIsMediaOpen={setIsMediaOpen}
+                                />
                             )}
 
-                            {/* Domains Settings */}
                             {activeTab === 'domains' && (
-                                <div className="p-6">
-                                    <h2 className="text-lg font-semibold text-slate-900 mb-6">Domain Settings</h2>
-
-                                    <div className="space-y-6">
-                                        {/* Default Subdomain */}
-                                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm font-medium text-slate-700">Default Subdomain</span>
-                                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">Active</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <code className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded text-sm text-slate-600">
-                                                    {settings.subdomain}.swatbloc.com
-                                                </code>
-                                                <button
-                                                    onClick={() => copyToClipboard(`${settings.subdomain}.swatbloc.com`)}
-                                                    className="p-2 text-slate-400 hover:text-slate-600 transition"
-                                                    title="Copy"
-                                                >
-                                                    <Copy size={16} />
-                                                </button>
-                                                <a
-                                                    href={`https://${settings.subdomain}.swatbloc.com`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="p-2 text-slate-400 hover:text-blue-600 transition"
-                                                    title="Visit"
-                                                >
-                                                    <ExternalLink size={16} />
-                                                </a>
-                                            </div>
-                                        </div>
+                                <DomainSettings
+                                    settings={settings}
+                                    customDomain={customDomain}
+                                    setCustomDomain={setCustomDomain}
+                                    domainStatus={domainStatus}
+                                    handleDomainSave={handleDomainSave}
+                                    emailDomains={emailDomains}
+                                    newEmailDomain={newEmailDomain}
+                                    setNewEmailDomain={setNewEmailDomain}
+                                    handleAddEmailDomain={handleAddEmailDomain}
+                                    addingEmailDomain={addingEmailDomain}
+                                    copyToClipboard={copyToClipboard}
+                                    saving={saving}
+                                />
+                            )}
 
                                         {/* Custom Domain */}
                                         <div>
@@ -547,413 +398,35 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                             </div>
                                         </div>
 
-                                        {/* DNS Instructions */}
-                                        {customDomain && (domainStatus === 'pending' || settings.custom_domain) && (
-                                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                                                <div className="flex items-start gap-3">
-                                                    <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={18} />
-                                                    <div className="flex-1">
-                                                        <h4 className="font-medium text-amber-800 mb-2">DNS Configuration Required</h4>
-                                                        <p className="text-sm text-amber-700 mb-3">
-                                                            Add the following DNS records with your domain registrar:
-                                                        </p>
-                                                        <div className="space-y-3">
-                                                            {/* Root domain (A record or CNAME if supported) */}
-                                                            <div className="bg-white rounded border border-amber-200 p-3">
-                                                                <p className="text-xs text-amber-700 mb-2 font-medium">For root domain ({customDomain}):</p>
-                                                                <div className="grid grid-cols-3 gap-4 text-sm font-mono">
-                                                                    <div>
-                                                                        <span className="text-slate-500">Type:</span>
-                                                                        <span className="ml-2 text-slate-900">CNAME</span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-slate-500">Name:</span>
-                                                                        <span className="ml-2 text-slate-900">@</span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-slate-500">Value:</span>
-                                                                        <span className="ml-2 text-slate-900">{settings.subdomain}.swatbloc.com</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            {/* WWW subdomain */}
-                                                            <div className="bg-white rounded border border-amber-200 p-3">
-                                                                <p className="text-xs text-amber-700 mb-2 font-medium">For www.{customDomain}:</p>
-                                                                <div className="grid grid-cols-3 gap-4 text-sm font-mono">
-                                                                    <div>
-                                                                        <span className="text-slate-500">Type:</span>
-                                                                        <span className="ml-2 text-slate-900">CNAME</span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-slate-500">Name:</span>
-                                                                        <span className="ml-2 text-slate-900">www</span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-slate-500">Value:</span>
-                                                                        <span className="ml-2 text-slate-900">{settings.subdomain}.swatbloc.com</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-xs text-amber-600 mt-3">
-                                                            <strong>Note:</strong> Some registrars don't support CNAME on root (@). In that case, use only the www record and enable forwarding from @ to www.
-                                                        </p>
-                                                        <p className="text-xs text-amber-600 mt-1">
-                                                            DNS changes can take up to 48 hours to propagate.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Email Sending Domains */}
-                                        <div className="pt-6 border-t border-slate-200">
-                                            <h3 className="text-md font-medium text-slate-900 mb-4">Email Sending Domains</h3>
-                                            <p className="text-sm text-slate-500 mb-4">
-                                                Verify domains to send emails (like order confirmations) from your own brand.
-                                            </p>
-
-                                            {/* List existing domains */}
-                                            <div className="space-y-4 mb-6">
-                                                {emailDomains.map((domain) => (
-                                                    <div key={domain.id} className="border border-slate-200 rounded-lg p-4">
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <div className="font-medium text-slate-900">{domain.domain}</div>
-                                                            <div className={`text-xs px-2 py-1 rounded-full font-medium ${domain.status === 'verified' ? 'bg-green-100 text-green-700' :
-                                                                domain.status === 'failed' ? 'bg-red-100 text-red-700' :
-                                                                    'bg-amber-100 text-amber-700'
-                                                                }`}>
-                                                                {domain.status.charAt(0).toUpperCase() + domain.status.slice(1)}
-                                                            </div>
-                                                        </div>
-
-                                                        {domain.status !== 'verified' && domain.dns_records && (
-                                                            <div className="bg-slate-50 p-3 rounded text-xs font-mono overflow-x-auto">
-                                                                <table className="w-full text-left">
-                                                                    <thead>
-                                                                        <tr className="text-slate-500">
-                                                                            <th className="pb-2">Type</th>
-                                                                            <th className="pb-2">Name</th>
-                                                                            <th className="pb-2">Value</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                                                        {domain.dns_records.map((record: any, i: number) => (
-                                                                            <tr key={i} className="border-t border-slate-200">
-                                                                                <td className="py-2 pr-4">{record.record_type || record.type}</td>
-                                                                                <td className="py-2 pr-4">{record.name}</td>
-                                                                                <td className="py-2 break-all">{record.value}</td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* Add new domain */}
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={newEmailDomain}
-                                                    onChange={(e) => setNewEmailDomain(e.target.value)}
-                                                    placeholder="marketing.mystore.com"
-                                                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                                />
-                                                <button
-                                                    onClick={handleAddEmailDomain}
-                                                    disabled={addingEmailDomain || !newEmailDomain}
-                                                    className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 flex items-center gap-2"
-                                                >
-                                                    {addingEmailDomain && <Loader2 className="animate-spin" size={16} />}
-                                                    Add Domain
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Theme Settings */}
                             {activeTab === 'theme' && (
-                                <div className="p-6">
-                                    <h2 className="text-lg font-semibold text-slate-900 mb-6">Theme Settings</h2>
-
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                Animation Style
-                                            </label>
-                                            <select
-                                                value={settings.theme}
-                                                onChange={(e) => setSettings(prev => prev ? { ...prev, theme: e.target.value } : null)}
-                                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                                            >
-                                                <option value="simple">Simple (Fade Up)</option>
-                                                <option value="playful">Playful (Scale Up)</option>
-                                                <option value="elegant">Elegant (Fade In)</option>
-                                                <option value="dynamic">Dynamic (Slide In)</option>
-                                                <option value="none">None</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-4">
-                                                Brand Colors
-                                            </label>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {Object.entries(settings.colors).map(([key, value]) => (
-                                                    <div key={key} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
-                                                        <span className="text-sm capitalize text-slate-700">{key}</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs text-slate-400 uppercase">{value}</span>
-                                                            <input
-                                                                type="color"
-                                                                value={value}
-                                                                onChange={(e) => {
-                                                                    const newColors = { ...settings.colors, [key]: e.target.value };
-                                                                    setSettings(prev => prev ? { ...prev, colors: newColors } : null);
-                                                                }}
-                                                                className="h-8 w-8 rounded cursor-pointer border-0 p-0"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-4 border-t border-slate-200">
-                                            <button
-                                                onClick={() => saveSettings({ theme: settings.theme, colors: settings.colors })}
-                                                disabled={saving}
-                                                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 flex items-center gap-2"
-                                            >
-                                                {saving && <Loader2 className="animate-spin" size={16} />}
-                                                Save Changes
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <ThemeSettings
+                                    settings={settings}
+                                    setSettings={setSettings}
+                                    saveSettings={saveSettings}
+                                    saving={saving}
+                                />
                             )}
 
-                            {/* Billing Settings */}
                             {activeTab === 'billing' && (
-                                <div className="p-6">
-                                    <h2 className="text-lg font-semibold text-slate-900 mb-6">Billing & Payments</h2>
-
-                                    <div className="space-y-6">
-                                        {/* Stripe Connect Status */}
-                                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h3 className="font-medium text-slate-900">Stripe Connect</h3>
-                                                    <p className="text-sm text-slate-500 mt-1">
-                                                        {settings.stripe_details_submitted
-                                                            ? "Your Stripe account is active and ready to accept payments."
-                                                            : settings.stripe_account_id
-                                                                ? "Your Stripe account is created but setup is incomplete."
-                                                                : "Connect your Stripe account to accept payments from customers."
-                                                        }
-                                                    </p>
-                                                </div>
-                                                {settings.stripe_details_submitted ? (
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium flex items-center gap-1">
-                                                            <Check size={14} /> Active
-                                                        </span>
-                                                        <button
-                                                            onClick={handleConnectStripe}
-                                                            disabled={saving}
-                                                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                                                        >
-                                                            Manage Account
-                                                        </button>
-                                                    </div>
-                                                ) : settings.stripe_account_id ? (
-                                                    <button
-                                                        onClick={handleConnectStripe}
-                                                        disabled={saving}
-                                                        className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition font-medium text-sm flex items-center gap-2"
-                                                    >
-                                                        {saving && <Loader2 className="animate-spin" size={14} />}
-                                                        Continue Setup
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={handleConnectStripe}
-                                                        disabled={saving}
-                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm flex items-center gap-2"
-                                                    >
-                                                        {saving && <Loader2 className="animate-spin" size={14} />}
-                                                        Connect Stripe
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {settings.stripe_account_id && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Stripe Account ID
-                                                </label>
-                                                <div className="flex items-center gap-2">
-                                                    <code className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded text-sm text-slate-600">
-                                                        {settings.stripe_account_id}
-                                                    </code>
-                                                    <button
-                                                        onClick={() => copyToClipboard(settings.stripe_account_id!)}
-                                                        className="p-2 text-slate-400 hover:text-slate-600 transition"
-                                                        title="Copy"
-                                                    >
-                                                        <Copy size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                <BillingSettings
+                                    settings={settings}
+                                    handleConnectStripe={handleConnectStripe}
+                                    saving={saving}
+                                />
                             )}
 
-                            {/* Team Settings */}
                             {activeTab === 'team' && (
-                                <div className="p-6">
-                                    <h2 className="text-lg font-semibold text-slate-900 mb-6">Team & Collaboration</h2>
-
-                                    <div className="space-y-6">
-                                        {/* Invite Collaborator */}
-                                        {isOwner && (
-                                            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                                <h3 className="font-medium text-slate-900 mb-4">Invite Team Member</h3>
-                                                <div className="flex gap-3">
-                                                    <div className="flex-1">
-                                                        <input
-                                                            type="email"
-                                                            value={inviteEmail}
-                                                            onChange={(e) => setInviteEmail(e.target.value)}
-                                                            placeholder="team@example.com"
-                                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                                        />
-                                                    </div>
-                                                    <select
-                                                        value={inviteRole}
-                                                        onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
-                                                        className="px-4 py-2.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                                    >
-                                                        <option value="editor">Editor</option>
-                                                        <option value="viewer">Viewer</option>
-                                                    </select>
-                                                    <button
-                                                        onClick={handleInviteCollaborator}
-                                                        disabled={inviting || !inviteEmail}
-                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        {inviting ? (
-                                                            <Loader2 className="animate-spin" size={16} />
-                                                        ) : (
-                                                            <UserPlus size={16} />
-                                                        )}
-                                                        Invite
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-slate-500 mt-2">
-                                                    Editors can manage products, orders, and content. Viewers have read-only access.
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Team Members List */}
-                                        <div>
-                                            <h3 className="font-medium text-slate-900 mb-3">Team Members</h3>
-                                            <div className="border border-slate-200 rounded-lg divide-y divide-slate-200 overflow-hidden">
-                                                {/* Owner Row */}
-                                                <div className="p-4 bg-white flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                                            <Users size={18} className="text-blue-600" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-medium text-slate-900">{isOwner ? 'You (Owner)' : 'Store Owner'}</p>
-                                                            <p className="text-sm text-slate-500">Full access to all settings</p>
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-medium">
-                                                        Owner
-                                                    </span>
-                                                </div>
-
-                                                {/* Collaborators */}
-                                                {collaborators.length === 0 ? (
-                                                    <div className="p-8 text-center text-slate-500">
-                                                        <Users size={32} className="mx-auto mb-2 opacity-30" />
-                                                        <p className="text-sm">No team members yet</p>
-                                                        <p className="text-xs">Invite someone to collaborate on this store</p>
-                                                    </div>
-                                                ) : (
-                                                    collaborators.map((collab) => (
-                                                        <div key={collab.id} className="p-4 bg-white flex items-center justify-between hover:bg-slate-50 transition">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-                                                                    <Users size={18} className="text-slate-600" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-medium text-slate-900">
-                                                                        {collab.email || `User ${collab.user_id.slice(0, 8)}...`}
-                                                                    </p>
-                                                                    <p className="text-sm text-slate-500 capitalize">{collab.role}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${collab.role === 'editor'
-                                                                    ? 'bg-green-100 text-green-700'
-                                                                    : 'bg-slate-100 text-slate-600'
-                                                                    }`}>
-                                                                    {collab.role === 'editor' ? 'Editor' : 'Viewer'}
-                                                                </span>
-                                                                {isOwner && (
-                                                                    <button
-                                                                        onClick={() => handleRemoveCollaborator(collab.id)}
-                                                                        className="p-2 text-slate-400 hover:text-red-500 transition"
-                                                                        title="Remove collaborator"
-                                                                    >
-                                                                        <Trash2 size={16} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Permissions Info */}
-                                        <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                                            <h4 className="font-medium text-amber-800 mb-2">Role Permissions</h4>
-                                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                                <div>
-                                                    <p className="font-medium text-amber-900">Editor</p>
-                                                    <ul className="text-amber-700 mt-1 space-y-0.5">
-                                                        <li>• Manage products & inventory</li>
-                                                        <li>• View & update orders</li>
-                                                        <li>• Edit store content</li>
-                                                        <li>• Access analytics</li>
-                                                    </ul>
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-amber-900">Viewer</p>
-                                                    <ul className="text-amber-700 mt-1 space-y-0.5">
-                                                        <li>• View products & orders</li>
-                                                        <li>• View analytics</li>
-                                                        <li>• No edit permissions</li>
-                                                        <li>• No settings access</li>
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <TeamSettings
+                                    isOwner={isOwner}
+                                    inviteEmail={inviteEmail}
+                                    setInviteEmail={setInviteEmail}
+                                    inviteRole={inviteRole}
+                                    setInviteRole={setInviteRole}
+                                    handleInviteCollaborator={handleInviteCollaborator}
+                                    inviting={inviting}
+                                    collaborators={collaborators}
+                                    handleRemoveCollaborator={handleRemoveCollaborator}
+                                />
                             )}
 
                             {/* Developer Settings */}
