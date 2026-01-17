@@ -1,117 +1,80 @@
-# SwatBloc SDK - Cursor Rules
+# MegaPlatform (SwatBloc) - Cursor Project Rules
 
-You are building an app that uses the SwatBloc SDK for headless commerce.
+You are working in the SwatBloc monorepo, a headless commerce platform with "Virtual Table" capabilities.
 
-## Installation
+## 🏗 Project Structure (TurboRepo)
 
-```bash
-npm install @swatbloc/sdk
-```
+- **apps/web-admin**: Next.js 15 App Router dashboard for store owners.
+  - Uses strictly typed `sst-env.d.ts` for bound resources.
+  - Implements the "Database Manager" UI (`content/page.tsx`).
+- **packages/sdk**: The public `@swatbloc/sdk` library.
+  - **Version**: 1.0.x (Automated publishing via GitHub Trusted OIDC).
+  - **Key Features**: Products, Cart, Checkout, **Custom DB**.
+- **packages/database**: Shared SQL schema and migrations.
+  - **Database**: Supabase (Postgres).
+  - **Pattern**: Custom content is stored in `content_items` (JSONB) but indexed via GIN.
+- **packages/mcp-server**: Model Context Protocol server for AI agents.
 
-## Initialization
+## 🛠 Tech Stack
+
+- **Framework**: Next.js 15 (App Router), React, Tailwind CSS.
+- **Language**: TypeScript (Strict).
+- **Build System**: TurboRepo + TSUP (for SDK).
+- **Infrastructure**: SST (Ion) on AWS.
+- **Database**: Supabase (Postgres).
+- **Validation**: Zod (Runtime schema validation for custom DBs).
+
+## 💾 Feature: Custom Databases (Virtual Tables)
+
+We support "Virtual Tables" where users define schemas on the fly.
+- **Schema Storage**: `content_models` table stores Zod-like definitions.
+- **Data Storage**: `content_items` table stores data in a `data` JSONB column.
+- **Indexing**: GIN indexes on `data` for fast filtering.
+- **Relations**: `references` column (`text[]`) stores IDs of related items.
+
+### SDK Usage (Updated)
+
+The SDK now supports `swat.db` for managing these virtual tables.
 
 ```typescript
-import { SwatBloc } from '@swatbloc/sdk';
-
-// Initialize with your public API key from SwatBloc dashboard
-const swat = new SwatBloc('pk_live_YOUR_KEY_HERE');
-```
-
-## API Reference
-
-### Products
-
-```typescript
-// List all products
-const products = await swat.products.list();
-
-// List with options  
-const products = await swat.products.list({
-  limit: 10,
-  offset: 0,
-  category: 'shoes',
-  search: 'running'
+// 1. Define Model (Idempotent)
+await swat.db.createModel('Waivers', 'waivers', {
+  fields: [
+    { key: 'email', type: 'text', required: true },
+    { key: 'signed_at', type: 'date' }
+  ]
 });
 
-// Get single product by ID or slug
-const product = await swat.products.get('prod_123');
-const product = await swat.products.get('blue-running-shoes');
-
-// Get by category
-const shoes = await swat.products.byCategory('shoes');
-
-// Search products
-const results = await swat.products.search('running shoes');
-```
-
-### Cart
-
-```typescript
-// Create a cart
-const cart = await swat.cart.create([
-  { productId: 'prod_123', quantity: 2 },
-  { productId: 'prod_456', quantity: 1 }
-]);
-
-// Get existing cart
-const cart = await swat.cart.get('cart_abc123');
-
-// Add items
-const cart = await swat.cart.addItems('cart_abc123', [
-  { productId: 'prod_789', quantity: 1 }
-]);
-
-// Update quantity
-const cart = await swat.cart.updateItem('cart_abc123', 'prod_123', 3);
-
-// Remove item
-const cart = await swat.cart.removeItem('cart_abc123', 'prod_123');
-```
-
-### Checkout
-
-```typescript
-// Create checkout session (redirects to Stripe)
-const checkout = await swat.checkout.create('cart_abc123', {
-  successUrl: 'https://mysite.com/success',
-  cancelUrl: 'https://mysite.com/cart'
+// 2. Write Data (Auto-validated)
+await swat.db.collection('waivers').create({
+  email: 'user@example.com',
+  signed_at: new Date().toISOString()
 });
 
-// Redirect user to checkout
-window.location.href = checkout.url;
+// 3. Query Data
+const results = await swat.db.collection('waivers').list({
+  filter: { email: 'user@example.com' }
+});
 ```
 
-### Store Info
+## 🚀 CI/CD & Deployment
 
-```typescript
-// Get store details
-const store = await swat.store.info();
-console.log(store.name);       // "My Store"
-console.log(store.currency);   // "usd"
-console.log(store.colors);     // { primary: "#3B82F6", ... }
-```
+- **SDK Publishing**:
+  - Workflow: `.github/workflows/publish-sdk.yml`
+  - Auth: GitHub Actions OIDC (Trusted Publishing).
+  - Trigger: Push to `main` with version bump in `packages/sdk/package.json`.
+  - **Protocol**: `npm publish --provenance`.
 
-## Types
+## 📝 Coding Standards
 
-All responses are fully typed. Import types if needed:
+- **React**: Use Functional Components with Hooks.
+- **Files**: `kebab-case` filenames.
+- **Exports**: Named exports preferred over default.
+- **Validation**: Zod for all API inputs and Custom DB schemas.
+- **Error Handling**: Throw informative errors; UI blocks should handle gracefully.
 
-```typescript
-import type { Product, Cart, CheckoutSession, StoreInfo } from '@swatbloc/sdk';
-```
+## ⚠️ Important Context
 
-## Error Handling
-
-```typescript
-try {
-  const product = await swat.products.get('invalid-id');
-} catch (error) {
-  console.error(error.message); // "Product not found: invalid-id"
-}
-```
-
-## Important Notes
-
-- Always use the PUBLIC key (pk_live_...) in client-side code
-- Never expose your SECRET key (sk_live_...) in frontend code
-- Cart IDs persist across sessions - save them to localStorage
-- Checkout URLs expire after 24 hours
+- **Deployment**: We use SST. `sst dev` runs the local environment.
+- **Environment**: Check `sst-env.d.ts` for available resource bindings.
+- **SDK**: When editing the SDK, remember to run `npm run build` in `packages/sdk` or use `turbo build`.
