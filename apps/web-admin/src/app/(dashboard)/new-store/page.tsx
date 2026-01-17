@@ -165,7 +165,7 @@ export default function CreateStore() {
   if (creationMode === "selection") {
     return (
       <div className="max-w-5xl mx-auto py-12 px-6">
-        <Link href="/" className="inline-flex items-center text-slate-600 hover:text-slate-900 transition-colors mb-8">
+        <Link href="/dashboard" className="inline-flex items-center text-slate-600 hover:text-slate-900 transition-colors mb-8">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Link>
