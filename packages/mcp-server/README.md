@@ -16,3 +16,5 @@ To use this with your AI assistant (e.g., Claude Desktop, Cursor, etc.), configu
 - `npm install`: Install dependencies
 - `npm run build`: Build the server
 - `npm run dev`: Watch mode
+
+:)
