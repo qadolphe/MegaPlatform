@@ -15,13 +15,21 @@ export async function POST(request: Request) {
 
     const { data: store } = await supabase
       .from('stores')
-      .select('id')
+      .select('id, plan')
       .eq('id', storeId)
       .eq('owner_id', user.id)
       .single();
 
     if (!store) {
       return NextResponse.json({ error: 'Store not found or unauthorized' }, { status: 404 });
+    }
+
+    // THE PAYWALL CHECK
+    if (store.plan === 'free') {
+      return NextResponse.json(
+        { error: "Custom domains require the PRO plan." },
+        { status: 403 }
+      );
     }
 
     // 2. Call Resend

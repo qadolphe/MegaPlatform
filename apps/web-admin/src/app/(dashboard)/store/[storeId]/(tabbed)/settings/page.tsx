@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Globe, Palette, CreditCard, Shield, Check, AlertCircle, Loader2, Users, Code2, Mail } from "lucide-react";
 import { MediaManager } from "@/components/media-manager";
@@ -11,17 +12,21 @@ import { ThemeSettings } from "@/components/settings/theme-settings";
 import { BillingSettings } from "@/components/settings/billing-settings";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { StoreSettings, Collaborator, SettingsTab } from "@/components/settings/types";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function StoreSettingsPage({ params }: { params: Promise<{ storeId: string }> }) {
     const { storeId } = use(params);
+    const searchParams = useSearchParams();
+    const router = useRouter(); // Keeping router for future use if needed, though searchParams is key here
     const supabase = createClient();
 
     const [settings, setSettings] = useState<StoreSettings | null>(null);
     const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+    const [activeTab, setActiveTab] = useState<SettingsTab>((searchParams.get('tab') as SettingsTab) || 'general');
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
     const isOwner = settings?.owner_id === currentUser?.id;
 
@@ -236,6 +241,11 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     };
 
     const handleDomainSave = async () => {
+        if (settings?.plan === 'free') {
+            setShowUpgradeModal(true);
+            return;
+        }
+
         if (!customDomain) {
             await saveSettings({ custom_domain: null });
             setDomainStatus('idle');
@@ -480,6 +490,31 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                 onClick={confirmInvite}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2"
                             >
+
+            <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+                <DialogContent>
+                    <div className="text-center p-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                             <CreditCard size={24} className="text-blue-600" />
+                        </div>
+                        <h2 className="text-xl font-bold mb-2">Upgrade to Pro</h2>
+                        <p className="text-slate-500 mb-6">
+                            Verified Custom Domains are available on the Pro plan.
+                            Upgrade now to remove branding and add your own domain.
+                        </p>
+                        <a 
+                            href="#" 
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition w-full block"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                alert("Redirect to Stripe Checkout...");
+                            }}
+                        >
+                            Upgrade for $29/mo
+                        </a>
+                    </div>
+                </DialogContent>
+            </Dialog>
                                 Send Invite
                             </button>
                         </div>

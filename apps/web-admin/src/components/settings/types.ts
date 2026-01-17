@@ -17,6 +17,7 @@ export interface StoreSettings {
     stripe_details_submitted: boolean;
     currency: string;
     owner_id: string;
+    plan: string;
 }
 
 export interface Collaborator {

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Loader2, Wand2, Check, Store, Palette, Package, Layout, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Wand2, Check, Store, Palette, Package, Layout, ChevronDown, ChevronUp, Code2, Bot } from "lucide-react";
 import Link from "next/link";
 
 // Thinking steps for the loading animation
@@ -13,6 +13,7 @@ const THINKING_STEPS = [
 ];
 
 export default function CreateStore() {
+  const [creationMode, setCreationMode] = useState<"selection" | "ai" | "dev">("selection");
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
   const [businessType, setBusinessType] = useState<
@@ -88,7 +89,7 @@ export default function CreateStore() {
     return lines.join("\n");
   };
 
-  const handleCreate = async (e?: React.FormEvent) => {
+  const handleAiCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     const prompt = buildPrompt();
@@ -121,6 +122,38 @@ export default function CreateStore() {
     }
   };
 
+  const handleDevCreate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    if (!storeName.trim()) {
+      setError("Please enter a store name");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch('/api/stores/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: storeName })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create store");
+      }
+
+      const { storeId } = await response.json();
+      router.push(`/store/${storeId}/settings?tab=developer`);
+    } catch (e) {
+      console.error("Store creation error:", e);
+      setError(e instanceof Error ? e.message : "Something went wrong");
+      setLoading(false);
+    }
+  };
+
   const suggestions = [
     { label: "Handmade jewelry", businessType: "ecommerce" as const, offerings: "Handmade jewelry for young professionals" },
     { label: "Streetwear brand", businessType: "ecommerce" as const, offerings: "Streetwear hoodies, tees, and accessories" },
@@ -129,13 +162,121 @@ export default function CreateStore() {
     { label: "SaaS product", businessType: "digital" as const, offerings: "A software product with pricing tiers and feature pages" }
   ];
 
+  if (creationMode === "selection") {
+    return (
+      <div className="max-w-5xl mx-auto py-12 px-6">
+        <Link href="/" className="inline-flex items-center text-slate-600 hover:text-slate-900 transition-colors mb-8">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Link>
+        
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">How would you like to build your store?</h1>
+        <p className="text-slate-500 mb-10">Choose the path that best fits your technical expertise.</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* AI Builder Option */}
+          <button 
+            onClick={() => setCreationMode("ai")}
+            className="flex flex-col items-start p-8 rounded-2xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-left group"
+          >
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center mb-6 shadow-lg shadow-blue-200">
+              <Bot className="h-7 w-7" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-700">AI Store Builder</h3>
+            <p className="text-slate-600 mb-6 leading-relaxed">
+              We'll build a basic store for you. Just answer a few questions and our AI will generate colors, layout, and content.
+            </p>
+            <div className="mt-auto flex items-center text-blue-600 font-semibold group-hover:translate-x-1 transition-transform">
+              Start Builder <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+            </div>
+          </button>
+
+          {/* Developer Option */}
+          <button 
+            onClick={() => setCreationMode("dev")}
+            className="flex flex-col items-start p-8 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all text-left group"
+          >
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center mb-6 shadow-lg shadow-slate-200">
+              <Code2 className="h-7 w-7" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-700">Developer Mode</h3>
+            <p className="text-slate-600 mb-6 leading-relaxed">
+              We'll just set up the environment and API keys. You build the store using your own tools, Cursor, or direct API access.
+            </p>
+            <div className="mt-auto flex items-center text-emerald-700 font-semibold group-hover:translate-x-1 transition-transform">
+              Initialize Environment <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Developer Mode Form
+  if (creationMode === "dev") {
+    return (
+      <div className="max-w-2xl mx-auto py-12 px-6">
+         <button 
+            onClick={() => setCreationMode("selection")} 
+            className="inline-flex items-center text-slate-600 hover:text-slate-900 transition-colors mb-8"
+         >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to selection
+        </button>
+
+        <div className="flex items-start gap-4 mb-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 shadow-sm">
+                <Code2 className="h-6 w-6 text-white" />
+            </div>
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900">Developer Setup</h1>
+                <p className="text-slate-500">Initialize a headless environment.</p>
+            </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+            <form onSubmit={handleDevCreate} className="space-y-6">
+                {error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Store name</label>
+                    <input
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      placeholder="My Awesome App"
+                      autoFocus
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      disabled={loading}
+                    />
+                    <p className="text-xs text-slate-500 mt-2">This will generate your project ID and initial API keys.</p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Code2 className="h-5 w-5" />}
+                  {loading ? "Initializing..." : "Create Environment"}
+                </button>
+            </form>
+        </div>
+      </div>
+    );
+  }
+
+  // AI Mode (Original Flow)
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto py-12 px-6">
       <div className="flex items-center justify-between mb-8">
-        <Link href="/" className="inline-flex items-center text-slate-600 hover:text-slate-900 transition-colors">
+        <button onClick={() => setCreationMode("selection")} className="inline-flex items-center text-slate-600 hover:text-slate-900 transition-colors">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
-        </Link>
+        </button>
       </div>
 
         {/* Loading State with Thinking Steps */}
@@ -205,7 +346,7 @@ export default function CreateStore() {
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 p-8">
-              <form onSubmit={handleCreate} className="space-y-6">
+              <form onSubmit={handleAiCreate} className="space-y-6">
                 {error && (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error}

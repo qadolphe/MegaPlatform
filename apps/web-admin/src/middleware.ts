@@ -104,8 +104,13 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - public (public folder)
+     * - api/webhook (Stripe webhooks MUST be public)
+     * - login (auth page)
+     * - auth (auth callbacks)
+     * - docs (documentation)
+     * - / (Root Landing Page - NEW!)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|login|auth|api/stripe/webhook|docs|$).*)', // Added |$ to exclude root
   ],
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, PlusCircle, Settings, LogOut, Store, Sparkles, Book } from "lucide-react";
@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Create Store", href: "/new-store", icon: PlusCircle },
   { name: "SDK Docs", href: "/docs", icon: Book },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -19,7 +19,16 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const supabase = createClient();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+    };
+    checkUser();
+  }, [supabase]);
 
   if (pathname === "/login") return null;
 
@@ -41,7 +50,7 @@ export function Sidebar() {
     >
       {/* Logo */}
       <Link
-        href="/"
+        href={isLoggedIn ? "/dashboard" : "/login"}
         className={`relative flex h-16 items-center ${isHovered ? "px-5" : "justify-center"} overflow-hidden whitespace-nowrap flex-shrink-0 group`}
       >
         <div className="relative">
@@ -67,10 +76,11 @@ export function Sidebar() {
       <div className="flex-1 flex flex-col gap-1 px-3 mt-4 overflow-x-hidden">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
+          const href = (item.name === "Dashboard" && !isLoggedIn) ? "/login" : item.href;
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={href}
               title={!isHovered ? item.name : ""}
               className={`relative flex items-center ${isHovered ? "" : "justify-center"} gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
                 ? "text-white"
