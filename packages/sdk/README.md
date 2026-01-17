@@ -107,3 +107,5 @@ import { Product, Cart, ContentItem } from '@swatbloc/sdk';
 2. Navigate to **Settings** → **Developer**
 3. Generate a new API key
 4. Use the public key (`pk_live_...`) in your app
+
+:)
