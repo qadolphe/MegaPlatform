@@ -1,6 +1,10 @@
 {
   "name": "swatbloc-monorepo",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qadolphe/MegaPlatform.git"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"

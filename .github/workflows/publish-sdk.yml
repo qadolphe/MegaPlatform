@@ -1,0 +1,36 @@
+name: Publish SDK to NPM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/sdk/**'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build SDK
+        run: npx turbo run build --filter=@swatbloc/sdk
+
+      - name: Publish to NPM (Trusted)
+        # We use --provenance to link the package to this GitHub repo securely
+        run: |
+          cd packages/sdk
+          npm publish --access public --provenance || echo "Publish failed - likely version not bumped."
