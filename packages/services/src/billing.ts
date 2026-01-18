@@ -100,6 +100,19 @@ export const createCheckoutSession = async ({
   }
 };
 
+export const retrieveCheckoutSession = async (sessionId: string, stripeAccountId: string, isTestMode = false) => {
+  try {
+    const stripe = getStripeClient(isTestMode);
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      stripeAccount: stripeAccountId,
+    });
+    return session;
+  } catch (error) {
+    console.error('Error retrieving checkout session:', error);
+    throw error;
+  }
+};
+
 export const constructEvent = (payload: string | Buffer, signature: string, secret: string) => {
   try {
     // We try with live first as it's the most common
