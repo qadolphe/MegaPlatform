@@ -69,7 +69,7 @@ export async function POST(request: Request) {
         // Find the store by subdomain or custom_domain
         let storeQuery = supabase
             .from('stores')
-            .select('id, stripe_account_id, stripe_account_id_test, stripe_details_submitted, stripe_details_submitted_test, currency, name, subdomain, is_test_mode');
+            .select('id, stripe_account_id, stripe_account_id_test, stripe_details_submitted, stripe_details_submitted_test, currency, name, subdomain');
 
         if (subdomain) {
             storeQuery = storeQuery.eq('subdomain', subdomain);
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ 
             url: session.url,
             debug: process.env.NODE_ENV === 'development' ? {
-                mode: (store as any).is_test_mode ? 'test' : 'live',
+                mode: isTestMode ? 'test' : 'live',
                 storeId: store.id
             } : undefined
         });

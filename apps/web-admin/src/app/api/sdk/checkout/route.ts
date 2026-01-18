@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         // 1. Fetch Store (for Stripe connection)
         const { data: store, error: storeError } = await supabase
             .from('stores')
-            .select('id, stripe_account_id, stripe_account_id_test, stripe_details_submitted, stripe_details_submitted_test, currency, is_test_mode')
+            .select('id, stripe_account_id, stripe_account_id_test, stripe_details_submitted, stripe_details_submitted_test, currency')
             .eq('id', storeId)
             .single();
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
             url: session.url,
             expiresAt: new Date(session.expires_at * 1000).toISOString(),
             debug: process.env.NODE_ENV === 'development' ? {
-                mode: store.is_test_mode ? 'test' : 'live',
+                mode: isTestMode ? 'test' : 'live',
                 storeId: store.id
             } : undefined
         });

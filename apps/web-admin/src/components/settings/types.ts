@@ -20,7 +20,6 @@ export interface StoreSettings {
     currency: string;
     owner_id: string;
     plan: string;
-    is_test_mode: boolean;
 }
 
 export interface Collaborator {

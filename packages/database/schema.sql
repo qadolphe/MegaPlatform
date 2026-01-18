@@ -26,7 +26,6 @@ create table if not exists public.stores (
   header_config jsonb default '{}'::jsonb,
   footer_config jsonb default '{}'::jsonb,
   developer_mode boolean default false,
-  is_test_mode boolean default false,
   stripe_account_id_test text,
   stripe_details_submitted_test boolean default false,
   plan text default 'free',
