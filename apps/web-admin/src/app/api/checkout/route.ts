@@ -134,8 +134,6 @@ export async function POST(request: Request) {
             successUrl: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${origin}${returnUrl || '/'}`,
             applicationFeeAmount: applicationFeeAmount,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            isTestMode: (store as any).is_test_mode,
             metadata: {
                 items: JSON.stringify(items.map(i => ({ id: i.id, qty: i.quantity, price: i.price }))),
             },

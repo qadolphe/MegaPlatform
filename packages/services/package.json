@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "resend": "^4.0.0",
-    "stripe": "^14.14.0"
+    "stripe": "^14.14.0",
+    "@repo/database": "*"
   },
   "devDependencies": {
     "typescript": "latest",

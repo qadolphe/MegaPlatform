@@ -1,15 +1,16 @@
 import Stripe from 'stripe';
+import { supabase } from '@repo/database';
 
 const stripeLive = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
 });
 
-const stripeTest = new Stripe(process.env.STRIPE_SECRET_KEY_TEST!, {
+const stripeTest = new Stripe(process.env.STRIPE_TEST_SECRET_KEY!, {
   apiVersion: '2023-10-16',
 });
 
 // Helper to get the correct client
-const getStripe = (isTestMode = false) => isTestMode ? stripeTest : stripeLive;
+const getStripeClient = (isTestMode = false) => isTestMode ? stripeTest : stripeLive;
 
 export const createConnectAccount = async (email: string) => {
   // Always use Live client for creating accounts (Connect platform is typically one environment)
@@ -51,7 +52,6 @@ export const createCheckoutSession = async ({
   cancelUrl,
   applicationFeeAmount, // In cents
   customerEmail,
-  isTestMode = false,
   metadata,
 }: {
   storeId: string;
@@ -62,11 +62,19 @@ export const createCheckoutSession = async ({
   cancelUrl: string;
   applicationFeeAmount: number;
   customerEmail?: string;
-  isTestMode?: boolean;
   metadata?: Record<string, string>;
 }) => {
   try {
-    const stripe = getStripe(isTestMode);
+    // Look up the store mode from database
+    const { data: store, error: storeError } = await supabase
+      .from('stores')
+      .select('is_test_mode')
+      .eq('id', storeId)
+      .single();
+
+    if (storeError || !store) throw new Error('Store not found');
+
+    const stripe = getStripeClient(!!store.is_test_mode);
     
     // Note: When calling connected accounts in Test Mode, 
     // the platform must also use its Test Mode secret key.
