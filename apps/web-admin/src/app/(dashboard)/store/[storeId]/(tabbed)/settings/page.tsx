@@ -181,13 +181,13 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         }
     };
 
-    const handleConnectStripe = async () => {
+    const handleConnectStripe = async (isTestMode: boolean) => {
         setSaving(true);
         try {
             const res = await fetch('/api/stripe/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storeId }),
+                body: JSON.stringify({ storeId, env: isTestMode ? 'test' : 'live' }),
             });
             const data = await res.json();
             if (data.url) {

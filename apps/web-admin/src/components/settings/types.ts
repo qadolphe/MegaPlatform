@@ -14,7 +14,9 @@ export interface StoreSettings {
     logo_url: string | null;
     favicon_url: string | null;
     stripe_account_id: string | null;
+    stripe_account_id_test: string | null;
     stripe_details_submitted: boolean;
+    stripe_details_submitted_test: boolean;
     currency: string;
     owner_id: string;
     plan: string;

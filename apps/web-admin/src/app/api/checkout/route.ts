@@ -69,7 +69,7 @@ export async function POST(request: Request) {
         // Find the store by subdomain or custom_domain
         let storeQuery = supabase
             .from('stores')
-            .select('id, stripe_account_id, stripe_details_submitted, currency, name, subdomain, is_test_mode');
+            .select('id, stripe_account_id, stripe_account_id_test, stripe_details_submitted, stripe_details_submitted_test, currency, name, subdomain, is_test_mode');
 
         if (subdomain) {
             storeQuery = storeQuery.eq('subdomain', subdomain);
@@ -92,15 +92,25 @@ export async function POST(request: Request) {
 
         console.log('Found store:', store.name, 'ID:', store.id);
 
+        // Determine mode based on HOST, not store settings
+        const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+        // Optional: Could also check for special "preview" domains if needed
+        const isTestMode = isLocalhost;
+
+        console.log(`Processing checkout for ${host}. Mode: ${isTestMode ? 'TEST' : 'LIVE'}`);
+
+        const stripeAccountId = isTestMode ? store.stripe_account_id_test : store.stripe_account_id;
+        const detailsSubmitted = isTestMode ? store.stripe_details_submitted_test : store.stripe_details_submitted;
+
         // Check if store has completed Stripe onboarding
-        if (!store.stripe_account_id) {
-            console.error('Store missing stripe_account_id:', store.id);
+        if (!stripeAccountId) {
+            console.error('Store missing stripe_account_id (Mode: ' + (isTestMode ? 'Test' : 'Live') + '):', store.id);
             return NextResponse.json({
-                error: 'Store has not set up payments. Please complete Stripe Connect onboarding.'
+                error: `Store has not set up ${isTestMode ? 'Test' : 'Live'} payments. Please complete Stripe Connect onboarding.`
             }, { status: 400 });
         }
 
-        if (!store.stripe_details_submitted) {
+        if (!detailsSubmitted) {
             console.error('Store Stripe details not submitted:', store.id);
             return NextResponse.json({
                 error: 'Store payment setup is incomplete. Please complete Stripe onboarding.'
@@ -129,7 +139,7 @@ export async function POST(request: Request) {
         // Create Stripe Checkout Session
         const session = await billing.createCheckoutSession({
             storeId: store.id,
-            stripeAccountId: store.stripe_account_id,
+            stripeAccountId: stripeAccountId,
             lineItems: lineItems,
             successUrl: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${origin}${returnUrl || '/'}`,
@@ -137,6 +147,7 @@ export async function POST(request: Request) {
             metadata: {
                 items: JSON.stringify(items.map(i => ({ id: i.id, qty: i.quantity, price: i.price }))),
             },
+            isTestMode
         });
 
         console.log('Stripe session created:', session.id);

@@ -6,6 +6,8 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
+    const mode = searchParams.get('mode') || 'live';
+    const isTestMode = mode === 'test';
     
     if (!storeId) {
         return NextResponse.json({ error: 'Missing storeId' }, { status: 400 });
@@ -13,33 +15,33 @@ export async function GET(request: Request) {
 
     const supabase = await createClient();
     
-    // Fetch store to get stripe_account_id
-    // We don't strictly need auth here as this is a callback, but we should verify the store exists
-    // and maybe check if the current user is the owner if we want to be strict, 
-    // but the user might have been logged out during the process? 
-    // Usually Stripe redirects happen in the same browser session, so cookies should be there.
-    
     const { data: store } = await supabase
         .from('stores')
-        .select('id, stripe_account_id')
+        .select('id, stripe_account_id, stripe_account_id_test')
         .eq('id', storeId)
         .single();
 
-    if (!store || !store.stripe_account_id) {
+    const accountId = isTestMode ? store?.stripe_account_id_test : store?.stripe_account_id;
+
+    if (!store || !accountId) {
          return NextResponse.redirect(new URL(`/store/${storeId}/settings?error=stripe_config_missing`, request.url));
     }
 
     // Check status with Stripe
-    const account = await billing.retrieveAccount(store.stripe_account_id);
+    const account = await billing.retrieveAccount(accountId, isTestMode);
     
     if (account.details_submitted) {
+        const updateData = isTestMode 
+            ? { stripe_details_submitted_test: true }
+            : { stripe_details_submitted: true };
+
         await supabase
             .from('stores')
-            .update({ stripe_details_submitted: true })
+            .update(updateData)
             .eq('id', storeId);
     }
 
-    return NextResponse.redirect(new URL(`/store/${storeId}/settings?stripe_connected=true`, request.url));
+    return NextResponse.redirect(new URL(`/store/${storeId}/settings?tab=billing&stripe_connected=true`, request.url));
 
   } catch (error) {
     console.error('Error in stripe return:', error);

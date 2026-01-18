@@ -96,41 +96,6 @@ export function DeveloperSettings({ storeId, settings, saveSettings, saving = fa
 
     return (
         <div className="space-y-6">
-            {/* Store Environment */}
-            {settings && saveSettings && (
-                <div className="p-4 bg-white border border-slate-200 rounded-xl">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-start gap-3">
-                            <div className="mt-1 bg-orange-100 p-2 rounded-lg text-orange-600">
-                                <Beaker size={20} />
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-slate-900 flex items-center gap-2">
-                                    Test Mode
-                                    {settings?.is_test_mode && <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold">Active</span>}
-                                </h3>
-                                <p className="text-sm text-slate-500">
-                                    Enable to use test Stripe keys and simulate transactions without real charges.<br/>
-                                    <span className="text-xs text-orange-600 font-medium">Warning: This affects all checkouts for this store.</span>
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => saveSettings({ is_test_mode: !settings?.is_test_mode })}
-                            disabled={saving}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                                settings?.is_test_mode ? 'bg-orange-500' : 'bg-slate-200'
-                            } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    settings?.is_test_mode ? 'translate-x-6' : 'translate-x-1'
-                                }`}
-                            />
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* Cursor Rules */}
             <div className="p-4 bg-slate-900 border border-slate-700 rounded-xl relative group">

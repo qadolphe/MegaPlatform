@@ -12,13 +12,11 @@ const stripeTest = new Stripe(process.env.STRIPE_TEST_SECRET_KEY!, {
 // Helper to get the correct client
 const getStripeClient = (isTestMode = false) => isTestMode ? stripeTest : stripeLive;
 
-export const createConnectAccount = async (email: string) => {
-  // Always use Live client for creating accounts (Connect platform is typically one environment)
-  // Or if you want test accounts, you might use test key. 
-  // Usually, Standard accounts are created on Live mode platform.
+export const createConnectAccount = async (email: string, isTestMode = false) => {
+  const stripe = getStripeClient(isTestMode);
   try {
-    const account = await stripeLive.accounts.create({
-      type: 'standard', 
+    const account = await stripe.accounts.create({
+      type: 'standard',
       email,
     });
     return account;
@@ -28,9 +26,15 @@ export const createConnectAccount = async (email: string) => {
   }
 };
 
-export const createAccountLink = async (accountId: string, refreshUrl: string, returnUrl: string) => {
+export const createAccountLink = async (
+  accountId: string,
+  refreshUrl: string,
+  returnUrl: string,
+  isTestMode = false
+) => {
+  const stripe = getStripeClient(isTestMode);
   try {
-    const accountLink = await stripeLive.accountLinks.create({
+    const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: refreshUrl,
       return_url: returnUrl,
@@ -53,6 +57,7 @@ export const createCheckoutSession = async ({
   applicationFeeAmount, // In cents
   customerEmail,
   metadata,
+  isTestMode = false
 }: {
   storeId: string;
   stripeAccountId: string;
@@ -63,18 +68,9 @@ export const createCheckoutSession = async ({
   applicationFeeAmount: number;
   customerEmail?: string;
   metadata?: Record<string, string>;
+  isTestMode?: boolean;
 }) => {
   try {
-    // Look up the store mode from database
-    const { data: store, error: storeError } = await supabase
-      .from('stores')
-      .select('is_test_mode')
-      .eq('id', storeId)
-      .single();
-
-    if (storeError || !store) throw new Error('Store not found');
-
-    const isTestMode = !!store.is_test_mode;
     console.log(`[Billing] Creating checkout session for store ${storeId}. Mode: ${isTestMode ? 'TEST' : 'LIVE'}`);
     
     const stripe = getStripeClient(isTestMode);
@@ -119,18 +115,20 @@ export const constructEvent = (payload: string | Buffer, signature: string, secr
   }
 };
 
-export const retrieveAccount = async (accountId: string) => {
-    try {
-        return await stripeLive.accounts.retrieve(accountId);
-    } catch (error) {
-        console.error('Error retrieving account:', error);
-        throw error;
-    }
+export const retrieveAccount = async (accountId: string, isTestMode = false) => {
+  const stripe = getStripeClient(isTestMode);
+  try {
+    return await stripe.accounts.retrieve(accountId);
+  } catch (error) {
+    console.error('Error retrieving account:', error);
+    throw error;
+  }
 }
 
-export const createLoginLink = async (accountId: string) => {
+export const createLoginLink = async (accountId: string, isTestMode = false) => {
+  const stripe = getStripeClient(isTestMode);
   try {
-    const loginLink = await stripeLive.accounts.createLoginLink(accountId);
+    const loginLink = await stripe.accounts.createLoginLink(accountId);
     return loginLink;
   } catch (error) {
     console.error('Error creating login link:', error);

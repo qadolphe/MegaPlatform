@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
   try {
-    const { storeId } = await request.json();
+    const { storeId, env } = await request.json(); // env: 'live' | 'test'
+    const isTestMode = env === 'test';
+    
     const supabase = await createClient();
 
     // 1. Check ownership
@@ -15,7 +17,7 @@ export async function POST(request: Request) {
 
     const { data: store } = await supabase
       .from('stores')
-      .select('id, stripe_account_id, owner_id')
+      .select('id, stripe_account_id, stripe_account_id_test, owner_id')
       .eq('id', storeId)
       .eq('owner_id', user.id)
       .single();
@@ -24,28 +26,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Store not found or unauthorized' }, { status: 404 });
     }
 
-    let accountId = store.stripe_account_id;
+    let accountId = isTestMode ? store.stripe_account_id_test : store.stripe_account_id;
 
     // 2. Create Stripe Account if not exists
     if (!accountId) {
-      const account = await billing.createConnectAccount(user.email || '');
+      const account = await billing.createConnectAccount(user.email || '', isTestMode);
       accountId = account.id;
 
       // Save to DB
+      const updateData = isTestMode 
+        ? { stripe_account_id_test: accountId } 
+        : { stripe_account_id: accountId };
+
       await supabase
         .from('stores')
-        .update({ stripe_account_id: accountId })
+        .update(updateData)
         .eq('id', storeId);
     }
 
     // 3. Check if account is already fully onboarded
     // We can check the DB flag 'stripe_details_submitted' or query Stripe directly.
     // Querying Stripe is safer to ensure we have the latest status.
-    const account = await billing.retrieveAccount(accountId);
+    const account = await billing.retrieveAccount(accountId, isTestMode);
 
     if (account.details_submitted) {
         // If fully onboarded, generate a Login Link to the Express Dashboard
-        const loginLink = await billing.createLoginLink(accountId);
+        const loginLink = await billing.createLoginLink(accountId, isTestMode);
         return NextResponse.json({ url: loginLink.url });
     }
 
@@ -55,12 +61,13 @@ export async function POST(request: Request) {
     const host = request.headers.get('host') || 'swatbloc.com';
     const baseUrl = `${protocol}://${host}`;
     
-    const returnUrl = `${baseUrl}/api/stripe/return?storeId=${storeId}`;
-    const refreshUrl = `${baseUrl}/store/${storeId}/settings`; // Or a dedicated error page
+    const returnUrl = `${baseUrl}/api/stripe/return?storeId=${storeId}&mode=${isTestMode ? 'test' : 'live'}`;
+    const refreshUrl = `${baseUrl}/store/${storeId}/settings?tab=billing`; 
 
-    const accountLink = await billing.createAccountLink(accountId, refreshUrl, returnUrl);
+    const accountLink = await billing.createAccountLink(accountId, refreshUrl, returnUrl, isTestMode);
 
     return NextResponse.json({ url: accountLink.url });
+
 
   } catch (error) {
     console.error('Error in stripe connect:', error);

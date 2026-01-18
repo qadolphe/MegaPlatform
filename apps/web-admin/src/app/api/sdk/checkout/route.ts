@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKey, hydrateCart } from '../cart/utils';
 import Stripe from 'stripe';
+import { billing } from '@repo/services';
 
 export async function POST(request: NextRequest) {
     try {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
         // 1. Fetch Store (for Stripe connection)
         const { data: store, error: storeError } = await supabase
             .from('stores')
-            .select('id, stripe_account_id, stripe_details_submitted, currency')
+            .select('id, stripe_account_id, stripe_account_id_test, stripe_details_submitted, stripe_details_submitted_test, currency, is_test_mode')
             .eq('id', storeId)
             .single();
 
@@ -28,8 +29,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Store not found' }, { status: 404 });
         }
 
-        if (!store.stripe_account_id || !store.stripe_details_submitted) {
-            return NextResponse.json({ error: 'Store not configured for payments' }, { status: 400 });
+        // Determine mode based on Origin header
+        const origin = request.headers.get('origin') || '';
+        const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+        const isTestMode = isLocalhost;
+
+        const stripeAccountId = isTestMode ? store.stripe_account_id_test : store.stripe_account_id;
+        const detailsSubmitted = isTestMode ? store.stripe_details_submitted_test : store.stripe_details_submitted;
+
+        if (!stripeAccountId || !detailsSubmitted) {
+            return NextResponse.json({ error: `Store not configured for ${isTestMode ? 'Test' : 'Live'} payments` }, { status: 400 });
         }
 
         // 2. Fetch Cart
@@ -50,11 +59,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
         }
 
-        // 4. Create Stripe Session
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-            apiVersion: '2023-10-16',
-        });
-
         const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = hydratedCart.items.map((item: any) => ({
             price_data: {
                 currency: store.currency || 'usd',
@@ -70,26 +74,27 @@ export async function POST(request: NextRequest) {
         const total = hydratedCart.subtotal;
         const applicationFeeAmount = Math.round(total * 0.05); // 5% Platform Fee
 
-        const session = await stripe.checkout.sessions.create({
-            mode: 'payment',
-            line_items: lineItems,
-            payment_intent_data: {
-                application_fee_amount: applicationFeeAmount,
-            },
-            success_url: successUrl,
-            cancel_url: cancelUrl,
+        const session = await billing.createCheckoutSession({
+            storeId: store.id,
+            stripeAccountId: stripeAccountId,
+            lineItems,
+            successUrl,
+            cancelUrl,
+            applicationFeeAmount,
             metadata: {
-                storeId: store.id,
                 cartId: cart.id
             },
-        }, {
-            stripeAccount: store.stripe_account_id, // Direct Charge!
+            isTestMode
         });
 
         return NextResponse.json({
             id: session.id,
             url: session.url,
-            expiresAt: new Date(session.expires_at * 1000).toISOString()
+            expiresAt: new Date(session.expires_at * 1000).toISOString(),
+            debug: process.env.NODE_ENV === 'development' ? {
+                mode: store.is_test_mode ? 'test' : 'live',
+                storeId: store.id
+            } : undefined
         });
 
     } catch (error: any) {
