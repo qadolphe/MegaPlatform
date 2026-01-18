@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to validate API key and get store
 async function validateApiKey(request: NextRequest) {
     const apiKey = request.headers.get('X-SwatBloc-Key');
@@ -70,7 +72,18 @@ export async function GET(
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 
-        return NextResponse.json(product);
+        // Backward compatibility: add is_active and name fields
+        const compatibleProduct = {
+            ...product,
+            is_active: product.published,
+            name: product.title
+        };
+
+        return NextResponse.json(compatibleProduct, {
+            headers: {
+                'Cache-Control': 'no-store, max-age=0, must-revalidate',
+            }
+        });
 
     } catch (error) {
         console.error('SDK product error:', error);
