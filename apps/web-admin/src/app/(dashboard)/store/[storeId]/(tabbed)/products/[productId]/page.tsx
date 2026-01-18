@@ -108,8 +108,8 @@ export default function ProductEditor() {
         setComparePrice(product.compare_at_price);
         setImages(product.images || []);
         setPublished(product.published);
-        setOptions(product.options || []);
-        setMetafields(product.metafields || []);
+        setOptions(Array.isArray(product.options) ? product.options : []);
+        setMetafields(Array.isArray(product.metafields) ? product.metafields : []);
 
         if (product.product_variants && product.product_variants.length > 0) {
             setVariants(product.product_variants);

@@ -17,6 +17,8 @@ export interface Product {
     weight: number | null;
     weight_unit: string;
     published: boolean;
+    options: any[];
+    metafields: any[];
     created_at: string;
     updated_at: string;
 }

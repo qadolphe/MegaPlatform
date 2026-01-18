@@ -97,14 +97,16 @@ export async function POST(request: NextRequest) {
         const { storeId, supabase } = validation;
         const body = await request.json();
 
+        const title = body.title || body.name;
+
         // Basic Validation
-        if (!body.title) {
+        if (!title) {
              return NextResponse.json({ error: 'Product title is required' }, { status: 400 });
         }
 
         const productData = {
             store_id: storeId,
-            title: body.title,
+            title: title,
             description: body.description || '',
             price: body.price || 0,
             compare_at_price: body.compare_at_price || null,
@@ -115,9 +117,10 @@ export async function POST(request: NextRequest) {
             barcode: body.barcode || null,
             weight: body.weight || null,
             weight_unit: body.weight_unit || 'kg',
-            slug: body.slug || body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
+            slug: body.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
             published: body.published !== undefined ? body.published : true,
-            metafields: body.metafields || {}
+            options: body.options || [],
+            metafields: body.metafields || []
         };
 
         const { data: product, error } = await supabase
