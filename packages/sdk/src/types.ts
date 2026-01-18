@@ -4,15 +4,19 @@
 
 export interface Product {
     id: string;
-    name: string;
+    title: string;
     slug: string;
     description: string | null;
     price: number;
     compare_at_price: number | null;
     images: string[];
     category: string | null;
+    sku: string | null;
+    barcode: string | null;
     inventory_quantity: number;
-    is_active: boolean;
+    weight: number | null;
+    weight_unit: string;
+    published: boolean;
     created_at: string;
     updated_at: string;
 }

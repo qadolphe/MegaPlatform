@@ -79,6 +79,12 @@ create table if not exists public.products (
   price integer not null default 0,
   compare_at_price integer,
   images text[] default '{}',
+  category text,
+  sku text,
+  barcode text,
+  inventory_quantity integer default 0,
+  weight numeric,
+  weight_unit text default 'kg',
   options jsonb default '[]'::jsonb,
   metafields jsonb default '[]'::jsonb,
   published boolean default false,
@@ -216,6 +222,18 @@ create table if not exists public.carts (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- API Keys
+create table if not exists public.api_keys (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  public_key text unique not null,
+  secret_key text,
+  name text,
+  is_active boolean default true,
+  last_used_at timestamp with time zone,
+  created_at timestamp with time zone default now()
+);
+
 -- Task Tags
 create table if not exists public.store_task_tags (
   id uuid default gen_random_uuid() primary key,
@@ -286,6 +304,7 @@ alter table public.store_email_domains enable row level security;
 alter table public.knowledge_items enable row level security;
 alter table public.planner_tasks enable row level security;
 alter table public.carts enable row level security;
+alter table public.api_keys enable row level security;
 alter table public.store_task_tags enable row level security;
 alter table public.content_packets enable row level security;
 alter table public.content_models enable row level security;
@@ -699,6 +718,10 @@ drop policy if exists "Member view tags" on public.store_task_tags;
 create policy "Member view tags" on public.store_task_tags for select to authenticated using (has_store_access(store_id));
 drop policy if exists "Admins manage tags" on public.store_task_tags;
 create policy "Admins manage tags" on public.store_task_tags for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- API Keys
+drop policy if exists "Admins manage keys" on public.api_keys;
+create policy "Admins manage keys" on public.api_keys for all to authenticated using (has_store_access(store_id, 'editor'));
 
 -- Customers / Orders
 drop policy if exists "Admins manage sales" on public.customers;

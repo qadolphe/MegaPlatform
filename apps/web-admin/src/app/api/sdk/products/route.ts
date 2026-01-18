@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (search) {
-            query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+            query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
         }
 
         const { data: products, error } = await query;
@@ -110,14 +110,14 @@ export async function POST(request: NextRequest) {
             compare_at_price: body.compare_at_price || null,
             images: body.images || [],
             category: body.category || null,
-            inventory_count: body.inventory_count || 0,
+            inventory_quantity: body.inventory_quantity || 0,
             sku: body.sku || null,
             barcode: body.barcode || null,
             weight: body.weight || null,
             weight_unit: body.weight_unit || 'kg',
             slug: body.slug || body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
             published: body.published !== undefined ? body.published : true,
-            metadata: body.metadata || {}
+            metafields: body.metafields || {}
         };
 
         const { data: product, error } = await supabase
