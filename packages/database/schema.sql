@@ -26,6 +26,7 @@ create table if not exists public.stores (
   header_config jsonb default '{}'::jsonb,
   footer_config jsonb default '{}'::jsonb,
   developer_mode boolean default false,
+  is_test_mode boolean default false,
   plan text default 'free',
   subscription_status text default 'active'
 );

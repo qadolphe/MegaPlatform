@@ -1,12 +1,22 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16', // Use a fixed version for stability
+const stripeLive = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16',
 });
 
+const stripeTest = new Stripe(process.env.STRIPE_SECRET_KEY_TEST!, {
+  apiVersion: '2023-10-16',
+});
+
+// Helper to get the correct client
+const getStripe = (isTestMode = false) => isTestMode ? stripeTest : stripeLive;
+
 export const createConnectAccount = async (email: string) => {
+  // Always use Live client for creating accounts (Connect platform is typically one environment)
+  // Or if you want test accounts, you might use test key. 
+  // Usually, Standard accounts are created on Live mode platform.
   try {
-    const account = await stripe.accounts.create({
+    const account = await stripeLive.accounts.create({
       type: 'standard', 
       email,
     });
@@ -19,7 +29,7 @@ export const createConnectAccount = async (email: string) => {
 
 export const createAccountLink = async (accountId: string, refreshUrl: string, returnUrl: string) => {
   try {
-    const accountLink = await stripe.accountLinks.create({
+    const accountLink = await stripeLive.accountLinks.create({
       account: accountId,
       refresh_url: refreshUrl,
       return_url: returnUrl,
@@ -32,6 +42,7 @@ export const createAccountLink = async (accountId: string, refreshUrl: string, r
   }
 };
 
+
 export const createCheckoutSession = async ({
   storeId,
   stripeAccountId,
@@ -40,6 +51,8 @@ export const createCheckoutSession = async ({
   cancelUrl,
   applicationFeeAmount, // In cents
   customerEmail,
+  isTestMode = false,
+  metadata,
 }: {
   storeId: string;
   stripeAccountId: string;
@@ -49,8 +62,14 @@ export const createCheckoutSession = async ({
   cancelUrl: string;
   applicationFeeAmount: number;
   customerEmail?: string;
+  isTestMode?: boolean;
+  metadata?: Record<string, string>;
 }) => {
   try {
+    const stripe = getStripe(isTestMode);
+    
+    // Note: When calling connected accounts in Test Mode, 
+    // the platform must also use its Test Mode secret key.
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
@@ -62,6 +81,7 @@ export const createCheckoutSession = async ({
       customer_email: customerEmail,
       metadata: {
         storeId,
+        ...metadata,
       },
     }, {
       stripeAccount: stripeAccountId,
@@ -75,16 +95,22 @@ export const createCheckoutSession = async ({
 
 export const constructEvent = (payload: string | Buffer, signature: string, secret: string) => {
   try {
-    return stripe.webhooks.constructEvent(payload, signature, secret);
+    // We try with live first as it's the most common
+    return stripeLive.webhooks.constructEvent(payload, signature, secret);
   } catch (error) {
-    console.error('Error constructing webhook event:', error);
-    throw error;
+    try {
+      // Fallback to test if live fails
+      return stripeTest.webhooks.constructEvent(payload, signature, secret);
+    } catch (innerError) {
+      console.error('Error constructing webhook event:', innerError);
+      throw innerError;
+    }
   }
 };
 
 export const retrieveAccount = async (accountId: string) => {
     try {
-        return await stripe.accounts.retrieve(accountId);
+        return await stripeLive.accounts.retrieve(accountId);
     } catch (error) {
         console.error('Error retrieving account:', error);
         throw error;
@@ -93,7 +119,7 @@ export const retrieveAccount = async (accountId: string) => {
 
 export const createLoginLink = async (accountId: string) => {
   try {
-    const loginLink = await stripe.accounts.createLoginLink(accountId);
+    const loginLink = await stripeLive.accounts.createLoginLink(accountId);
     return loginLink;
   } catch (error) {
     console.error('Error creating login link:', error);

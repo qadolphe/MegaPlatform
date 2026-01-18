@@ -445,7 +445,12 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                                     <h2 className="text-lg font-semibold text-slate-900 mb-2">Developer Settings</h2>
                                     <p className="text-sm text-slate-500 mb-6">Manage API keys for headless integrations with Cursor, Lovable, or custom apps.</p>
 
-                                    <DeveloperSettings storeId={storeId} />
+                                    <DeveloperSettings 
+                                        storeId={storeId} 
+                                        settings={settings} 
+                                        saveSettings={saveSettings}
+                                        saving={saving}
+                                    />
                                 </div>
                             )}
                         </div>

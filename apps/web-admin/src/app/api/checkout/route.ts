@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { billing } from '@repo/services';
 
 interface CartItem {
     id: string;
@@ -24,10 +25,6 @@ export async function POST(request: Request) {
             console.error('Supabase environment variables not configured');
             return NextResponse.json({ error: 'Database service not configured' }, { status: 500 });
         }
-
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-            apiVersion: '2023-10-16',
-        });
 
         const { items, returnUrl } = await request.json() as { items: CartItem[]; returnUrl?: string };
 
@@ -72,7 +69,7 @@ export async function POST(request: Request) {
         // Find the store by subdomain or custom_domain
         let storeQuery = supabase
             .from('stores')
-            .select('id, stripe_account_id, stripe_details_submitted, currency, name, subdomain');
+            .select('id, stripe_account_id, stripe_details_submitted, currency, name, subdomain, is_test_mode');
 
         if (subdomain) {
             storeQuery = storeQuery.eq('subdomain', subdomain);
@@ -130,20 +127,18 @@ export async function POST(request: Request) {
         console.log('Creating Stripe session - Total:', total, 'Fee:', applicationFeeAmount);
 
         // Create Stripe Checkout Session
-        const session = await stripe.checkout.sessions.create({
-            mode: 'payment',
-            line_items: lineItems,
-            payment_intent_data: {
-                application_fee_amount: applicationFeeAmount,
-            },
-            success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${origin}${returnUrl || '/'}`,
+        const session = await billing.createCheckoutSession({
+            storeId: store.id,
+            stripeAccountId: store.stripe_account_id,
+            lineItems: lineItems,
+            successUrl: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancelUrl: `${origin}${returnUrl || '/'}`,
+            applicationFeeAmount: applicationFeeAmount,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            isTestMode: (store as any).is_test_mode,
             metadata: {
-                storeId: store.id,
                 items: JSON.stringify(items.map(i => ({ id: i.id, qty: i.quantity, price: i.price }))),
             },
-        }, {
-            stripeAccount: store.stripe_account_id,
         });
 
         console.log('Stripe session created:', session.id);
