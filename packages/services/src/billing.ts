@@ -74,7 +74,10 @@ export const createCheckoutSession = async ({
 
     if (storeError || !store) throw new Error('Store not found');
 
-    const stripe = getStripeClient(!!store.is_test_mode);
+    const isTestMode = !!store.is_test_mode;
+    console.log(`[Billing] Creating checkout session for store ${storeId}. Mode: ${isTestMode ? 'TEST' : 'LIVE'}`);
+    
+    const stripe = getStripeClient(isTestMode);
     
     // Note: When calling connected accounts in Test Mode, 
     // the platform must also use its Test Mode secret key.

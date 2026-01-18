@@ -25,6 +25,7 @@ export default $config({
         NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
         STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
+        STRIPE_TEST_SECRET_KEY: process.env.STRIPE_TEST_SECRET_KEY!,
         STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET!,
       },
     });

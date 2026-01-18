@@ -141,7 +141,13 @@ export async function POST(request: Request) {
 
         console.log('Stripe session created:', session.id);
 
-        return NextResponse.json({ url: session.url });
+        return NextResponse.json({ 
+            url: session.url,
+            debug: process.env.NODE_ENV === 'development' ? {
+                mode: (store as any).is_test_mode ? 'test' : 'live',
+                storeId: store.id
+            } : undefined
+        });
     } catch (error: any) {
         console.error('Checkout error:', error);
         return NextResponse.json(
