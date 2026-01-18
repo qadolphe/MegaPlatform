@@ -81,14 +81,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
         }
 
-        // Backward compatibility: add is_active field
-        const compatibleProducts = products?.map(p => ({
-            ...p,
-            is_active: p.published,
-            name: p.title // Backward compatibility for name/title split
-        }));
-
-        return NextResponse.json(compatibleProducts, {
+        return NextResponse.json(products, {
             headers: {
                 'Cache-Control': 'no-store, max-age=0, must-revalidate',
             }
@@ -151,6 +144,90 @@ export async function POST(request: NextRequest) {
 
     } catch (error) {
         console.error('SDK create product error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: NextRequest) {
+    try {
+        const validation = await validateApiKey(request);
+        if ('error' in validation) {
+            return NextResponse.json({ error: validation.error }, { status: validation.status });
+        }
+
+        const { storeId, supabase } = validation;
+        const body = await request.json();
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+             return NextResponse.json({ error: 'Product ID is required for update' }, { status: 400 });
+        }
+        
+        // Sanitize update data - block store_id changes
+        const updateData: any = { ...body };
+        delete updateData.store_id;
+        delete updateData.id;
+        delete updateData.created_at;
+
+        // Auto-generate slug if title changes and slug isn't provided? 
+        // For now, let's keep it simple. Only update provided fields.
+        
+        if (updateData.title && !updateData.slug) {
+             // Optional: regenerating slug logic could go here
+        }
+
+        const { data: product, error } = await supabase
+            .from('products')
+            .update(updateData)
+            .eq('id', id)
+            .eq('store_id', storeId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('SDK update product error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json(product);
+
+    } catch (error) {
+        console.error('SDK update product error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const validation = await validateApiKey(request);
+        if ('error' in validation) {
+            return NextResponse.json({ error: validation.error }, { status: validation.status });
+        }
+
+        const { storeId, supabase } = validation;
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+            return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
+        }
+
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', id)
+            .eq('store_id', storeId);
+
+        if (error) {
+            console.error('SDK delete product error:', error);
+            return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+
+    } catch (error) {
+        console.error('SDK delete product error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

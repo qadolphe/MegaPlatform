@@ -74,11 +74,11 @@ const products = await swat.products.list({
                     title="Create new product"
                     code={`const newProduct = await swat.products.create({
   title: "Limited Edition Hoodie",
-  price: 59.99,
+  price: 5900,  // Price in cents ($59.00)
   description: "Premium cotton blend...",
   images: ["https://example.com/hoodie.jpg"],
   category: "apparel",
-  inventory_count: 100,
+  inventory_quantity: 100,
   published: true
 });`}
                 />

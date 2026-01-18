@@ -29,6 +29,46 @@ export class ProductsAPI {
     }
 
     /**
+     * Update an existing product
+     */
+    async update(id: string, data: Partial<Product>): Promise<Product> {
+        const url = `${this.baseUrl}/api/sdk/products?id=${id}`;
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'X-SwatBloc-Key': this.publicKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `Failed to update product: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Delete a product
+     */
+    async delete(id: string): Promise<void> {
+        const url = `${this.baseUrl}/api/sdk/products?id=${id}`;
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-SwatBloc-Key': this.publicKey,
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `Failed to delete product: ${response.status}`);
+        }
+    }
+
+    /**
      * List all products for the store
      */
     async list(options: ProductListOptions = {}): Promise<Product[]> {

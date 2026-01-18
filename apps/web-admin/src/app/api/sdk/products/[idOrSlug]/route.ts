@@ -72,14 +72,7 @@ export async function GET(
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 
-        // Backward compatibility: add is_active and name fields
-        const compatibleProduct = {
-            ...product,
-            is_active: product.published,
-            name: product.title
-        };
-
-        return NextResponse.json(compatibleProduct, {
+        return NextResponse.json(product, {
             headers: {
                 'Cache-Control': 'no-store, max-age=0, must-revalidate',
             }
