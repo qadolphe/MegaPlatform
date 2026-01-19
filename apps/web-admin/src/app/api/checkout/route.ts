@@ -40,8 +40,6 @@ export async function POST(request: Request) {
 
         const origin = headersList.get('origin') || `https://${host}`;
 
-        console.log('Checkout request - Host:', host, 'Origin:', origin);
-
         // Parse subdomain from host
         let subdomain: string | null = null;
 
@@ -57,8 +55,6 @@ export async function POST(request: Request) {
                 subdomain = parts[0]; // real-hoodie
             }
         }
-
-        console.log('Parsed subdomain:', subdomain);
 
         // Use Service Role for admin access
         const supabase = createClient(
@@ -90,14 +86,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Store not found' }, { status: 404 });
         }
 
-        console.log('Found store:', store.name, 'ID:', store.id);
-
         // Determine mode based on HOST, not store settings
         const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
         // Optional: Could also check for special "preview" domains if needed
         const isTestMode = isLocalhost;
-
-        console.log(`Processing checkout for ${host}. Mode: ${isTestMode ? 'TEST' : 'LIVE'}`);
 
         const stripeAccountId = isTestMode ? store.stripe_account_id_test : store.stripe_account_id;
         const detailsSubmitted = isTestMode ? store.stripe_details_submitted_test : store.stripe_details_submitted;
@@ -134,8 +126,6 @@ export async function POST(request: Request) {
         const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const applicationFeeAmount = Math.round(total * 0.05); // 5% platform fee
 
-        console.log('Creating Stripe session - Total:', total, 'Fee:', applicationFeeAmount);
-
         // Create Stripe Checkout Session
         const session = await billing.createCheckoutSession({
             storeId: store.id,
@@ -149,8 +139,6 @@ export async function POST(request: Request) {
             },
             isTestMode
         });
-
-        console.log('Stripe session created:', session.id);
 
         return NextResponse.json({ 
             url: session.url,

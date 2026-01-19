@@ -6,7 +6,6 @@ import { NextResponse } from "next/server";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: Request) {
-  console.log("AI Generate Request received");
   if (!process.env.GEMINI_API_KEY) {
     console.error("GEMINI_API_KEY is missing");
     return NextResponse.json({ error: "GEMINI_API_KEY is not set" }, { status: 500 });

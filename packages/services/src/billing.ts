@@ -1,5 +1,4 @@
 import Stripe from 'stripe';
-import { supabase } from '@repo/database';
 
 const stripeLive = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
@@ -71,8 +70,6 @@ export const createCheckoutSession = async ({
   isTestMode?: boolean;
 }) => {
   try {
-    console.log(`[Billing] Creating checkout session for store ${storeId}. Mode: ${isTestMode ? 'TEST' : 'LIVE'}`);
-    
     const stripe = getStripeClient(isTestMode);
     
     // Note: When calling connected accounts in Test Mode, 
@@ -103,7 +100,6 @@ export const createCheckoutSession = async ({
 export const retrieveCheckoutSession = async (sessionId: string, stripeAccountId: string, isTestMode = false) => {
   try {
     const accountId = stripeAccountId.trim();
-    console.log(`[Billing] Retrieving session ${sessionId} from account ${accountId} (TestMode: ${isTestMode})`);
     const stripe = getStripeClient(isTestMode);
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       stripeAccount: accountId,

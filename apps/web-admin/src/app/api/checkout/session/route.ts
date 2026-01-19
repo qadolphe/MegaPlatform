@@ -42,7 +42,7 @@ export async function GET(request: Request) {
         }
 
         if (!subdomain) {
-            console.log('No subdomain found, checking custom domain:', host);
+            // No debug log needed here
         }
 
         // Fetch store
@@ -66,11 +66,6 @@ export async function GET(request: Request) {
 
         const stripeAccountId = isTestMode ? store.stripe_account_id_test : store.stripe_account_id;
 
-        console.log(`Retrieving Session for Store: ${store.id} (${store.subdomain})`);
-        console.log(`Session ID: ${sessionId}`);
-        console.log(`Detected Mode: ${isTestMode ? 'TEST' : 'LIVE'}`);
-        console.log(`Target Stripe Account: ${stripeAccountId}`);
-
         if (!stripeAccountId) {
             console.error(`Stripe account ID missing for store ${store.id} (Test Mode: ${isTestMode})`);
              return NextResponse.json({ error: 'Stripe not configured for this store' }, { status: 400 });
@@ -91,9 +86,12 @@ export async function GET(request: Request) {
             { 
                 error: error.message || 'Failed to retrieve session',
                 code: error.code,
-                type: error.type,
-                statusCode: error.statusCode,
-                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+                // Only provide detailed error info in development
+                ...(process.env.NODE_ENV === 'development' ? {
+                    type: error.type,
+                    statusCode: error.statusCode,
+                    stack: error.stack
+                } : {})
             }, 
             { status: 500 }
         );

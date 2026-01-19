@@ -154,7 +154,6 @@ export async function POST(request: Request) {
           }
         }
 
-        console.log('Order created successfully:', order?.id);
       } catch (error) {
         console.error('Error processing checkout session:', error);
       }
