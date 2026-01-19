@@ -72,11 +72,14 @@ export async function POST(request: NextRequest) {
 
         // Return the full keys (only time secret is shown in full)
         return NextResponse.json({
-            id: apiKey.id,
-            name: apiKey.name,
-            publicKey,
-            secretKey,
-            createdAt: apiKey.created_at
+            success: true,
+            key: {
+                id: apiKey.id,
+                name: apiKey.name,
+                publicKey,
+                secretKey,
+                createdAt: apiKey.created_at
+            }
         });
 
     } catch (error) {

@@ -102,13 +102,15 @@ export const createCheckoutSession = async ({
 
 export const retrieveCheckoutSession = async (sessionId: string, stripeAccountId: string, isTestMode = false) => {
   try {
+    const accountId = stripeAccountId.trim();
+    console.log(`[Billing] Retrieving session ${sessionId} from account ${accountId} (TestMode: ${isTestMode})`);
     const stripe = getStripeClient(isTestMode);
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      stripeAccount: stripeAccountId,
+      stripeAccount: accountId,
     });
     return session;
   } catch (error) {
-    console.error('Error retrieving checkout session:', error);
+    console.error(`Error retrieving checkout session ${sessionId} from account ${stripeAccountId}:`, error);
     throw error;
   }
 };
