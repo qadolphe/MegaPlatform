@@ -92,6 +92,26 @@ const logs = await swat.db.collection('liability-waivers').list({
 });
 ```
 
+### 📦 Orders (Admin)
+Manage and track orders. **Requires Secret Key** (`sk_live_...`).
+
+```typescript
+// Initialize with Secret Key
+const swatAdmin = new SwatBloc('sk_live_xxxxx');
+
+// 1. List Orders
+const orders = await swatAdmin.orders.list({ status: 'pending' });
+
+// 2. Get Order Details
+const order = await swatAdmin.orders.get('order_123');
+
+// 3. Update Status
+await swatAdmin.orders.update('order_123', {
+  status: 'shipped',
+  fulfillment_status: 'fulfilled'
+});
+```
+
 ---
 
 ## Type Safety

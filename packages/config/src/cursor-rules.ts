@@ -106,6 +106,24 @@ const logs = await swat.db.collection('logs').list({
 });
 \`\`\`
 
+### Orders (Admin)
+
+Requires your **Secret API Key** (\`sk_live_...\`).
+
+\`\`\`typescript
+// List orders
+const orders = await swat.orders.list({ status: 'pending' });
+
+// Get a specific order
+const order = await swat.orders.get('ord_123');
+
+// Update order status/meta
+await swat.orders.update('ord_123', {
+  status: 'shipped',
+  metafields: [{ key: 'tracking_number', value: 'XYZ789' }]
+});
+\`\`\`
+
 ### Store Info
 
 \`\`\`typescript
