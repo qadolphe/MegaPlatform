@@ -9,7 +9,10 @@ export async function validateApiKey(request: NextRequest) {
         return { error: 'Missing API key', status: 401 };
     }
 
-    if (!apiKey.startsWith('pk_')) {
+    const isSecretKey = apiKey.startsWith('sk_');
+    const isPublicKey = apiKey.startsWith('pk_');
+
+    if (!isSecretKey && !isPublicKey) {
         return { error: 'Invalid API key format', status: 401 };
     }
 
@@ -18,11 +21,15 @@ export async function validateApiKey(request: NextRequest) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: keyData, error: keyError } = await supabase
-        .from('api_keys')
-        .select('store_id, is_active')
-        .eq('public_key', apiKey)
-        .single();
+    let query = supabase.from('api_keys').select('store_id, is_active');
+    
+    if (isSecretKey) {
+        query = query.eq('secret_key', apiKey);
+    } else {
+        query = query.eq('public_key', apiKey);
+    }
+
+    const { data: keyData, error: keyError } = await query.single();
 
     if (keyError || !keyData) {
         return { error: 'Invalid API key', status: 401 };
@@ -32,7 +39,7 @@ export async function validateApiKey(request: NextRequest) {
         return { error: 'API key has been revoked', status: 401 };
     }
 
-    return { storeId: keyData.store_id, supabase };
+    return { storeId: keyData.store_id, supabase, isSecretKey };
 }
 
 export function validateContentItem(schemaDef: any, data: any) {

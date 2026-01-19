@@ -3,6 +3,7 @@ import { CartAPI } from './cart';
 import { CheckoutAPI } from './checkout';
 import { StoreAPI } from './store';
 import { DBAPI } from './db';
+import { OrdersAPI } from './orders';
 import { SwatBlocConfig } from './types';
 
 export * from './types';
@@ -36,25 +37,27 @@ export class SwatBloc {
     public readonly checkout: CheckoutAPI;
     public readonly store: StoreAPI;
     public readonly db: DBAPI;
+    public readonly orders: OrdersAPI;
 
-    private publicKey: string;
+    private apiKey: string;
     private baseUrl: string;
 
     /**
      * Create a new SwatBloc client
      * 
-     * @param publicKey - Your store's public API key (pk_live_...)
+     * @param apiKey - Your store's Public API key (pk_live_...) or Secret Key (sk_live_...)
      * @param config - Optional configuration
      */
-    constructor(publicKey: string, config: SwatBlocConfig = {}) {
-        this.publicKey = publicKey;
+    constructor(apiKey: string, config: SwatBlocConfig = {}) {
+        this.apiKey = apiKey;
         this.baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
-        this.products = new ProductsAPI(this.publicKey, this.baseUrl);
-        this.cart = new CartAPI(this.publicKey, this.baseUrl);
-        this.checkout = new CheckoutAPI(this.publicKey, this.baseUrl);
-        this.store = new StoreAPI(this.publicKey, this.baseUrl);
-        this.db = new DBAPI(this.publicKey, this.baseUrl);
+        this.products = new ProductsAPI(this.apiKey, this.baseUrl);
+        this.cart = new CartAPI(this.apiKey, this.baseUrl);
+        this.checkout = new CheckoutAPI(this.apiKey, this.baseUrl);
+        this.store = new StoreAPI(this.apiKey, this.baseUrl);
+        this.db = new DBAPI(this.apiKey, this.baseUrl);
+        this.orders = new OrdersAPI(this.apiKey, this.baseUrl);
     }
 }
 

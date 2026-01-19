@@ -107,3 +107,35 @@ export interface ContentListOptions {
     sort?: string;
     filter?: Record<string, any>;
 }
+
+export interface Order {
+    id: string;
+    store_id: string;
+    customer_id?: string;
+    stripe_checkout_session_id?: string;
+    subtotal_amount: number;
+    shipping_amount: number;
+    tax_amount: number;
+    total_amount: number;
+    currency: string;
+    status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+    payment_status: 'unpaid' | 'paid' | 'refunded';
+    fulfillment_status: 'unfulfilled' | 'fulfilled' | 'partial';
+    shipping_address?: Record<string, any>;
+    billing_address?: Record<string, any>;
+    order_items?: OrderItem[];
+    customer?: any;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface OrderItem {
+    id: string;
+    product_id?: string;
+    variant_id?: string;
+    quantity: number;
+    price_at_purchase: number;
+    product_name: string;
+    variant_name?: string;
+    image_url?: string;
+}
