@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
     const offset = parseInt(searchParams.get('offset') || '0');
     const status = searchParams.get('status');
+    const sessionId = searchParams.get('sessionId');
 
     let query = supabase
         .from('orders')
@@ -29,6 +30,10 @@ export async function GET(request: NextRequest) {
 
     if (status) {
         query = query.eq('status', status);
+    }
+    
+    if (sessionId) {
+        query = query.eq('stripe_checkout_session_id', sessionId);
     }
 
     const { data: orders, error } = await query;

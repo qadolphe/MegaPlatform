@@ -15,7 +15,24 @@ export async function POST(request: Request) {
   let event;
 
   try {
-    event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!);
+    // Try Live Secret first
+    if (process.env.STRIPE_WEBHOOK_SECRET) {
+      try {
+        event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+      } catch (err) {
+        // If Live fails and we have a Test Secret, try that
+        if (process.env.STRIPE_WEBHOOK_SECRET_TEST) {
+          event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET_TEST);
+        } else {
+          throw err;
+        }
+      }
+    } else if (process.env.STRIPE_WEBHOOK_SECRET_TEST) {
+       // Only Test Secret configured
+       event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET_TEST);
+    } else {
+      throw new Error('Missing STRIPE_WEBHOOK_SECRET');
+    }
   } catch (err: any) {
     console.error(`Webhook signature verification failed.`, err.message);
     return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });

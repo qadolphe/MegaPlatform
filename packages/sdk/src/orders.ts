@@ -30,11 +30,12 @@ export class OrdersAPI {
      * List orders from the store.
      * Requires Secret Key (sk_live_...).
      */
-    async list(options?: { limit?: number; offset?: number; status?: string }): Promise<Order[]> {
+    async list(options?: { limit?: number; offset?: number; status?: string; sessionId?: string }): Promise<Order[]> {
         const params = new URLSearchParams();
         if (options?.limit) params.set('limit', options.limit.toString());
         if (options?.offset) params.set('offset', options.offset.toString());
         if (options?.status) params.set('status', options.status);
+        if (options?.sessionId) params.set('sessionId', options.sessionId);
         
         return this.request('GET', `?${params.toString()}`);
     }

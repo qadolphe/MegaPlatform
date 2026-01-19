@@ -27,6 +27,7 @@ export default $config({
         STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
         STRIPE_TEST_SECRET_KEY: process.env.STRIPE_TEST_SECRET_KEY!,
         STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET!,
+        STRIPE_WEBHOOK_SECRET_TEST: process.env.STRIPE_WEBHOOK_SECRET_TEST!,
       },
     });
   },
