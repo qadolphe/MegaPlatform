@@ -57,6 +57,7 @@ export default function PlannerPage() {
   const [filterTagId, setFilterTagId] = useState<string>("all");
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'priority-high' | 'priority-low'>('priority-high');
+  const [showAbyss, setShowAbyss] = useState(false);
 
   // Drag State
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -257,6 +258,18 @@ export default function PlannerPage() {
   const sortedAndFilteredTasks = useMemo(() => {
     let result = [...tasks];
     
+    // Abyss Filtering (4 days)
+    const ABYSS_THRESHOLD = 4 * 24 * 60 * 60 * 1000;
+    const now = new Date().getTime();
+    
+    if (showAbyss) {
+        // Only show finished tasks older than 4 days
+        result = result.filter(t => t.status === 'done' && (now - new Date(t.updated_at).getTime() > ABYSS_THRESHOLD));
+    } else {
+        // Default: Hide finished tasks older than 4 days
+        result = result.filter(t => !(t.status === 'done' && (now - new Date(t.updated_at).getTime() > ABYSS_THRESHOLD)));
+    }
+
     if (filterMyTasks && currentUserId) {
         result = result.filter(t => t.assignee_id === currentUserId);
     }
@@ -277,7 +290,7 @@ export default function PlannerPage() {
     });
 
     return result;
-  }, [tasks, filterMyTasks, filterTagId, sortBy, currentUserId]);
+  }, [tasks, filterMyTasks, filterTagId, sortBy, currentUserId, showAbyss]);
 
   const generateExportText = () => {
     const selectedTasks = tasks.filter(t => selectedTaskIds.has(t.id));
@@ -352,6 +365,8 @@ export default function PlannerPage() {
         tags={tags}
         sortBy={sortBy}
         setSortBy={setSortBy}
+        showAbyss={showAbyss}
+        setShowAbyss={setShowAbyss}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -373,7 +388,12 @@ export default function PlannerPage() {
         ))}
       </div>
 
-      <PlannerAbyss isDragging={!!activeId} isInAbyss={isInAbyssZone} />
+      <PlannerAbyss 
+        isDragging={!!activeId} 
+        isInAbyss={isInAbyssZone} 
+        setIsInAbyss={setIsInAbyssZone}
+        onDrop={(taskId) => handleDragEnd(taskId, 'delete')}
+      />
 
       {/* Modals */}
       <CreateTaskModal 

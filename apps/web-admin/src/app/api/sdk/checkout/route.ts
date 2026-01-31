@@ -74,6 +74,13 @@ export async function POST(request: NextRequest) {
         const total = hydratedCart.subtotal;
         const applicationFeeAmount = Math.round(total * 0.05); // 5% Platform Fee
 
+        // Prep metadata items (be mindful of 500 char limit)
+        const itemsForMetadata = hydratedCart.items.map((item: any) => ({
+            id: item.product.id,
+            qty: item.quantity,
+            price: item.product.price
+        }));
+
         const session = await billing.createCheckoutSession({
             storeId: store.id,
             stripeAccountId: stripeAccountId,
@@ -82,7 +89,8 @@ export async function POST(request: NextRequest) {
             cancelUrl,
             applicationFeeAmount,
             metadata: {
-                cartId: cart.id
+                cartId: cart.id,
+                items: JSON.stringify(itemsForMetadata).slice(0, 500) // Safety
             },
             isTestMode
         });

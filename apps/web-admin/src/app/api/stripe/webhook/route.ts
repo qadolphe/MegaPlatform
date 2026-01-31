@@ -70,7 +70,30 @@ export async function POST(request: Request) {
 
       try {
         // Parse items from metadata
-        const cartItems = itemsJson ? JSON.parse(itemsJson) : [];
+        let cartItems = [];
+        try {
+          cartItems = itemsJson ? JSON.parse(itemsJson) : [];
+        } catch (e) {
+          console.warn('Failed to parse items from metadata:', e);
+        }
+
+        // Fallback: If metadata items missing/corrupted, fetch from Cart
+        const cartId = session.metadata?.cartId;
+        if (cartItems.length === 0 && cartId) {
+          const { data: cart } = await supabase
+            .from('carts')
+            .select('items')
+            .eq('id', cartId)
+            .single();
+
+          if (cart?.items) {
+            cartItems = cart.items.map((i: any) => ({
+              id: i.productId,
+              qty: i.quantity,
+              price: 0 // Will fallback to current product price
+            }));
+          }
+        }
 
         // Get customer email from session
         const customerEmail = session.customer_details?.email;
@@ -145,7 +168,7 @@ export async function POST(request: Request) {
           const productIds = cartItems.map((item: any) => item.id);
           const { data: products } = await supabase
             .from('products')
-            .select('id, title, images')
+            .select('id, title, images, price')
             .in('id', productIds);
 
           const productMap = new Map(products?.map(p => [p.id, p]) || []);
@@ -156,7 +179,7 @@ export async function POST(request: Request) {
               order_id: order.id,
               product_id: item.id,
               quantity: item.qty,
-              price_at_purchase: item.price,
+              price_at_purchase: item.price || product?.price || 0,
               product_name: product?.title || 'Unknown Product',
               image_url: product?.images?.[0] || null,
             };

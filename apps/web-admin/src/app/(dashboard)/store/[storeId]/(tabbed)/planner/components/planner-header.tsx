@@ -18,6 +18,8 @@ interface PlannerHeaderProps {
   tags: Tag[];
   sortBy: string;
   setSortBy: (val: any) => void;
+  showAbyss: boolean;
+  setShowAbyss: (val: boolean) => void;
 }
 
 export function PlannerHeader({
@@ -33,20 +35,33 @@ export function PlannerHeader({
   setFilterTagId,
   tags,
   sortBy,
-  setSortBy
+  setSortBy,
+  showAbyss,
+  setShowAbyss
 }: PlannerHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
-                {storeName} Planner
+                {showAbyss ? 'The Abyss' : `${storeName} Planner`}
             </h1>
-            <p className="text-slate-500">Manage your tasks and track progress</p>
+            <p className="text-slate-500">
+                {showAbyss ? 'Viewing archived tasks' : 'Manage your tasks and track progress'}
+            </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
             {/* Sort & Filter Controls */}
             <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+                <button 
+                  onClick={() => setShowAbyss(!showAbyss)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                    showAbyss ? 'bg-indigo-900 text-indigo-100' : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                    {showAbyss ? 'Exit Abyss' : 'View Abyss'}
+                </button>
+                <div className="w-px h-6 bg-slate-200 mx-1" />
                 <button 
                     onClick={() => setFilterMyTasks(!filterMyTasks)}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition ${filterMyTasks ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
