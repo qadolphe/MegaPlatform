@@ -2,6 +2,7 @@ import { ProductsAPI } from './products';
 import { CartAPI } from './cart';
 import { CheckoutAPI } from './checkout';
 import { StoreAPI } from './store';
+import { MediaAPI } from './media';
 import { DBAPI } from './db';
 import { OrdersAPI } from './orders';
 import { SwatBlocConfig } from './types';
@@ -22,6 +23,9 @@ const DEFAULT_BASE_URL = 'https://api.swatbloc.com';
  * // Get products
  * const products = await swat.products.list();
  * 
+ * // Use the Content Library
+ * const images = await swat.media.list();
+ * 
  * // Use Custom DB
  * const logs = await swat.db.collection('liability-logs').list();
  * 
@@ -36,6 +40,7 @@ export class SwatBloc {
     public readonly cart: CartAPI;
     public readonly checkout: CheckoutAPI;
     public readonly store: StoreAPI;
+    public readonly media: MediaAPI;
     public readonly db: DBAPI;
     public readonly orders: OrdersAPI;
 
@@ -56,6 +61,7 @@ export class SwatBloc {
         this.cart = new CartAPI(this.apiKey, this.baseUrl);
         this.checkout = new CheckoutAPI(this.apiKey, this.baseUrl);
         this.store = new StoreAPI(this.apiKey, this.baseUrl);
+        this.media = new MediaAPI(this.apiKey, this.baseUrl);
         this.db = new DBAPI(this.apiKey, this.baseUrl);
         this.orders = new OrdersAPI(this.apiKey, this.baseUrl);
     }

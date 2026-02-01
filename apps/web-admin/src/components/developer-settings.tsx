@@ -13,6 +13,7 @@ interface ApiKey {
     secret_key: string;
     created_at: string;
     is_active: boolean;
+    is_test: boolean;
 }
 
 interface DeveloperSettingsProps {
@@ -25,6 +26,7 @@ interface DeveloperSettingsProps {
 export function DeveloperSettings({ storeId, settings, saveSettings, saving = false }: DeveloperSettingsProps) {
     const supabase = createClient();
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+    const [isTestMode, setIsTestMode] = useState(false);
     const [generatingKey, setGeneratingKey] = useState(false);
     const [newKeyName, setNewKeyName] = useState("");
     const [newlyCreatedKey, setNewlyCreatedKey] = useState<{ publicKey: string; secretKey: string } | null>(null);
@@ -41,7 +43,7 @@ export function DeveloperSettings({ storeId, settings, saveSettings, saving = fa
                 if (data.content) setCursorRules(data.content);
             })
             .catch(err => console.error("Failed to fetch cursor rules", err));
-    }, [storeId]);
+    }, [storeId, isTestMode]);
 
     const fetchApiKeys = async () => {
         const { data } = await supabase
@@ -49,6 +51,7 @@ export function DeveloperSettings({ storeId, settings, saveSettings, saving = fa
             .select("*")
             .eq("store_id", storeId)
             .eq("is_active", true)
+            .eq("is_test", isTestMode)
             .order("created_at", { ascending: false });
         if (data) setApiKeys(data);
     };
@@ -61,7 +64,7 @@ export function DeveloperSettings({ storeId, settings, saveSettings, saving = fa
             const res = await fetch('/api/keys/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storeId, name: newKeyName || 'Default Key' })
+                body: JSON.stringify({ storeId, name: newKeyName || 'Default Key', isTest: isTestMode })
             });
             const data = await res.json();
             if (data.success) {
@@ -96,6 +99,23 @@ export function DeveloperSettings({ storeId, settings, saveSettings, saving = fa
 
     return (
         <div className="space-y-6">
+
+            {/* Mode Toggle */}
+            <div className={`p-1 mt-6 rounded-lg inline-flex items-center gap-1 transition-colors ${isTestMode ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-slate-100 border border-slate-200'}`}>
+                <button 
+                  onClick={() => setIsTestMode(false)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${!isTestMode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    Live Mode
+                </button>
+                <button 
+                  onClick={() => setIsTestMode(true)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${isTestMode ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Beaker size={14} />
+                    Test Mode
+                </button>
+            </div>
 
             {/* Cursor Rules */}
             <div className="p-4 bg-slate-900 border border-slate-700 rounded-xl relative group">
@@ -192,9 +212,12 @@ export function DeveloperSettings({ storeId, settings, saveSettings, saving = fa
                             {apiKeys.map((key) => (
                                 <div key={key.id} className="p-4 bg-white hover:bg-slate-50 transition">
                                     <div className="flex items-center justify-between mb-3">
-                                        <div>
+                                        <div className="flex items-center gap-2">
                                             <span className="font-medium text-slate-900">{key.name}</span>
-                                            <span className="text-xs text-slate-400 ml-2">Created {new Date(key.created_at).toLocaleDateString()}</span>
+                                            {key.is_test && (
+                                                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase rounded border border-amber-200">Test</span>
+                                            )}
+                                            <span className="text-xs text-slate-400">Created {new Date(key.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <button
                                             onClick={() => handleRevokeApiKey(key.id)}

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { storeId, name = 'Default' } = await request.json();
+        const { storeId, name = 'Default', isTest = false } = await request.json();
 
         if (!storeId) {
             return NextResponse.json({ error: 'Store ID required' }, { status: 400 });
@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate keys
-        const publicKey = generateKey('pk_live_');
-        const secretKey = generateKey('sk_live_');
+        const publicKey = generateKey(isTest ? 'pk_test_' : 'pk_live_');
+        const secretKey = generateKey(isTest ? 'sk_test_' : 'sk_live_');
 
         // Insert into database
         const { data: apiKey, error: insertError } = await supabase
@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
                 store_id: storeId,
                 public_key: publicKey,
                 secret_key: secretKey,
-                name
+                name,
+                is_test: isTest
             })
             .select()
             .single();

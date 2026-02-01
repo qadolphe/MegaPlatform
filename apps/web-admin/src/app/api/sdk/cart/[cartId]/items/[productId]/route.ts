@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateApiKey, hydrateCart } from '../../../utils';
+import { hydrateCart } from '../../../utils';
+import { validateApiKey } from '../../../../shared';
 
 export async function PATCH(
     request: NextRequest,

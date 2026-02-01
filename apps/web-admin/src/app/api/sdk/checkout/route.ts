@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateApiKey, hydrateCart } from '../cart/utils';
+import { hydrateCart } from '../cart/utils';
+import { validateApiKey } from '../shared';
 import Stripe from 'stripe';
 import { billing } from '@repo/services';
 
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: validation.error }, { status: validation.status });
         }
         
-        const { storeId, supabase } = validation;
+        const { storeId, supabase, isTestMode } = validation;
         const body = await request.json();
         const { cartId, successUrl, cancelUrl } = body;
 
@@ -28,11 +29,6 @@ export async function POST(request: NextRequest) {
         if (storeError || !store) {
             return NextResponse.json({ error: 'Store not found' }, { status: 404 });
         }
-
-        // Determine mode based on Origin header
-        const origin = request.headers.get('origin') || '';
-        const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
-        const isTestMode = isLocalhost;
 
         const stripeAccountId = isTestMode ? store.stripe_account_id_test : store.stripe_account_id;
         const detailsSubmitted = isTestMode ? store.stripe_details_submitted_test : store.stripe_details_submitted;

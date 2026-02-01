@@ -24,6 +24,18 @@ export interface Product {
     updated_at: string;
 }
 
+export interface MediaAsset {
+    id: string;
+    filename: string;
+    content_type: string | null;
+    size: number | null;
+    storage_key: string;
+    alt_text: string | null;
+    signed_url?: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface ProductListOptions {
     limit?: number;
     offset?: number;

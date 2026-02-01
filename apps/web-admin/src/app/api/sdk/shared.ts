@@ -21,7 +21,7 @@ export async function validateApiKey(request: NextRequest) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    let query = supabase.from('api_keys').select('store_id, is_active');
+    let query = supabase.from('api_keys').select('store_id, is_active, is_test');
     
     if (isSecretKey) {
         query = query.eq('secret_key', apiKey);
@@ -39,7 +39,28 @@ export async function validateApiKey(request: NextRequest) {
         return { error: 'API key has been revoked', status: 401 };
     }
 
-    return { storeId: keyData.store_id, supabase, isSecretKey };
+    return { 
+        storeId: keyData.store_id, 
+        supabase, 
+        isSecretKey,
+        isTestMode: keyData.is_test 
+    };
+}
+
+// Helper to sign product image URL
+export async function signProductImage(product: any, supabase: any) {
+    if (product && product.image_key) {
+        // Use 'media' bucket, valid for 24 hours
+        const { data } = await supabase.storage
+            .from('media')
+            .createSignedUrl(product.image_key, 60 * 60 * 24);
+            
+        if (data?.signedUrl) {
+            // Prepend signed URL to images array so it's the first image
+            product.images = [data.signedUrl, ...(product.images || [])];
+        }
+    }
+    return product;
 }
 
 export function validateContentItem(schemaDef: any, data: any) {
