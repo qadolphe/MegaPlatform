@@ -1,4 +1,5 @@
 import { ProductsAPI } from './products';
+import { VariantsAPI } from './variants';
 import { CartAPI } from './cart';
 import { CheckoutAPI } from './checkout';
 import { StoreAPI } from './store';
@@ -37,6 +38,7 @@ const DEFAULT_BASE_URL = 'https://api.swatbloc.com';
  */
 export class SwatBloc {
     public readonly products: ProductsAPI;
+    public readonly variants: VariantsAPI;
     public readonly cart: CartAPI;
     public readonly checkout: CheckoutAPI;
     public readonly store: StoreAPI;
@@ -58,6 +60,7 @@ export class SwatBloc {
         this.baseUrl = config.baseUrl || DEFAULT_BASE_URL;
 
         this.products = new ProductsAPI(this.apiKey, this.baseUrl);
+        this.variants = new VariantsAPI(this.apiKey, this.baseUrl);
         this.cart = new CartAPI(this.apiKey, this.baseUrl);
         this.checkout = new CheckoutAPI(this.apiKey, this.baseUrl);
         this.store = new StoreAPI(this.apiKey, this.baseUrl);

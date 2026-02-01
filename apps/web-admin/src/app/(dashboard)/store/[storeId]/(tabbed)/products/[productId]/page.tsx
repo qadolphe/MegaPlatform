@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, Plus, Trash, Image as ImageIcon, Upload, Wand2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash, Image as ImageIcon, Upload, Wand2, X, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { MediaManager } from "@/components/media-manager";
 
@@ -64,6 +64,8 @@ export default function ProductEditor() {
         { id: crypto.randomUUID(), title: "Default", price: 0, inventory_quantity: 0, options: {}, description: "", images: [], image_url: null }
     ]);
     const [options, setOptions] = useState<{ name: string, values: string[] }[]>([]);
+    const [newOptionName, setNewOptionName] = useState("");
+    const [optionValueInputs, setOptionValueInputs] = useState<Record<number, string>>({});
 
     // Metafields State
     const [metafields, setMetafields] = useState<{ key: string, label: string, value: string, type: 'text' | 'number' | 'boolean', showOnCard?: boolean, showOnDetail?: boolean, position?: 'above' | 'below' }[]>([]);
@@ -255,20 +257,78 @@ export default function ProductEditor() {
     };
 
     const addOption = () => {
-        const name = prompt("Enter option name (e.g. Size, Color)");
-        if (name) {
-            setOptions([...options, { name, values: [] }]);
-        }
+        if (!newOptionName.trim()) return;
+        setOptions([...options, { name: newOptionName.trim(), values: [] }]);
+        setNewOptionName("");
     };
 
     const addOptionValue = (optionIndex: number) => {
-        const val = prompt(`Enter value for ${options[optionIndex].name}`);
-        if (val) {
-            const newOptions = [...options];
+        const val = optionValueInputs[optionIndex]?.trim();
+        if (!val) return;
+
+        const newOptions = [...options];
+        if (!newOptions[optionIndex].values.includes(val)) {
             newOptions[optionIndex].values.push(val);
             setOptions(newOptions);
-            // Regenerate variants based on combinations? For MVP, let's keep it manual or simple.
         }
+        setOptionValueInputs({ ...optionValueInputs, [optionIndex]: "" });
+    };
+
+    const removeOptionValue = (optionIndex: number, valueIndex: number) => {
+        const newOptions = [...options];
+        newOptions[optionIndex].values = newOptions[optionIndex].values.filter((_, i) => i !== valueIndex);
+        setOptions(newOptions);
+    };
+
+    const generateVariantsFromOptions = () => {
+        if (options.length === 0 || !options.some(o => o.values.length > 0)) {
+            alert("Please add at least one option with values first.");
+            return;
+        }
+
+        // Generate Cartesian product
+        const generateCombinations = (opts: { name: string; values: string[] }[]): Record<string, string>[] => {
+            if (opts.length === 0) return [{}];
+            const result: Record<string, string>[] = [];
+            const recurse = (index: number, current: Record<string, string>) => {
+                if (index === opts.length) {
+                    result.push({ ...current });
+                    return;
+                }
+                const option = opts[index];
+                for (const value of option.values) {
+                    current[option.name] = value;
+                    recurse(index + 1, current);
+                }
+            };
+            recurse(0, {});
+            return result;
+        };
+
+        const combinations = generateCombinations(options.filter(o => o.values.length > 0));
+
+        if (combinations.length > 100) {
+            alert(`This would create ${combinations.length} variants. Maximum is 100. Please reduce option values.`);
+            return;
+        }
+
+        const newVariants = combinations.map(combo => ({
+            id: crypto.randomUUID(),
+            title: Object.values(combo).join(' / '),
+            price: price,
+            inventory_quantity: 0,
+            options: combo,
+            description: "",
+            images: [],
+            image_url: null
+        }));
+
+        if (variants.length > 0 && variants[0].title !== "Default") {
+            const confirmed = confirm(`This will replace ${variants.length} existing variants with ${newVariants.length} new ones. Continue?`);
+            if (!confirmed) return;
+        }
+
+        setVariants(newVariants);
     };
 
     if (loading) return <div>Loading...</div>;
@@ -368,34 +428,99 @@ export default function ProductEditor() {
                     {/* Variants / Options */}
                     <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-slate-900">Variants</h3>
-                            <button onClick={addOption} className="text-sm text-blue-600 hover:underline">+ Add Option</button>
+                            <h3 className="font-semibold text-slate-900">Product Options</h3>
+                        </div>
+
+                        {/* Add New Option */}
+                        <div className="flex gap-2 mb-4">
+                            <input
+                                type="text"
+                                value={newOptionName}
+                                onChange={(e) => setNewOptionName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && addOption()}
+                                placeholder="Option name (e.g. Size, Color)"
+                                className="flex-1 border border-slate-300 rounded-md p-2 text-sm"
+                            />
+                            <button
+                                onClick={addOption}
+                                disabled={!newOptionName.trim()}
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            >
+                                + Add Option
+                            </button>
                         </div>
 
                         {/* Options List */}
                         {options.length > 0 && (
                             <div className="mb-6 space-y-4">
                                 {options.map((opt, idx) => (
-                                    <div key={idx} className="flex items-start gap-4 p-3 bg-slate-50 rounded border border-slate-200">
-                                        <div className="w-32 font-medium pt-2">{opt.name}</div>
-                                        <div className="flex-1 flex flex-wrap gap-2">
-                                            {opt.values.map((val, vIdx) => (
-                                                <span key={vIdx} className="bg-white border border-slate-200 px-2 py-1 rounded text-sm">{val}</span>
-                                            ))}
+                                    <div key={idx} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <span className="font-medium text-slate-800">{opt.name}</span>
                                             <button
-                                                onClick={() => addOptionValue(idx)}
-                                                className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
+                                                onClick={() => setOptions(options.filter((_, i) => i !== idx))}
+                                                className="text-slate-400 hover:text-red-500 transition"
                                             >
-                                                + Value
+                                                <Trash size={16} />
                                             </button>
                                         </div>
-                                        <button onClick={() => setOptions(options.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-red-500">
-                                            <Trash size={16} />
-                                        </button>
+
+                                        {/* Value Tags */}
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {opt.values.map((val, vIdx) => (
+                                                <span
+                                                    key={vIdx}
+                                                    className="inline-flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-full text-sm group"
+                                                >
+                                                    {val}
+                                                    <button
+                                                        onClick={() => removeOptionValue(idx, vIdx)}
+                                                        className="text-slate-400 hover:text-red-500 transition"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+
+                                        {/* Add Value Input */}
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={optionValueInputs[idx] || ""}
+                                                onChange={(e) => setOptionValueInputs({ ...optionValueInputs, [idx]: e.target.value })}
+                                                onKeyDown={(e) => e.key === 'Enter' && addOptionValue(idx)}
+                                                placeholder={`Add ${opt.name} value...`}
+                                                className="flex-1 border border-slate-300 rounded-md p-2 text-sm"
+                                            />
+                                            <button
+                                                onClick={() => addOptionValue(idx)}
+                                                disabled={!optionValueInputs[idx]?.trim()}
+                                                className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                            >
+                                                Add
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
+
+                                {/* Generate Variants Button */}
+                                {options.some(o => o.values.length > 0) && (
+                                    <button
+                                        onClick={generateVariantsFromOptions}
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition shadow-sm"
+                                    >
+                                        <Sparkles size={18} />
+                                        Generate {options.filter(o => o.values.length > 0).reduce((acc, o) => acc * o.values.length, 1)} Variants
+                                    </button>
+                                )}
                             </div>
                         )}
+
+                        {/* Variants Header */}
+                        <div className="flex justify-between items-center mb-4 mt-6 pt-4 border-t border-slate-200">
+                            <h4 className="font-semibold text-slate-900">Variants ({variants.length})</h4>
+                        </div>
 
                         {/* Variants Table */}
                         <table className="w-full text-left text-sm">

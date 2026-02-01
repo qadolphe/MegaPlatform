@@ -2,6 +2,58 @@
  * SwatBloc SDK Types
  */
 
+/**
+ * Product option (e.g., Size, Color)
+ * Defines the customization options available for a product
+ */
+export interface ProductOption {
+    name: string;           // e.g., "Size", "Color"
+    values: string[];       // e.g., ["S", "M", "L"] or ["Red", "Blue", "Green"]
+    position?: number;      // Display order (1-indexed)
+}
+
+/**
+ * Product variant - a specific combination of option values
+ * Each variant can have its own price, inventory, SKU, etc.
+ */
+export interface ProductVariant {
+    id: string;
+    product_id: string;
+    title: string;          // e.g., "S / Red" - auto-generated from option values
+    sku: string | null;
+    barcode?: string | null;
+    price: number;          // Price in cents
+    compare_at_price?: number | null;
+    inventory_quantity: number;
+    options: Record<string, string>;  // e.g., { "Size": "S", "Color": "Red" }
+    image_url: string | null;
+    images: string[];
+    description?: string | null;
+    weight?: number | null;
+    weight_unit?: string;
+    requires_shipping?: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
+/**
+ * Input data for creating/updating a variant
+ */
+export interface VariantInput {
+    title?: string;
+    sku?: string | null;
+    barcode?: string | null;
+    price?: number;
+    compare_at_price?: number | null;
+    inventory_quantity?: number;
+    options?: Record<string, string>;
+    image_url?: string | null;
+    images?: string[];
+    description?: string | null;
+    weight?: number | null;
+    weight_unit?: string;
+}
+
 export interface Product {
     id: string;
     title: string;
@@ -18,7 +70,8 @@ export interface Product {
     weight: number | null;
     weight_unit: string;
     published: boolean;
-    options: any[];
+    options: ProductOption[];
+    variants?: ProductVariant[];
     metafields: any[];
     created_at: string;
     updated_at: string;

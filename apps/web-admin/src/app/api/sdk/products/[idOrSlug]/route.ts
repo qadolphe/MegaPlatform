@@ -38,6 +38,15 @@ export async function GET(
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 
+        // Fetch variants for the product
+        const { data: variants } = await supabase
+            .from('product_variants')
+            .select('*')
+            .eq('product_id', product.id)
+            .order('title');
+
+        product.variants = variants || [];
+
         const signedProduct = await signProductImage(product, supabase);
 
         return NextResponse.json(signedProduct, {
