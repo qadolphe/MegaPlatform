@@ -278,6 +278,22 @@ create table if not exists public.content_items (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- Media Assets (Content Library)
+create table if not exists public.media_assets (
+  id uuid default gen_random_uuid() primary key,
+  store_id uuid references public.stores(id) on delete cascade not null,
+  filename text not null,
+  content_type text,
+  size integer,
+  storage_key text not null,
+  alt_text text,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Add image_key to products
+alter table public.products add column if not exists image_key text;
+
 -- ==========================================
 -- 3. INDEXES
 -- ==========================================

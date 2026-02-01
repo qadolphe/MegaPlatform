@@ -43,6 +43,22 @@ async function validateApiKey(request: NextRequest) {
     return { storeId: keyData.store_id, supabase };
 }
 
+// Helper to sign product image URL
+async function signProductImage(product: any, supabase: any) {
+    if (product && product.image_key) {
+        // Use 'media' bucket, valid for 24 hours
+        const { data } = await supabase.storage
+            .from('media')
+            .createSignedUrl(product.image_key, 60 * 60 * 24);
+            
+        if (data?.signedUrl) {
+            // Prepend signed URL to images array so it's the first image
+            product.images = [data.signedUrl, ...(product.images || [])];
+        }
+    }
+    return product;
+}
+
 export async function GET(request: NextRequest) {
     try {
         const validation = await validateApiKey(request);
@@ -81,7 +97,12 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
         }
 
-        return NextResponse.json(products, {
+        // Sign image URLs
+        const productsWithSignedUrls = await Promise.all(
+            (products || []).map((p: any) => signProductImage(p, supabase))
+        );
+
+        return NextResponse.json(productsWithSignedUrls, {
             headers: {
                 'Cache-Control': 'no-store, max-age=0, must-revalidate',
             }
@@ -125,6 +146,7 @@ export async function POST(request: NextRequest) {
             weight_unit: body.weight_unit || 'kg',
             slug: body.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
             published: body.published !== undefined ? body.published : true,
+            image_key: body.image_key || null,
             options: body.options || [],
             metafields: body.metafields || []
         };
@@ -140,7 +162,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json(product);
+        const signedProduct = await signProductImage(product, supabase);
+
+        return NextResponse.json(signedProduct);
 
     } catch (error) {
         console.error('SDK create product error:', error);
@@ -190,7 +214,9 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json(product);
+        const signedProduct = await signProductImage(product, supabase);
+
+        return NextResponse.json(signedProduct);
 
     } catch (error) {
         console.error('SDK update product error:', error);

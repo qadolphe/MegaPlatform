@@ -10,6 +10,7 @@ export interface Product {
     price: number;
     compare_at_price: number | null;
     images: string[];
+    image_key?: string | null;
     category: string | null;
     sku: string | null;
     barcode: string | null;
