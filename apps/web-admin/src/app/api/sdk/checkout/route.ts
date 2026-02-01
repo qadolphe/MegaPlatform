@@ -33,6 +33,14 @@ export async function POST(request: NextRequest) {
         const stripeAccountId = isTestMode ? store.stripe_account_id_test : store.stripe_account_id;
         const detailsSubmitted = isTestMode ? store.stripe_details_submitted_test : store.stripe_details_submitted;
 
+        console.log('SDK Checkout Debug:', {
+            isTestMode,
+            storeId: store.id,
+            stripeAccountId,
+            dbTestId: store.stripe_account_id_test,
+            dbLiveId: store.stripe_account_id
+        });
+
         if (!stripeAccountId || !detailsSubmitted) {
             return NextResponse.json({ error: `Store not configured for ${isTestMode ? 'Test' : 'Live'} payments` }, { status: 400 });
         }

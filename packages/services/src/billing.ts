@@ -92,6 +92,12 @@ export const createCheckoutSession = async ({
     });
     return session;
   } catch (error) {
+    if (error instanceof Error && (error as any).code === 'account_invalid') {
+        const errorMsg = (error as any).message;
+        // Check if we are trying to use a test key on a live account or vice versa
+        // This often happens if the 'isTestMode' flag is desynced from the actual account ID
+        console.error(`STRIPE MODE MISMATCH: isTestMode=${isTestMode}, account=${stripeAccountId}. Error: ${errorMsg}`);
+    }
     console.error('Error creating checkout session:', error);
     throw error;
   }
