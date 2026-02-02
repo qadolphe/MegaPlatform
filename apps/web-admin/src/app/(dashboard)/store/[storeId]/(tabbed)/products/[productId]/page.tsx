@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, Plus, Trash, Image as ImageIcon, Upload, Wand2, X, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Trash, Upload, Wand2, X, Sparkles, Plus } from "lucide-react";
 import Link from "next/link";
 import { MediaManager } from "@/components/media-manager";
 
@@ -64,6 +64,7 @@ export default function ProductEditor() {
         { id: crypto.randomUUID(), title: "Default", price: 0, inventory_quantity: 0, options: {}, description: "", images: [], image_url: null }
     ]);
     const [options, setOptions] = useState<{ name: string, values: string[] }[]>([]);
+    const [editingOptionIndex, setEditingOptionIndex] = useState<number | null>(null);
     const [newOptionName, setNewOptionName] = useState("");
     const [optionValueInputs, setOptionValueInputs] = useState<Record<number, string>>({});
 
@@ -257,9 +258,9 @@ export default function ProductEditor() {
     };
 
     const addOption = () => {
-        if (!newOptionName.trim()) return;
-        setOptions([...options, { name: newOptionName.trim(), values: [] }]);
-        setNewOptionName("");
+        const newOptions = [...options, { name: "", values: [] }];
+        setOptions(newOptions);
+        setEditingOptionIndex(newOptions.length - 1);
     };
 
     const addOptionValue = (optionIndex: number) => {
@@ -280,55 +281,10 @@ export default function ProductEditor() {
         setOptions(newOptions);
     };
 
-    const generateVariantsFromOptions = () => {
-        if (options.length === 0 || !options.some(o => o.values.length > 0)) {
-            alert("Please add at least one option with values first.");
-            return;
-        }
-
-        // Generate Cartesian product
-        const generateCombinations = (opts: { name: string; values: string[] }[]): Record<string, string>[] => {
-            if (opts.length === 0) return [{}];
-            const result: Record<string, string>[] = [];
-            const recurse = (index: number, current: Record<string, string>) => {
-                if (index === opts.length) {
-                    result.push({ ...current });
-                    return;
-                }
-                const option = opts[index];
-                for (const value of option.values) {
-                    current[option.name] = value;
-                    recurse(index + 1, current);
-                }
-            };
-            recurse(0, {});
-            return result;
-        };
-
-        const combinations = generateCombinations(options.filter(o => o.values.length > 0));
-
-        if (combinations.length > 100) {
-            alert(`This would create ${combinations.length} variants. Maximum is 100. Please reduce option values.`);
-            return;
-        }
-
-        const newVariants = combinations.map(combo => ({
-            id: crypto.randomUUID(),
-            title: Object.values(combo).join(' / '),
-            price: price,
-            inventory_quantity: 0,
-            options: combo,
-            description: "",
-            images: [],
-            image_url: null
-        }));
-
-        if (variants.length > 0 && variants[0].title !== "Default") {
-            const confirmed = confirm(`This will replace ${variants.length} existing variants with ${newVariants.length} new ones. Continue?`);
-            if (!confirmed) return;
-        }
-
-        setVariants(newVariants);
+    const handleOptionNameChange = (index: number, name: string) => {
+        const newOptions = [...options];
+        newOptions[index].name = name;
+        setOptions(newOptions);
     };
 
     if (loading) return <div>Loading...</div>;
@@ -431,249 +387,269 @@ export default function ProductEditor() {
                             <h3 className="font-semibold text-slate-900">Product Options</h3>
                         </div>
 
-                        {/* Add New Option */}
-                        <div className="flex gap-2 mb-4">
-                            <input
-                                type="text"
-                                value={newOptionName}
-                                onChange={(e) => setNewOptionName(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && addOption()}
-                                placeholder="Option name (e.g. Size, Color)"
-                                className="flex-1 border border-slate-300 rounded-md p-2 text-sm"
-                            />
-                            <button
-                                onClick={addOption}
-                                disabled={!newOptionName.trim()}
-                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
-                            >
-                                + Add Option
-                            </button>
-                        </div>
-
-                        {/* Options List */}
+                        {/* Options Summary List */}
                         {options.length > 0 && (
-                            <div className="mb-6 space-y-4">
+                            <div className="space-y-3 mb-6">
                                 {options.map((opt, idx) => (
-                                    <div key={idx} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="font-medium text-slate-800">{opt.name}</span>
-                                            <button
-                                                onClick={() => setOptions(options.filter((_, i) => i !== idx))}
-                                                className="text-slate-400 hover:text-red-500 transition"
-                                            >
-                                                <Trash size={16} />
-                                            </button>
-                                        </div>
-
-                                        {/* Value Tags */}
-                                        <div className="flex flex-wrap gap-2 mb-3">
-                                            {opt.values.map((val, vIdx) => (
-                                                <span
-                                                    key={vIdx}
-                                                    className="inline-flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-full text-sm group"
-                                                >
-                                                    {val}
-                                                    <button
-                                                        onClick={() => removeOptionValue(idx, vIdx)}
-                                                        className="text-slate-400 hover:text-red-500 transition"
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
-
-                                        {/* Add Value Input */}
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                value={optionValueInputs[idx] || ""}
-                                                onChange={(e) => setOptionValueInputs({ ...optionValueInputs, [idx]: e.target.value })}
-                                                onKeyDown={(e) => e.key === 'Enter' && addOptionValue(idx)}
-                                                placeholder={`Add ${opt.name} value...`}
-                                                className="flex-1 border border-slate-300 rounded-md p-2 text-sm"
-                                            />
-                                            <button
-                                                onClick={() => addOptionValue(idx)}
-                                                disabled={!optionValueInputs[idx]?.trim()}
-                                                className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                            >
-                                                Add
-                                            </button>
+                                    <div 
+                                        key={idx} 
+                                        onClick={() => setEditingOptionIndex(idx)}
+                                        className="p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-white hover:border-blue-400 transition group"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-xs font-semibold text-slate-500 uppercase mb-1">{opt.name || "UNNAMED OPTION"}</div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {opt.values.length > 0 ? opt.values.map((v, i) => (
+                                                        <span key={i} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700">{v}</span>
+                                                    )) : <span className="text-xs text-slate-400 italic">No values added</span>}
+                                                </div>
+                                            </div>
+                                            <div className="text-blue-600 text-xs font-medium opacity-0 group-hover:opacity-100 transition">Edit</div>
                                         </div>
                                     </div>
                                 ))}
-
-                                {/* Generate Variants Button */}
-                                {options.some(o => o.values.length > 0) && (
-                                    <button
-                                        onClick={generateVariantsFromOptions}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition shadow-sm"
-                                    >
-                                        <Sparkles size={18} />
-                                        Generate {options.filter(o => o.values.length > 0).reduce((acc, o) => acc * o.values.length, 1)} Variants
-                                    </button>
-                                )}
                             </div>
                         )}
 
-                        {/* Variants Header */}
-                        <div className="flex justify-between items-center mb-4 mt-6 pt-4 border-t border-slate-200">
+                        {/* Option Editor Dialog (inline) */}
+                        {editingOptionIndex !== null && (
+                            <div className="mb-6 p-4 bg-white rounded-lg border-2 border-blue-500 shadow-md">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Option name</label>
+                                        <input
+                                            type="text"
+                                            value={options[editingOptionIndex].name}
+                                            onChange={(e) => handleOptionNameChange(editingOptionIndex, e.target.value)}
+                                            className="w-full border border-slate-300 rounded-md p-2"
+                                            placeholder="e.g. Size"
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Option values</label>
+                                        <div className="space-y-2">
+                                            {options[editingOptionIndex].values.map((val, vIdx) => (
+                                                <div key={vIdx} className="flex-1 flex items-center justify-between bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                                                    <span className="text-sm">{val}</span>
+                                                    <button
+                                                        onClick={() => removeOptionValue(editingOptionIndex, vIdx)}
+                                                        className="text-slate-400 hover:text-slate-600"
+                                                    >
+                                                        <Trash size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={optionValueInputs[editingOptionIndex] || ""}
+                                                    onChange={(e) => setOptionValueInputs({ ...optionValueInputs, [editingOptionIndex]: e.target.value })}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            addOptionValue(editingOptionIndex);
+                                                        }
+                                                    }}
+                                                    placeholder="Add another value"
+                                                    className="flex-1 border border-slate-300 rounded-md p-2 text-sm"
+                                                />
+                                                <button
+                                                    onClick={() => addOptionValue(editingOptionIndex)}
+                                                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-sm font-medium transition"
+                                                >
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex justify-between pt-4 border-t border-slate-100">
+                                        <button 
+                                            onClick={() => {
+                                                const newOptions = options.filter((_, i) => i !== editingOptionIndex);
+                                                setOptions(newOptions);
+                                                setEditingOptionIndex(null);
+                                            }}
+                                            className="text-red-600 text-sm border border-slate-200 px-3 py-1.5 rounded hover:bg-red-50 transition"
+                                        >
+                                            Delete
+                                        </button>
+                                        <button 
+                                            onClick={() => setEditingOptionIndex(null)}
+                                            className="bg-slate-900 text-white text-sm px-6 py-1.5 rounded hover:bg-slate-800 transition"
+                                        >
+                                            Done
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Add Another Option Button */}
+                        {editingOptionIndex === null && options.length < 3 && (
+                            <button
+                                onClick={addOption}
+                                className="flex items-center gap-2 text-blue-600 hover:underline text-sm font-medium"
+                            >
+                                <Plus size={16} /> {options.length === 0 ? "Add Option" : "Add another option"}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Variants Header */}
+                    <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                        <div className="flex justify-between items-center mb-6">
                             <h4 className="font-semibold text-slate-900">Variants ({variants.length})</h4>
                         </div>
 
                         {/* Variants Table */}
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-4 py-2 font-medium text-slate-500">Variant</th>
-                                    <th className="px-4 py-2 font-medium text-slate-500">Price</th>
-                                    <th className="px-4 py-2 font-medium text-slate-500">Inventory</th>
-                                    <th className="px-4 py-2 font-medium text-slate-500"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200">
-                                {variants.map((variant, idx) => (
-                                    <tr key={variant.id || idx}>
-                                        <td className="px-4 py-2 align-top">
-                                            <input
-                                                type="text"
-                                                value={variant.title}
-                                                onChange={(e) => {
-                                                    const newVars = [...variants];
-                                                    newVars[idx].title = e.target.value;
-                                                    setVariants(newVars);
-                                                }}
-                                                className="w-full border-none bg-transparent focus:ring-0 p-0 font-medium"
-                                            />
-
-                                            {/* Variant option pickers */}
-                                            {options.length > 0 && (
-                                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    {options.map((opt, optIdx) => (
-                                                        <div key={`${idx}-${optIdx}`}>
-                                                            <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase">{opt.name}</label>
-                                                            <select
-                                                                className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
-                                                                value={(variant.options && variant.options[opt.name]) || ""}
-                                                                onChange={(e) => {
-                                                                    const newVars = [...variants];
-                                                                    const nextOptions = { ...(newVars[idx].options || {}) };
-                                                                    nextOptions[opt.name] = e.target.value;
-                                                                    newVars[idx].options = nextOptions;
-                                                                    setVariants(newVars);
-                                                                }}
-                                                            >
-                                                                <option value="">Select {opt.name}...</option>
-                                                                {opt.values.map((val: string) => (
-                                                                    <option key={val} value={val}>{val}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* Variant description */}
-                                            <div className="mt-3">
-                                                <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase">Variant Description</label>
-                                                <textarea
-                                                    value={variant.description || ""}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 border-y border-slate-200 text-slate-500 font-medium">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">Variant</th>
+                                        <th className="px-4 py-3 font-semibold w-32">Price</th>
+                                        <th className="px-4 py-3 font-semibold w-32">Inventory</th>
+                                        <th className="px-4 py-3 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {variants.map((variant, idx) => (
+                                        <tr key={variant.id || idx} className="hover:bg-slate-50/50 transition">
+                                            <td className="px-4 py-4 align-top">
+                                                <input
+                                                    type="text"
+                                                    value={variant.title}
                                                     onChange={(e) => {
                                                         const newVars = [...variants];
-                                                        newVars[idx].description = e.target.value;
+                                                        newVars[idx].title = e.target.value;
                                                         setVariants(newVars);
                                                     }}
-                                                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                                    placeholder="Unique description for this variant..."
+                                                    className="w-full border-none bg-transparent focus:ring-0 p-0 font-medium text-slate-900 mb-2"
+                                                    placeholder="Variant title"
                                                 />
-                                            </div>
 
-                                            {/* Variant images */}
-                                            <div className="mt-3">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <label className="block text-[11px] font-semibold text-slate-500 uppercase">Variant Images</label>
+                                                {/* Variant option pickers */}
+                                                {options.length > 0 && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                                        {options.map((opt, optIdx) => (
+                                                            <div key={`${idx}-${optIdx}`}>
+                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-tight">{opt.name || `Option ${optIdx + 1}`}</label>
+                                                                <select
+                                                                    className="w-full border border-slate-200 rounded-md px-2 py-1.5 text-xs bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                                    value={(variant.options && variant.options[opt.name]) || ""}
+                                                                    onChange={(e) => {
+                                                                        const newVars = [...variants];
+                                                                        const nextOptions = { ...(newVars[idx].options || {}) };
+                                                                        nextOptions[opt.name] = e.target.value;
+                                                                        newVars[idx].options = nextOptions;
+                                                                        setVariants(newVars);
+                                                                    }}
+                                                                >
+                                                                    <option value="">Select...</option>
+                                                                    {opt.values.map((val: string) => (
+                                                                        <option key={val} value={val}>{val}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Expanded Section (Images, etc) */}
+                                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-tight">Media</label>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setMediaTarget({ type: 'variant', index: idx });
+                                                                setIsMediaOpen(true);
+                                                            }}
+                                                            className="text-[11px] text-blue-600 hover:underline font-medium"
+                                                        >
+                                                            Select Images
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(variant.images || []).map((url: string, imgIdx: number) => (
+                                                            <div key={url + imgIdx} className="relative h-12 w-12 rounded-md overflow-hidden border border-slate-200 group">
+                                                                <img src={url} className="h-full w-full object-cover" />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newVars = [...variants];
+                                                                        const next = [...(newVars[idx].images || [])].filter((_: string, i: number) => i !== imgIdx);
+                                                                        newVars[idx].images = next;
+                                                                        newVars[idx].image_url = next.length > 0 ? next[0] : null;
+                                                                        setVariants(newVars);
+                                                                    }}
+                                                                    className="absolute top-0.5 right-0.5 bg-white/90 text-red-500 p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition"
+                                                                >
+                                                                    <Trash size={10} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        {(variant.images || []).length === 0 && (
+                                                            <div className="text-[11px] text-slate-400 italic">No images</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 align-top">
+                                                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-2 py-1.5">
+                                                    <span className="text-slate-400 text-xs">$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={isNaN(variant.price) ? "" : variant.price / 100}
+                                                        onChange={(e) => {
+                                                            const newVars = [...variants];
+                                                            newVars[idx].price = parseFloat(e.target.value) * 100;
+                                                            setVariants(newVars);
+                                                        }}
+                                                        className="w-full border-none bg-transparent focus:ring-0 p-0 text-sm"
+                                                    />
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 align-top">
+                                                <input
+                                                    type="number"
+                                                    value={isNaN(variant.inventory_quantity) ? "" : variant.inventory_quantity}
+                                                    onChange={(e) => {
+                                                        const newVars = [...variants];
+                                                        newVars[idx].inventory_quantity = parseInt(e.target.value);
+                                                        setVariants(newVars);
+                                                    }}
+                                                    className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm bg-white"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-4 text-right align-top">
+                                                {variants.length > 1 && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            setMediaTarget({ type: 'variant', index: idx });
-                                                            setIsMediaOpen(true);
-                                                        }}
-                                                        className="text-xs text-blue-600 hover:underline"
+                                                        onClick={() => setVariants(variants.filter((_, i) => i !== idx))}
+                                                        className="text-slate-300 hover:text-red-500 transition p-1"
                                                     >
-                                                        Add from Library
+                                                        <Trash size={16} />
                                                     </button>
-                                                </div>
-
-                                                <div className="flex flex-wrap gap-2">
-                                                    {(variant.images || []).map((url: string, imgIdx: number) => (
-                                                        <div key={url + imgIdx} className="relative h-16 w-16 rounded-md overflow-hidden border border-slate-200 group">
-                                                            <img src={url} className="h-full w-full object-cover" />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newVars = [...variants];
-                                                                    const next = [...(newVars[idx].images || [])].filter((_: string, i: number) => i !== imgIdx);
-                                                                    newVars[idx].images = next;
-                                                                    // keep legacy image_url aligned
-                                                                    newVars[idx].image_url = next.length > 0 ? next[0] : null;
-                                                                    setVariants(newVars);
-                                                                }}
-                                                                className="absolute top-1 right-1 bg-white/90 text-red-500 p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
-                                                            >
-                                                                <Trash size={12} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-
-                                                    {(variant.images || []).length === 0 && (
-                                                        <div className="text-xs text-slate-400">No images yet.</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-2 align-top">
-                                            <input
-                                                type="number"
-                                                value={isNaN(variant.price) ? "" : variant.price / 100}
-                                                onChange={(e) => {
-                                                    const newVars = [...variants];
-                                                    newVars[idx].price = parseFloat(e.target.value) * 100;
-                                                    setVariants(newVars);
-                                                }}
-                                                className="w-24 border border-slate-300 rounded px-2 py-1"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2 align-top">
-                                            <input
-                                                type="number"
-                                                value={isNaN(variant.inventory_quantity) ? "" : variant.inventory_quantity}
-                                                onChange={(e) => {
-                                                    const newVars = [...variants];
-                                                    newVars[idx].inventory_quantity = parseInt(e.target.value);
-                                                    setVariants(newVars);
-                                                }}
-                                                className="w-24 border border-slate-300 rounded px-2 py-1"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2 text-right align-top">
-                                            <button
-                                                type="button"
-                                                onClick={() => setVariants(variants.filter((_, i) => i !== idx))}
-                                                className="text-slate-400 hover:text-red-500"
-                                            >
-                                                <Trash size={14} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        
                         <button
-                            onClick={() => setVariants([...variants, { id: crypto.randomUUID(), title: "New Variant", price: price, inventory_quantity: 0, options: {}, description: "", images: [], image_url: null }])}
-                            className="mt-4 text-sm text-blue-600 font-medium hover:underline"
+                            onClick={() => setVariants([...variants, { id: crypto.randomUUID(), title: `Variant ${variants.length + 1}`, price: price, inventory_quantity: 0, options: {}, description: "", images: [], image_url: null }])}
+                            className="mt-6 w-full py-2.5 border-2 border-dashed border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-500 font-medium text-sm rounded-lg transition"
                         >
-                            + Add Variant
+                            + Add Variant Row
                         </button>
                     </div>
 

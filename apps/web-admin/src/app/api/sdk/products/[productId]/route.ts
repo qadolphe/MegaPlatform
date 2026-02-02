@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ idOrSlug: string }> }
+    { params }: { params: Promise<{ productId: string }> }
 ) {
     try {
         const validation = await validateApiKey(request);
@@ -14,7 +14,7 @@ export async function GET(
         }
 
         const { storeId, supabase } = validation;
-        const { idOrSlug } = await params;
+        const { productId } = await params;
 
         // Try by ID first, then by slug
         let query = supabase
@@ -24,12 +24,12 @@ export async function GET(
             .eq('published', true);
 
         // Check if it looks like a UUID
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId);
 
         if (isUuid) {
-            query = query.eq('id', idOrSlug);
+            query = query.eq('id', productId);
         } else {
-            query = query.eq('slug', idOrSlug);
+            query = query.eq('slug', productId);
         }
 
         const { data: product, error } = await query.single();
@@ -45,9 +45,10 @@ export async function GET(
             .eq('product_id', product.id)
             .order('title');
 
-        product.variants = variants || [];
+        const productWithVariants: any = product;
+        productWithVariants.variants = variants || [];
 
-        const signedProduct = await signProductImage(product, supabase);
+        const signedProduct = await signProductImage(productWithVariants, supabase);
 
         return NextResponse.json(signedProduct, {
             headers: {
