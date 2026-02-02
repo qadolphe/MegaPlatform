@@ -32,6 +32,7 @@ export async function validateApiKey(request: NextRequest) {
     const { data: keyData, error: keyError } = await query.single();
 
     if (keyError || !keyData) {
+        console.error("SDK Auth Failed:", { apiKey: apiKey.substring(0, 8) + '...', error: keyError });
         return { error: 'Invalid API key', status: 401 };
     }
 
