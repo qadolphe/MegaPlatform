@@ -119,16 +119,10 @@ export const retrieveCheckoutSession = async (sessionId: string, stripeAccountId
 
 export const constructEvent = (payload: string | Buffer, signature: string, secret: string) => {
   try {
-    // We try with live first as it's the most common
     return stripeLive.webhooks.constructEvent(payload, signature, secret);
   } catch (error) {
-    try {
-      // Fallback to test if live fails
-      return stripeTest.webhooks.constructEvent(payload, signature, secret);
-    } catch (innerError) {
-      console.error('Error constructing webhook event:', innerError);
-      throw innerError;
-    }
+     console.error('Error constructing webhook event:', error);
+     throw error;
   }
 };
 

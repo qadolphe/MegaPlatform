@@ -67,10 +67,14 @@ export async function POST(request: NextRequest) {
             price_data: {
                 currency: store.currency || 'usd',
                 product_data: {
-                    name: item.product.name,
-                    images: item.product.images?.length ? [item.product.images[0]] : [],
+                    name: item.variant ? `${item.product.name} (${item.variant.title})` : item.product.name,
+                    description: item.variant ? item.variant.title : undefined,
+                    // Use variant image if available, otherwise fallback to product image
+                    images: item.variant?.image_url 
+                        ? [item.variant.image_url] 
+                        : (item.product.images?.length ? [item.product.images[0]] : []),
                 },
-                unit_amount: item.product.price, // In cents
+                unit_amount: item.product.price, // In cents, resolved by hydrateCart
             },
             quantity: item.quantity,
         }));
@@ -82,7 +86,8 @@ export async function POST(request: NextRequest) {
         const itemsForMetadata = hydratedCart.items.map((item: any) => ({
             id: item.product.id,
             qty: item.quantity,
-            price: item.product.price
+            price: item.product.price,
+            vid: item.variantId // variantId if available
         }));
 
         const session = await billing.createCheckoutSession({

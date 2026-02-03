@@ -50,9 +50,26 @@ export async function POST(request: Request) {
     const account = await billing.retrieveAccount(accountId, isTestMode);
 
     if (account.details_submitted) {
-        // If fully onboarded, generate a Login Link to the Express Dashboard
-        const loginLink = await billing.createLoginLink(accountId, isTestMode);
-        return NextResponse.json({ url: loginLink.url });
+        // Standard accounts do not support Login Links; they log in directly to Stripe.
+        if (account.type === 'standard') {
+             const dashboardUrl = isTestMode 
+                ? 'https://dashboard.stripe.com/test/dashboard' 
+                : 'https://dashboard.stripe.com/dashboard';
+             return NextResponse.json({ url: dashboardUrl });
+        }
+
+        // If Express/Custom, generate a Login Link to the Express Dashboard
+        try {
+          const loginLink = await billing.createLoginLink(accountId, isTestMode);
+          return NextResponse.json({ url: loginLink.url });
+        } catch (err: any) {
+           console.error('Failed to generate login link:', err);
+           // Fallback to generic dashboard if link creation fails (e.g. incompatible account type that isn't standard)
+           const dashboardUrl = isTestMode 
+                ? 'https://dashboard.stripe.com/test/dashboard' 
+                : 'https://dashboard.stripe.com/dashboard';
+           return NextResponse.json({ url: dashboardUrl });
+        }
     }
 
     // 4. Create Account Link (Onboarding)

@@ -4,7 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
-  const body = await request.text();
+  const bodyBuffer = await request.arrayBuffer();
+  const body = Buffer.from(bodyBuffer);
+  const bodyString = body.toString('utf8');
   const headersList = await headers();
   const signature = headersList.get('stripe-signature');
 
@@ -19,10 +21,15 @@ export async function POST(request: Request) {
     if (process.env.STRIPE_WEBHOOK_SECRET) {
       try {
         event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
-      } catch (err) {
+      } catch (err: any) {
+        console.warn('Live secret verification failed, trying test secret if available.');
         // If Live fails and we have a Test Secret, try that
         if (process.env.STRIPE_WEBHOOK_SECRET_TEST) {
-          event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET_TEST);
+           try {
+             event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET_TEST);
+           } catch(e: any) {
+             throw new Error(`Test secret verification also failed: ${e.message}`);
+           }
         } else {
           throw err;
         }
@@ -33,9 +40,8 @@ export async function POST(request: Request) {
     } else {
       throw new Error('Missing STRIPE_WEBHOOK_SECRET');
     }
-  } catch (err: any) {
-    console.error(`Webhook signature verification failed.`, err.message);
-    return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
+  } catch (err: any) {    
+    return NextResponse.json({ error: `Webhook signature verification failed: ${err.message}` }, { status: 400 });
   }
 
   // Use Service Role for admin access
