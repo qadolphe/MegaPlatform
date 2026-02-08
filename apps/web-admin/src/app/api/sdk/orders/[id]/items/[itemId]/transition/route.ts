@@ -13,7 +13,7 @@ interface TransitionRequest {
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: Promise<{ orderId: string; itemId: string }> }
+    { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
     const api = await validateApiKey(request);
     if ('error' in api) return NextResponse.json(api, { status: api.status });
@@ -23,7 +23,7 @@ export async function POST(
     }
 
     const { supabase, storeId } = api;
-    const { orderId, itemId } = await params;
+    const { id: orderId, itemId } = await params;
     const body: TransitionRequest = await request.json();
 
     // 1. Get order and verify it belongs to this store
