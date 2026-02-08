@@ -294,6 +294,24 @@ create table if not exists public.media_assets (
 -- Add image_key to products
 alter table public.products add column if not exists image_key text;
 
+-- Add fulfillment_pipeline to products (Steps Engine)
+alter table public.products add column if not exists fulfillment_pipeline jsonb default '[]';
+
+-- Add step tracking to order_items (Steps Engine)
+alter table public.order_items add column if not exists current_step_id text;
+alter table public.order_items add column if not exists step_history jsonb default '[]';
+
+-- Webhook Subscriptions
+create table if not exists public.webhook_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid references public.stores(id) on delete cascade not null,
+  url text not null,
+  events text[] not null default '{}',
+  secret_key text not null,
+  is_active boolean default true,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
 -- ==========================================
 -- 3. INDEXES
 -- ==========================================
@@ -327,6 +345,7 @@ alter table public.store_task_tags enable row level security;
 alter table public.content_packets enable row level security;
 alter table public.content_models enable row level security;
 alter table public.content_items enable row level security;
+alter table public.webhook_subscriptions enable row level security;
 
 -- ==========================================
 -- 5. FUNCTIONS
@@ -782,3 +801,7 @@ drop policy if exists "Public viewable" on public.content_items;
 create policy "Public viewable" on public.content_items for select using (true);
 drop policy if exists "Manage content items" on public.content_items;
 create policy "Manage content items" on public.content_items for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- Webhook Subscriptions
+drop policy if exists "Admins manage webhooks" on public.webhook_subscriptions;
+create policy "Admins manage webhooks" on public.webhook_subscriptions for all to authenticated using (has_store_access(store_id, 'editor'));

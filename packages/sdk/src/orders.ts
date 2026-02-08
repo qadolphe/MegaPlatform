@@ -1,10 +1,10 @@
-import { Order } from './types';
+import { Order, OrderItem } from './types';
 
 export class OrdersAPI {
     constructor(
         private apiKey: string,
         private baseUrl: string
-    ) {}
+    ) { }
 
     private async request(method: string, path: string, body?: any) {
         const url = `${this.baseUrl}/api/sdk/orders${path}`;
@@ -36,7 +36,7 @@ export class OrdersAPI {
         if (options?.offset) params.set('offset', options.offset.toString());
         if (options?.status) params.set('status', options.status);
         if (options?.sessionId) params.set('sessionId', options.sessionId);
-        
+
         return this.request('GET', `?${params.toString()}`);
     }
 
@@ -53,6 +53,26 @@ export class OrdersAPI {
      * Requires Secret Key (sk_live_...).
      */
     async update(id: string, updates: Partial<Order>): Promise<Order> {
-         return this.request('PATCH', `/${id}`, updates);
+        return this.request('PATCH', `/${id}`, updates);
+    }
+
+    /**
+     * Transition an order item to a new step in the fulfillment pipeline.
+     * Requires Secret Key (sk_live_...).
+     * 
+     * @param orderId - The order ID
+     * @param itemId - The order item ID
+     * @param data - Transition data including stepId and optional metadata
+     */
+    async transitionItem(
+        orderId: string,
+        itemId: string,
+        data: {
+            stepId: string;
+            metadata?: Record<string, any>;
+            status?: 'processing' | 'completed' | 'cancelled';
+        }
+    ): Promise<OrderItem> {
+        return this.request('POST', `/${orderId}/items/${itemId}/transition`, data);
     }
 }

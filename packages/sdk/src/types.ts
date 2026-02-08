@@ -73,6 +73,8 @@ export interface Product {
     options: ProductOption[];
     variants?: ProductVariant[];
     metafields: any[];
+    /** Fulfillment pipeline definition for service commerce */
+    fulfillment_pipeline?: FulfillmentStep[];
     created_at: string;
     updated_at: string;
 }
@@ -195,6 +197,25 @@ export interface Order {
     updated_at: string;
 }
 
+/**
+ * A step in the fulfillment pipeline.
+ * Defines what metadata is required for this step.
+ */
+export interface FulfillmentStep {
+    id: string;
+    label: string;
+    required_metadata: string[];
+}
+
+/**
+ * An entry in the step history audit log.
+ */
+export interface StepHistoryEntry {
+    step_id: string;
+    completed_at: string;
+    metadata: Record<string, any>;
+}
+
 export interface OrderItem {
     id: string;
     product_id?: string;
@@ -204,4 +225,9 @@ export interface OrderItem {
     product_name: string;
     variant_name?: string;
     image_url?: string;
+    /** Current step in the fulfillment pipeline */
+    current_step_id?: string;
+    /** Audit log of completed steps */
+    step_history?: StepHistoryEntry[];
 }
+

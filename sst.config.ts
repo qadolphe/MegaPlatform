@@ -19,8 +19,13 @@ export default $config({
     const supabaseServiceRoleKey = new sst.Secret("SUPABASE_SERVICE_ROLE_KEY");
     const geminiApiKey = new sst.Secret("GEMINI_API_KEY");
 
+    // Steps Engine: Webhook Queue for reliable delivery
+    const webhookQueue = new sst.aws.Queue("WebhookQueue");
+    webhookQueue.subscribe("packages/services/src/webhook-worker.handler");
+
     const admin = new sst.aws.Nextjs("WebAdmin", {
       path: "apps/web-admin",
+      link: [webhookQueue],
       domain: $app.stage === "production" ? {
         name: "swatbloc.com",
         redirects: ["www.swatbloc.com"],

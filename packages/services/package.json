@@ -9,10 +9,12 @@
   "dependencies": {
     "resend": "^4.0.0",
     "stripe": "^14.14.0",
-    "@repo/database": "*"
+    "@repo/database": "*",
+    "@aws-sdk/client-sqs": "^3.500.0"
   },
   "devDependencies": {
     "typescript": "latest",
-    "@types/node": "latest"
+    "@types/node": "latest",
+    "@types/aws-lambda": "^8.10.130"
   }
 }
