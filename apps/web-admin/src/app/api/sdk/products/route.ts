@@ -93,7 +93,8 @@ export async function POST(request: NextRequest) {
             published: body.published !== undefined ? body.published : true,
             image_key: body.image_key || null,
             options: body.options || [],
-            metafields: body.metafields || []
+            metafields: body.metafields || [],
+            fulfillment_pipeline: body.fulfillment_pipeline || []
         };
 
         const { data: product, error } = await supabase

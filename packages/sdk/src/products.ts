@@ -1,4 +1,4 @@
-import { Product, ProductListOptions } from './types';
+import { Product, ProductListOptions, FulfillmentStep } from './types';
 
 export class ProductsAPI {
     constructor(
@@ -129,5 +129,15 @@ export class ProductsAPI {
      */
     async search(query: string, options: Omit<ProductListOptions, 'search'> = {}): Promise<Product[]> {
         return this.list({ ...options, search: query });
+    }
+
+    /**
+     * Update the fulfillment pipeline for a product
+     * @param id - The product ID
+     * @param steps - The ordered list of fulfillment steps
+     * @returns The updated product
+     */
+    async updatePipeline(id: string, steps: FulfillmentStep[]): Promise<Product> {
+        return this.update(id, { fulfillment_pipeline: steps });
     }
 }
