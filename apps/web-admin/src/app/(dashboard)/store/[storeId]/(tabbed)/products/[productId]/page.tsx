@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Save, Trash, Upload, Wand2, X, Sparkles, Plus } from "lucide-react";
+import { ArrowLeft, Save, Trash, Upload, Wand2, X, Sparkles, Plus, Image, Settings, Layers, Box, FileText } from "lucide-react";
 import Link from "next/link";
 import { MediaManager } from "@/components/media-manager";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { FulfillmentStepsEditor, FulfillmentStep } from "@/components/FulfillmentStepsEditor";
 
 export default function ProductEditor() {
     const params = useParams();
@@ -24,8 +26,8 @@ export default function ProductEditor() {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [price, setPrice] = useState(0); // in cents
-    const [comparePrice, setComparePrice] = useState<number | null>(null);
     const [images, setImages] = useState<string[]>([]);
+    const [fulfillmentPipeline, setFulfillmentPipeline] = useState<FulfillmentStep[]>([]);
     const [published, setPublished] = useState(false);
 
     // AI Generation State
@@ -108,8 +110,8 @@ export default function ProductEditor() {
         setTitle(product.title);
         setDescription(product.description || "");
         setPrice(product.price);
-        setComparePrice(product.compare_at_price);
         setImages(product.images || []);
+        setFulfillmentPipeline(Array.isArray(product.fulfillment_pipeline) ? product.fulfillment_pipeline : []);
         setPublished(product.published);
         setOptions(Array.isArray(product.options) ? product.options : []);
         setMetafields(Array.isArray(product.metafields) ? product.metafields : []);
@@ -143,10 +145,10 @@ export default function ProductEditor() {
             slug, // In a real app, handle slug collisions
             description,
             price: isNaN(price) ? 0 : price,
-            compare_at_price: comparePrice,
             images,
             options,
             metafields,
+            fulfillment_pipeline: fulfillmentPipeline,
             published
         };
 
@@ -391,8 +393,8 @@ export default function ProductEditor() {
                         {options.length > 0 && (
                             <div className="space-y-3 mb-6">
                                 {options.map((opt, idx) => (
-                                    <div 
-                                        key={idx} 
+                                    <div
+                                        key={idx}
                                         onClick={() => setEditingOptionIndex(idx)}
                                         className="p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-white hover:border-blue-400 transition group"
                                     >
@@ -442,7 +444,7 @@ export default function ProductEditor() {
                                                     </button>
                                                 </div>
                                             ))}
-                                            
+
                                             <div className="flex gap-2">
                                                 <input
                                                     type="text"
@@ -466,9 +468,9 @@ export default function ProductEditor() {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex justify-between pt-4 border-t border-slate-100">
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 const newOptions = options.filter((_, i) => i !== editingOptionIndex);
                                                 setOptions(newOptions);
@@ -478,7 +480,7 @@ export default function ProductEditor() {
                                         >
                                             Delete
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => setEditingOptionIndex(null)}
                                             className="bg-slate-900 text-white text-sm px-6 py-1.5 rounded hover:bg-slate-800 transition"
                                         >
@@ -559,7 +561,7 @@ export default function ProductEditor() {
                                                         ))}
                                                     </div>
                                                 )}
-                                                
+
                                                 {/* Expanded Section (Images, etc) */}
                                                 <div className="mt-4 pt-4 border-t border-slate-100">
                                                     <div className="flex items-center justify-between mb-2">
@@ -644,7 +646,7 @@ export default function ProductEditor() {
                                 </tbody>
                             </table>
                         </div>
-                        
+
                         <button
                             onClick={() => setVariants([...variants, { id: crypto.randomUUID(), title: `Variant ${variants.length + 1}`, price: price, inventory_quantity: 0, options: {}, description: "", images: [], image_url: null }])}
                             className="mt-6 w-full py-2.5 border-2 border-dashed border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-500 font-medium text-sm rounded-lg transition"
@@ -787,6 +789,24 @@ export default function ProductEditor() {
                             </div>
                         )}
                     </div>
+
+                    {/* Fulfillment Steps */}
+                    <CollapsibleSection
+                        title="Fulfillment Steps"
+                        icon={<Layers size={16} />}
+                        badge={fulfillmentPipeline.length || undefined}
+                        defaultOpen={fulfillmentPipeline.length > 0}
+                    >
+                        <div className="pt-2">
+                            <p className="text-xs text-slate-500 mb-4">
+                                Define the steps customers go through when purchasing this product (e.g., receive kit → return kit → processing → complete).
+                            </p>
+                            <FulfillmentStepsEditor
+                                steps={fulfillmentPipeline}
+                                onChange={setFulfillmentPipeline}
+                            />
+                        </div>
+                    </CollapsibleSection>
                 </div>
 
                 {/* Sidebar */}
@@ -806,26 +826,14 @@ export default function ProductEditor() {
 
                     <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
                         <h3 className="font-semibold text-slate-900 mb-4">Pricing</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Base Price ($)</label>
-                                <input
-                                    type="number"
-                                    value={isNaN(price) ? "" : price / 100}
-                                    onChange={(e) => setPrice(parseFloat(e.target.value) * 100)}
-                                    className="w-full border border-slate-300 rounded-md p-2"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Compare at Price ($)</label>
-                                <input
-                                    type="number"
-                                    value={comparePrice ? comparePrice / 100 : ""}
-                                    onChange={(e) => setComparePrice(e.target.value ? parseFloat(e.target.value) * 100 : null)}
-                                    className="w-full border border-slate-300 rounded-md p-2"
-                                    placeholder="0.00"
-                                />
-                            </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Base Price ($)</label>
+                            <input
+                                type="number"
+                                value={isNaN(price) ? "" : price / 100}
+                                onChange={(e) => setPrice(parseFloat(e.target.value) * 100)}
+                                className="w-full border border-slate-300 rounded-md p-2"
+                            />
                         </div>
                     </div>
 

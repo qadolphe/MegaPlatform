@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ArrowLeft, Package, MapPin, CreditCard, Truck, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { PipelineProgressBar } from "@/components/PipelineProgressBar";
 
 type OrderDetail = {
     id: string;
@@ -36,6 +37,11 @@ type OrderDetail = {
         variant_name: string | null;
         image_url: string | null;
         product_id: string | null;
+        current_step_id: string | null;
+        step_history: any[];
+        product: {
+            fulfillment_pipeline: any[];
+        } | null;
     }[];
 };
 
@@ -67,7 +73,7 @@ export default function OrderDetail() {
             .select(`
         *,
         customer:customers(id, email, first_name, last_name, phone),
-        order_items(id, quantity, price_at_purchase, product_name, variant_name, image_url, product_id)
+        order_items(id, quantity, price_at_purchase, product_name, variant_name, image_url, product_id, current_step_id, step_history, product:products(fulfillment_pipeline))
       `)
             .eq("id", orderId)
             .single();
@@ -174,32 +180,49 @@ export default function OrderDetail() {
                             <h2 className="font-semibold text-slate-900">Order Items</h2>
                         </div>
                         <div className="divide-y divide-slate-100">
-                            {order.order_items.map((item) => (
-                                <div key={item.id} className="p-4 flex items-center gap-4">
-                                    <div className="h-16 w-16 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
-                                        {item.image_url ? (
-                                            <img src={item.image_url} alt="" className="h-full w-full object-cover" />
-                                        ) : (
-                                            <Package size={24} className="text-slate-300" />
+                            {order.order_items.map((item) => {
+                                const pipeline = item.product?.fulfillment_pipeline || [];
+                                const hasPipeline = pipeline.length > 0;
+
+                                return (
+                                    <div key={item.id} className="p-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-16 w-16 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                                                {item.image_url ? (
+                                                    <img src={item.image_url} alt="" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <Package size={24} className="text-slate-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-medium text-slate-900">{item.product_name}</p>
+                                                {item.variant_name && (
+                                                    <p className="text-sm text-slate-500">{item.variant_name}</p>
+                                                )}
+                                                <p className="text-sm text-slate-400">Qty: {item.quantity}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-semibold text-slate-900">
+                                                    {formatCurrency(item.price_at_purchase * item.quantity, order.currency)}
+                                                </p>
+                                                <p className="text-sm text-slate-500">
+                                                    {formatCurrency(item.price_at_purchase, order.currency)} each
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {hasPipeline && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100">
+                                                <PipelineProgressBar
+                                                    pipeline={pipeline}
+                                                    currentStepId={item.current_step_id}
+                                                    stepHistory={item.step_history || []}
+                                                    compact
+                                                />
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-slate-900">{item.product_name}</p>
-                                        {item.variant_name && (
-                                            <p className="text-sm text-slate-500">{item.variant_name}</p>
-                                        )}
-                                        <p className="text-sm text-slate-400">Qty: {item.quantity}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-semibold text-slate-900">
-                                            {formatCurrency(item.price_at_purchase * item.quantity, order.currency)}
-                                        </p>
-                                        <p className="text-sm text-slate-500">
-                                            {formatCurrency(item.price_at_purchase, order.currency)} each
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         {/* Totals */}
                         <div className="bg-slate-50 px-6 py-4 space-y-2 border-t border-slate-200">
