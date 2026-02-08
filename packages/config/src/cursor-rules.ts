@@ -42,6 +42,12 @@ const shoes = await swat.products.byCategory('shoes');
 
 // Search products
 const results = await swat.products.search('running shoes');
+
+// Update Fulfillment Pipeline
+await swat.products.updatePipeline('prod_123', [
+  { id: 'step_1', label: 'Preparation', required_metadata: [] },
+  { id: 'step_2', label: 'Shipping', required_metadata: ['tracking'] }
+]);
 \`\`\`
 
 ### Cart
@@ -122,6 +128,19 @@ await swat.orders.update('ord_123', {
   status: 'shipped',
   metafields: [{ key: 'tracking_number', value: 'XYZ789' }]
 });
+
+// Transition Order Item (Fulfillment Pipeline)
+await swat.orders.transitionItem('ord_123', 'item_456', {
+  stepId: 'step_2',
+  metadata: { tracking: '1Z999...' }
+});
+\`\`\`
+
+### Media (Content Library)
+
+\`\`\`typescript
+// List media assets
+const media = await swat.media.list({ search: 'hero-banner' });
 \`\`\`
 
 ### Store Info

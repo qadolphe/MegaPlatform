@@ -16,7 +16,7 @@ Initialize the client with your store's Public Key.
 import { SwatBloc } from '@swatbloc/sdk';
 
 // Initialize with your Public Key
-const swat = new SwatBloc('pk_live_xxxxx');
+const swat = new SwatBloc('pk_live_xxxxx'); // or 'pk_test_xxxxx' for Test Mode
 ```
 
 ---
@@ -30,7 +30,22 @@ Manage standard e-commerce flows.
 // 1. List Products
 const products = await swat.products.list({ limit: 10 });
 
-// 2. Create Cart
+// 2. Define Fulfillment Pipeline (Optional)
+// Configure the steps this product must go through (e.g., manufacturing, shipping)
+await swat.products.updatePipeline(products[0].id, [
+  { 
+    id: 'step_print', 
+    label: 'Print Custom Design',
+    required_metadata: ['printer_id'] 
+  },
+  { 
+    id: 'step_ship', 
+    label: 'Ready for Shipping',
+    required_metadata: [] 
+  }
+]);
+
+// 3. Create Cart
 const cart = await swat.cart.create([
   { productId: products[0].id, quantity: 1 }
 ]);
@@ -110,6 +125,22 @@ await swatAdmin.orders.update('order_123', {
   status: 'shipped',
   fulfillment_status: 'fulfilled'
 });
+
+// 4. Orchestrate Fulfillment (Pipelines)
+// Move an individual item to the next step
+await swatAdmin.orders.transitionItem('order_123', 'item_456', {
+  stepId: 'step_print',
+  metadata: { printer_id: 'printer_01' }
+});
+```
+
+### 🖼️ Content Library (Media)
+Access images and videos uploaded to your store's SwatBloc Dashboard.
+
+```typescript
+// List all media assets
+const media = await swat.media.list({ search: 'summer-campaign' });
+console.log(media[0].url);
 ```
 
 ---
