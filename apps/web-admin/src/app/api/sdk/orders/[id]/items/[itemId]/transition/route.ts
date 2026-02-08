@@ -135,6 +135,12 @@ export async function POST(
                         step_id: body.stepId,
                         step_label: step.label,
                         metadata: providedMetadata,
+                        // Include full history so external scripts can access previous step data
+                        step_history: newHistory,
+                        // Convenience: previous step's metadata (e.g., for return_tracking_id)
+                        previous_step: currentHistory.length > 0
+                            ? currentHistory[currentHistory.length - 1]
+                            : null,
                         timestamp: historyEntry.completed_at
                     }
                 })
