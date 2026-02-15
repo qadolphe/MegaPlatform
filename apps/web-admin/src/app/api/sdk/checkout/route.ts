@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
         if ('error' in validation) {
             return NextResponse.json({ error: validation.error }, { status: validation.status });
         }
-        
+
         const { storeId, supabase, isTestMode } = validation;
         const body = await request.json();
         const { cartId, successUrl, cancelUrl } = body;
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (cartError || !cart || cart.store_id !== storeId) {
-             return NextResponse.json({ error: 'Cart not found' }, { status: 404 });
+            return NextResponse.json({ error: 'Cart not found' }, { status: 404 });
         }
 
         // 3. Hydrate Cart (Security: get real prices from DB)
@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
                     name: item.variant ? `${item.product.name} (${item.variant.title})` : item.product.name,
                     description: item.variant ? item.variant.title : undefined,
                     // Use variant image if available, otherwise fallback to product image
-                    images: item.variant?.image_url 
-                        ? [item.variant.image_url] 
+                    images: item.variant?.image_url
+                        ? [item.variant.image_url]
                         : (item.product.images?.length ? [item.product.images[0]] : []),
                 },
                 unit_amount: item.product.price, // In cents, resolved by hydrateCart
@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
             id: item.product.id,
             qty: item.quantity,
             price: item.product.price,
-            vid: item.variantId // variantId if available
+            vid: item.variantId, // variantId if available
+            meta: item.metadata && Object.keys(item.metadata).length > 0 ? item.metadata : undefined
         }));
 
         const session = await billing.createCheckoutSession({

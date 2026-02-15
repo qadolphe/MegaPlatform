@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Package, MapPin, CreditCard, Truck, CheckCircle } from "lucide-react";
+import { ArrowLeft, Package, MapPin, CreditCard, Truck, CheckCircle, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { PipelineProgressBar } from "@/components/PipelineProgressBar";
 
@@ -39,6 +39,7 @@ type OrderDetail = {
         product_id: string | null;
         current_step_id: string | null;
         step_history: any[];
+        metadata?: Record<string, any>;
         product: {
             fulfillment_pipeline: any[];
         } | null;
@@ -61,6 +62,7 @@ export default function OrderDetail() {
     const orderId = params.orderId as string;
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [expandedMetadata, setExpandedMetadata] = useState<Record<string, boolean>>({});
     const supabase = createClient();
 
     useEffect(() => {
@@ -73,7 +75,7 @@ export default function OrderDetail() {
             .select(`
         *,
         customer:customers(id, email, first_name, last_name, phone),
-        order_items(id, quantity, price_at_purchase, product_name, variant_name, image_url, product_id, current_step_id, step_history, product:products(fulfillment_pipeline))
+        order_items(id, quantity, price_at_purchase, product_name, variant_name, image_url, product_id, current_step_id, step_history, metadata, product:products(fulfillment_pipeline))
       `)
             .eq("id", orderId)
             .single();
@@ -218,6 +220,45 @@ export default function OrderDetail() {
                                                     stepHistory={item.step_history || []}
                                                     compact
                                                 />
+                                            </div>
+                                        )}
+                                        {/* Metadata Viewer */}
+                                        {item.metadata && Object.keys(item.metadata).length > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100">
+                                                <button
+                                                    onClick={() => setExpandedMetadata(prev => ({
+                                                        ...prev,
+                                                        [item.id]: !prev[item.id]
+                                                    }))}
+                                                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                                                >
+                                                    <ChevronDown
+                                                        size={14}
+                                                        className={`transition-transform duration-200 ${expandedMetadata[item.id] ? 'rotate-180' : ''
+                                                            }`}
+                                                    />
+                                                    Metadata ({Object.keys(item.metadata).length})
+                                                </button>
+                                                {expandedMetadata[item.id] && (
+                                                    <div className="mt-2 rounded-lg border border-slate-200 overflow-hidden">
+                                                        <table className="w-full text-sm">
+                                                            <tbody className="divide-y divide-slate-100">
+                                                                {Object.entries(item.metadata).map(([key, value]) => (
+                                                                    <tr key={key}>
+                                                                        <td className="px-3 py-2 text-slate-500 font-medium bg-slate-50 w-1/3 align-top">
+                                                                            {key}
+                                                                        </td>
+                                                                        <td className="px-3 py-2 text-slate-700 font-mono text-xs break-all">
+                                                                            {typeof value === 'object'
+                                                                                ? JSON.stringify(value, null, 2)
+                                                                                : String(value)}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

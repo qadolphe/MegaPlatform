@@ -11,7 +11,7 @@ export async function POST(
         if ('error' in validation) {
             return NextResponse.json({ error: validation.error }, { status: validation.status });
         }
-        
+
         const { supabase, storeId } = validation;
         const { cartId } = await params;
         const body = await request.json();
@@ -31,17 +31,24 @@ export async function POST(
         // If item exists (same productId + variantId), sum quantity
         // Else add
         let currentItems = (cart.items as any[]) || [];
-        
+
         // Ensure strictly array
         if (!Array.isArray(currentItems)) currentItems = [];
 
         newItems.forEach((newItem: any) => {
-            const existingIndex = currentItems.findIndex((ci: any) => 
+            const existingIndex = currentItems.findIndex((ci: any) =>
                 ci.productId === newItem.productId && ci.variantId === newItem.variantId
             );
 
             if (existingIndex >= 0) {
                 currentItems[existingIndex].quantity += newItem.quantity;
+                // Merge metadata if provided (new metadata overwrites existing keys)
+                if (newItem.metadata) {
+                    currentItems[existingIndex].metadata = {
+                        ...(currentItems[existingIndex].metadata || {}),
+                        ...newItem.metadata
+                    };
+                }
             } else {
                 currentItems.push(newItem);
             }
@@ -56,7 +63,7 @@ export async function POST(
             .single();
 
         if (error || !updatedCart) {
-             return NextResponse.json({ error: 'Failed to update cart' }, { status: 500 });
+            return NextResponse.json({ error: 'Failed to update cart' }, { status: 500 });
         }
 
         const hydrated = await hydrateCart(updatedCart, supabase);

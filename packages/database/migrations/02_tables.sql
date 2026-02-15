@@ -137,6 +137,18 @@ alter table public.products add column if not exists image_key text;
 -- Add fulfillment_pipeline to products (Steps Engine)
 alter table public.products add column if not exists fulfillment_pipeline jsonb default '[]';
 
+-- Add product type: physical (default), service (non-shippable), digital
+alter table public.products add column if not exists type text default 'physical';
+-- Note: CHECK constraint added separately since ADD CONSTRAINT IF NOT EXISTS isn't standard
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'products_type_check'
+  ) then
+    alter table public.products
+      add constraint products_type_check check (type in ('physical', 'service', 'digital'));
+  end if;
+end $$;
+
 -- ==========================================
 -- COMMERCE: Customers & Orders
 -- ==========================================
@@ -193,6 +205,9 @@ create table if not exists public.order_items (
 -- Add step tracking to order_items (Steps Engine)
 alter table public.order_items add column if not exists current_step_id text;
 alter table public.order_items add column if not exists step_history jsonb default '[]';
+
+-- Line item metadata (linkage data, custom attributes)
+alter table public.order_items add column if not exists metadata jsonb default '{}';
 
 -- Carts
 create table if not exists public.carts (

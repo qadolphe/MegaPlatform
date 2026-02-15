@@ -73,6 +73,8 @@ export interface Product {
     options: ProductOption[];
     variants?: ProductVariant[];
     metafields: any[];
+    /** Product type: physical (requires shipping), service, or digital */
+    type?: 'physical' | 'service' | 'digital';
     /** Fulfillment pipeline definition for service commerce */
     fulfillment_pipeline?: FulfillmentStep[];
     created_at: string;
@@ -102,6 +104,8 @@ export interface CartItem {
     productId: string;
     quantity: number;
     variantId?: string;
+    /** Arbitrary linkage data attached to this line item */
+    metadata?: Record<string, any>;
 }
 
 export interface Cart {
@@ -110,6 +114,7 @@ export interface Cart {
         product: Product;
         quantity: number;
         variantId?: string;
+        metadata?: Record<string, any>;
     }>;
     subtotal: number;
     currency: string;
@@ -229,5 +234,7 @@ export interface OrderItem {
     current_step_id?: string;
     /** Audit log of completed steps */
     step_history?: StepHistoryEntry[];
+    /** Arbitrary linkage/custom metadata */
+    metadata?: Record<string, any>;
 }
 

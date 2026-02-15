@@ -14,7 +14,7 @@ export async function hydrateCart(cart: any, supabase: SupabaseClient) {
 
     const productIds = cart.items.map((i: any) => i.productId);
     const variantIds = cart.items.map((i: any) => i.variantId).filter(Boolean);
-    
+
     // Fetch products
     const { data: products } = await supabase
         .from('products')
@@ -67,7 +67,8 @@ export async function hydrateCart(cart: any, supabase: SupabaseClient) {
                 image_url: variant.image_url
             } : null,
             quantity: item.quantity,
-            variantId: item.variantId
+            variantId: item.variantId,
+            metadata: item.metadata || {}
         };
     }).filter(Boolean);
 
