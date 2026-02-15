@@ -1,12 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Book, Package, ShoppingCart, CreditCard, Database, Store, Terminal } from "lucide-react";
+import { Book, Package, ShoppingCart, CreditCard, Database, Store, Terminal, Paperclip, ClipboardList } from "lucide-react";
 import sdkPkg from "../../../../../../packages/sdk/package.json";
 
 const NAV_ITEMS = [
   { label: "Getting Started", href: "/docs", icon: Terminal },
   { label: "Products", href: "/docs/products", icon: Package },
+  { label: "Orders & Fulfillment", href: "/docs/orders", icon: ClipboardList },
+  { label: "Content Library", href: "/docs/media", icon: Paperclip },
   { label: "Cart", href: "/docs/cart", icon: ShoppingCart },
   { label: "Checkout", href: "/docs/checkout", icon: CreditCard },
   { label: "Database", href: "/docs/db", icon: Database },

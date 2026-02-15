@@ -83,6 +83,37 @@ const products = await swat.products.list({
 });`}
                 />
             </section>
+
+            {/* Fulfillment Pipelines */}
+            <section className="pt-8 border-t border-slate-100">
+                <div className="flex items-center gap-3 mb-4">
+                     <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded">SDK</span>
+                     <h2 className="text-xl font-bold text-slate-900">Configure Pipelines</h2>
+                </div>
+                <p className="text-slate-600 mb-4">Define custom fulfillment steps (orchestration) for your products.</p>
+                
+                <CodeBlock
+                    title="Update Pipeline"
+                    code={`// Define the steps this product must go through
+await swat.products.updatePipeline('my-custom-product', [
+    { 
+        id: 'step_assembly', 
+        label: 'Assembly', 
+        required_metadata: ['worker_id'] 
+    },
+    { 
+        id: 'step_qa', 
+        label: 'Quality Assurance', 
+        required_metadata: ['qa_score'] 
+    },
+    { 
+        id: 'step_shipping', 
+        label: 'Ready for Shipping', 
+        required_metadata: [] 
+    }
+]);`}
+                />
+            </section>
         </div>
     );
 }

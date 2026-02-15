@@ -44,13 +44,13 @@ export default function DocsPage() {
                         code={`import { SwatBloc } from '@swatbloc/sdk';
 
 // Initialize the client
-// We recommend using an environment variable for the key
+// Use pk_live_... for production or pk_test_... for development
 export const swat = new SwatBloc(process.env.NEXT_PUBLIC_SWATBLOC_KEY);`}
                     />
                     
                     <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
                         <strong>Note:</strong> The SDK is designed to be safe for client-side use. 
-                        It uses a public key (`pk_live_...`) that only allows safe operations like fetching products 
+                        It uses a public key (`pk_live_...` or `pk_test_...`) that only allows safe operations like fetching products 
                         and creating carts. Never expose your secret service role keys in frontend code.
                     </div>
                 </div>
