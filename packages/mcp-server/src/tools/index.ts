@@ -1,6 +1,6 @@
 import { McpTool } from "../common/types.js";
 import { z } from "zod";
-import { supabase } from "@repo/database";
+import { getSupabaseClient } from "../common/supabase.js";
 
 /**
  * Generate Cartesian product from options
@@ -41,6 +41,7 @@ export const tools: McpTool[] = [
             })
         },
         execute: async (args) => {
+            const supabase = getSupabaseClient();
             const { store_id, name, slug, fields } = args;
 
             // Check if exists (Idempotency)
@@ -104,6 +105,7 @@ export const tools: McpTool[] = [
             })
         },
         execute: async (args) => {
+            const supabase = getSupabaseClient();
             const { store_id, limit = 50, published_only = false } = args;
 
             let query = supabase
@@ -153,6 +155,7 @@ export const tools: McpTool[] = [
             })
         },
         execute: async (args) => {
+            const supabase = getSupabaseClient();
             const { store_id, action, product_id, data } = args;
 
             if (action === 'create') {
@@ -263,6 +266,7 @@ export const tools: McpTool[] = [
             })
         },
         execute: async (args) => {
+            const supabase = getSupabaseClient();
             const { product_id, action, variant_id, data, replace_existing = true } = args;
 
             // Verify product exists
