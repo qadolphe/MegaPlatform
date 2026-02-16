@@ -1,4 +1,4 @@
-name: Publish SDK to NPM
+name: Publish Packages to NPM
 
 on:
   push:
@@ -6,10 +6,32 @@ on:
       - main
     paths:
       - 'packages/sdk/**'
+      - 'packages/mcp-server/**'
   workflow_dispatch:
 
 jobs:
-  publish:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      sdk: ${{ steps.filter.outputs.sdk }}
+      mcp: ${{ steps.filter.outputs.mcp }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Detect changed package paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            sdk:
+              - 'packages/sdk/**'
+            mcp:
+              - 'packages/mcp-server/**'
+
+  publish-sdk:
+    needs: detect-changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.sdk == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,11 +52,44 @@ jobs:
         run: npm ci
 
       - name: Build SDK
-        # We build explicitly here using Turbo
         run: npx turbo run build --filter=@swatbloc/sdk
 
       - name: Publish to NPM (Trusted)
-        # --ignore-scripts prevents "prepublishOnly" from running again and failing
         run: |
           cd packages/sdk
+          npm publish --access public --provenance --ignore-scripts
+
+  publish-mcp:
+    needs: detect-changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.mcp == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update NPM
+        run: npm install -g npm@latest
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build MCP Server
+        run: npx turbo run build --filter=@swatbloc/mcp-server
+
+      - name: Bump MCP patch version
+        run: |
+          cd packages/mcp-server
+          npm version patch --no-git-tag-version
+
+      - name: Publish MCP to NPM (Trusted)
+        run: |
+          cd packages/mcp-server
           npm publish --access public --provenance --ignore-scripts
