@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Search, Package, Eye, ChevronDown } from "lucide-react";
+import { Search, Package, Eye, ChevronDown, Trash, RefreshCcw } from "lucide-react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Order = {
     id: string;
@@ -14,6 +15,7 @@ type Order = {
     status: string;
     payment_status: string;
     fulfillment_status: string;
+    deleted_at: string | null;
     customer: {
         email: string;
         first_name: string | null;
@@ -43,14 +45,16 @@ export default function OrdersList() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [viewMode, setViewMode] = useState<"active" | "deleted">("active");
     const supabase = createClient();
 
     useEffect(() => {
         fetchOrders();
-    }, [storeId]);
+    }, [storeId, viewMode]);
 
     const fetchOrders = async () => {
-        const { data, error } = await supabase
+        setLoading(true);
+        let query = supabase
             .from("orders")
             .select(`
         *,
@@ -59,6 +63,14 @@ export default function OrdersList() {
       `)
             .eq("store_id", storeId)
             .order("created_at", { ascending: false });
+
+        if (viewMode === "active") {
+            query = query.is("deleted_at", null);
+        } else {
+            query = query.not("deleted_at", "is", null);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error("Error fetching orders:", error);
@@ -72,6 +84,19 @@ export default function OrdersList() {
         const { error } = await supabase
             .from("orders")
             .update({ [field]: value })
+            .eq("id", orderId);
+
+        if (error) {
+            alert("Error updating order: " + error.message);
+        } else {
+            fetchOrders();
+        }
+    };
+
+    const toggleDeleteOrder = async (orderId: string, shouldDelete: boolean) => {
+        const { error } = await supabase
+            .from("orders")
+            .update({ deleted_at: shouldDelete ? new Date().toISOString() : null })
             .eq("id", orderId);
 
         if (error) {
@@ -122,6 +147,28 @@ export default function OrdersList() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                {/* View Tabs */}
+                <div className="flex border-b border-slate-200">
+                    <button
+                        onClick={() => setViewMode("active")}
+                        className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${viewMode === "active"
+                                ? "border-blue-500 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                            }`}
+                    >
+                        Active Orders
+                    </button>
+                    <button
+                        onClick={() => setViewMode("deleted")}
+                        className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${viewMode === "deleted"
+                                ? "border-red-500 text-red-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                            }`}
+                    >
+                        Deleted
+                    </button>
+                </div>
+
                 {/* Toolbar */}
                 <div className="p-4 border-b border-slate-200 flex gap-4 items-center">
                     <div className="relative flex-1 max-w-md">
@@ -171,9 +218,18 @@ export default function OrdersList() {
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-slate-200 relative">
+                        <AnimatePresence initial={false} mode="popLayout">
                         {filteredOrders.map((order) => (
-                            <tr key={order.id} className="hover:bg-slate-50 transition">
+                            <motion.tr
+                                key={order.id}
+                                className="hover:bg-slate-50 transition"
+                                layout
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                                transition={{ duration: 0.2 }}
+                            >
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
                                         <div className="flex -space-x-2">
@@ -243,19 +299,46 @@ export default function OrdersList() {
                                     {formatCurrency(order.total_amount, order.currency)}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <Link
-                                        href={`/store/${storeId}/orders/${order.id}`}
-                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                    >
-                                        <Eye size={14} /> View
-                                    </Link>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <Link
+                                            href={`/store/${storeId}/orders/${order.id}`}
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                        >
+                                            <Eye size={14} /> View
+                                        </Link>
+                                        <button
+                                            onClick={() => toggleDeleteOrder(order.id, viewMode === "active")}
+                                            className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg transition ${viewMode === "active"
+                                                    ? "text-red-600 hover:bg-red-50"
+                                                    : "text-green-600 hover:bg-green-50"
+                                                }`}
+                                            title={viewMode === "active" ? "Delete Order" : "Restore Order"}
+                                        >
+                                            {viewMode === "active" ? (
+                                                <>
+                                                    <Trash size={14} />
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <RefreshCcw size={14} />
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </td>
-                            </tr>
+                            </motion.tr>
                         ))}
+                        </AnimatePresence>
                         {filteredOrders.length === 0 && (
                             <tr>
                                 <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                                    {orders.length === 0 ? "No orders yet" : "No orders match your search"}
+                                    {loading ? (
+                                        "Loading..."
+                                    ) : viewMode === "active" ? (
+                                        "No active orders found"
+                                    ) : (
+                                        "No deleted orders found"
+                                    )}
                                 </td>
                             </tr>
                         )}

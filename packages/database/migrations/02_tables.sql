@@ -185,6 +185,7 @@ create table if not exists public.orders (
   shipping_address jsonb,
   billing_address jsonb,
   metafields jsonb default '[]'::jsonb,
+  deleted_at timestamp with time zone,
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );

@@ -102,6 +102,30 @@ export default function OrderDetail() {
         }
     };
 
+    const updateItemStep = async (itemId: string, stepId: string | null) => {
+        // Find component step to update history
+        const item = order?.order_items.find((i) => i.id === itemId);
+        if (!item) return;
+
+        const history = item.step_history || [];
+        // Add new step to history if not already there with same step_id (or always add?)
+        // Let's just update current_step_id for now as "editing the stage".
+        
+        const { error } = await supabase
+            .from("order_items")
+            .update({ 
+                current_step_id: stepId,
+                // simplified history update - in real app might want to append
+            })
+            .eq("id", itemId);
+
+        if (error) {
+            alert("Error updating item step: " + error.message);
+        } else {
+            fetchOrder();
+        }
+    };
+
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString("en-US", {
             weekday: "long",
@@ -218,7 +242,7 @@ export default function OrderDetail() {
                                                     pipeline={pipeline}
                                                     currentStepId={item.current_step_id}
                                                     stepHistory={item.step_history || []}
-                                                    compact
+                                                    onStepChange={(stepId) => updateItemStep(item.id, stepId)}
                                                 />
                                             </div>
                                         )}
@@ -297,32 +321,6 @@ export default function OrderDetail() {
                             </div>
                         </div>
                     </div>
-
-                    {/* Timeline / Actions */}
-                    {order.fulfillment_status === "unfulfilled" && (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                        <Truck size={20} className="text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-slate-900">Ready to fulfill?</p>
-                                        <p className="text-sm text-slate-500">
-                                            Mark this order as fulfilled when shipped
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => updateStatus("fulfillment_status", "fulfilled")}
-                                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
-                                >
-                                    <CheckCircle size={16} />
-                                    Mark Fulfilled
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Sidebar */}
