@@ -15,9 +15,9 @@ export async function GET(request: Request) {
   // Query using the short ID and the customer's email (Security Check)
   const { data: order, error } = await supabase
     .from('orders')
-    .select('*, order_items(*)')
+    .select('*, order_items(*), customers!inner(email)')
     .eq('display_id', displayId)
-    .eq('customer_email', email) // Crucial: prevents people from guessing short IDs
+    .eq('customers.email', email) // Crucial: prevents people from guessing short IDs
     .single();
 
   if (error || !order) {
