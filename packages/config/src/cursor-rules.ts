@@ -112,11 +112,16 @@ const logs = await swat.db.collection('logs').list({
 });
 \`\`\`
 
-### Orders (Admin)
+### Orders (Admin & Guest)
 
-Requires your **Secret API Key** (\`sk_live_...\`).
+Guest lookup requires no authentication. Admin operations require your **Secret API Key** (\`sk_live_...\`).
 
 \`\`\`typescript
+// --- GUEST LOOKUP (No Auth Required) ---
+// Lookup an order using the Two ID Pattern (display_id + email)
+const trackOrder = await swat.orders.lookup('ORD-X7B92A', 'john@example.com');
+
+// --- ADMIN OPERATIONS (Requires Secret Key) ---
 // List orders
 const orders = await swat.orders.list({ status: 'pending' });
 

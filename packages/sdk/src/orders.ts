@@ -49,6 +49,26 @@ export class OrdersAPI {
     }
 
     /**
+     * Lookup an order by display ID and email (Guest Lookup).
+     * Does not require authentication.
+     */
+    async lookup(displayId: string, email: string): Promise<Order> {
+        const url = `${this.baseUrl}/api/sdk/storefront/orders/lookup?display_id=${encodeURIComponent(displayId)}&email=${encodeURIComponent(email)}`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || `Orders API Error: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    /**
      * Update an order.
      * Requires Secret Key (sk_live_...).
      */

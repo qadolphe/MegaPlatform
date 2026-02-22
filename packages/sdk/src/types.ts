@@ -183,6 +183,7 @@ export interface ContentListOptions {
 
 export interface Order {
     id: string;
+    display_id: string;
     store_id: string;
     customer_id?: string;
     stripe_checkout_session_id?: string;

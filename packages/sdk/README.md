@@ -107,10 +107,18 @@ const logs = await swat.db.collection('liability-waivers').list({
 });
 ```
 
-### 📦 Orders (Admin)
-Manage and track orders. **Requires Secret Key** (`sk_live_...`).
+### 📦 Orders (Admin & Guest)
+Manage and track orders. Admin operations require a **Secret Key** (`sk_live_...`). Guest lookup requires no authentication.
 
 ```typescript
+// --- GUEST LOOKUP (No Auth Required) ---
+// Initialize with Public Key
+const swat = new SwatBloc('pk_live_xxxxx');
+
+// Lookup an order using the Two ID Pattern (display_id + email)
+const trackOrder = await swat.orders.lookup('ORD-X7B92A', 'john@example.com');
+
+// --- ADMIN OPERATIONS (Requires Secret Key) ---
 // Initialize with Secret Key
 const swatAdmin = new SwatBloc('sk_live_xxxxx');
 

@@ -291,13 +291,15 @@ export const sdkTools: McpTool[] = [
     },
     {
         name: "sdk_orders",
-        description: "Orders SDK tool: list, get, update, transition_item.",
+        description: "Orders SDK tool: list, get, update, transition_item, lookup.",
         schema: {
             input: z.object({
                 api_key: z.string().optional().describe("Secret API key recommended for admin operations."),
                 base_url: z.string().url().optional(),
-                action: z.enum(["list", "get", "update", "transition_item"]),
+                action: z.enum(["list", "get", "update", "transition_item", "lookup"]),
                 id: z.string().optional(),
+                display_id: z.string().optional(),
+                email: z.string().optional(),
                 options: z.object({
                     limit: z.number().optional(),
                     offset: z.number().optional(),
@@ -323,6 +325,10 @@ export const sdkTools: McpTool[] = [
                 case "get":
                     if (!args.id) throw new Error("id is required for get");
                     return sdk.orders.get(args.id);
+                case "lookup":
+                    if (!args.display_id) throw new Error("display_id is required for lookup");
+                    if (!args.email) throw new Error("email is required for lookup");
+                    return sdk.orders.lookup(args.display_id, args.email);
                 case "update":
                     if (!args.id) throw new Error("id is required for update");
                     if (!args.updates) throw new Error("updates is required for update");
