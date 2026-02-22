@@ -1,5 +1,10 @@
 import { Order, OrderItem } from './types';
 
+const DISPLAY_ID_REGEX = /^ORD-[A-Z0-9]{8}$/;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PREFIX_REGEX = /^[0-9a-f-]{6,36}$/i;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export class OrdersAPI {
     constructor(
         private apiKey: string,
@@ -53,7 +58,26 @@ export class OrdersAPI {
      * Does not require authentication.
      */
     async lookup(displayId: string, email: string): Promise<Order> {
-        const url = `${this.baseUrl}/api/sdk/storefront/orders/lookup?display_id=${encodeURIComponent(displayId)}&email=${encodeURIComponent(email)}`;
+        const normalizedDisplayId = displayId.trim().replace(/^#/, '').toUpperCase();
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (normalizedDisplayId.length < 6 || normalizedDisplayId.length > 36) {
+            throw new Error('Invalid order identifier format');
+        }
+
+        if (
+            !DISPLAY_ID_REGEX.test(normalizedDisplayId) &&
+            !UUID_REGEX.test(normalizedDisplayId) &&
+            !UUID_PREFIX_REGEX.test(normalizedDisplayId)
+        ) {
+            throw new Error('Invalid order identifier format');
+        }
+
+        if (normalizedEmail.length < 3 || normalizedEmail.length > 254 || !EMAIL_REGEX.test(normalizedEmail)) {
+            throw new Error('Invalid email format');
+        }
+
+        const url = `${this.baseUrl}/api/sdk/storefront/orders/lookup?display_id=${encodeURIComponent(normalizedDisplayId)}&email=${encodeURIComponent(normalizedEmail)}`;
         const response = await fetch(url, {
             method: 'GET',
             headers: {
