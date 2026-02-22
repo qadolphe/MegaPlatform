@@ -4,9 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
-  const bodyBuffer = await request.arrayBuffer();
-  const body = Buffer.from(bodyBuffer);
-  const bodyString = body.toString('utf8');
+  const body = await request.text();
   const headersList = await headers();
   const signature = headersList.get('stripe-signature');
 
