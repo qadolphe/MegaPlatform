@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { billing } from '@repo/services';
 import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
+import Stripe from 'stripe';
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -14,32 +14,24 @@ export async function POST(request: Request) {
 
   let event;
 
-  try {
-    // Try Live Secret first
-    if (process.env.STRIPE_WEBHOOK_SECRET) {
-      try {
-        event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
-      } catch (err: any) {
-        console.warn('Live secret verification failed, trying test secret if available.');
-        // If Live fails and we have a Test Secret, try that
-        if (process.env.STRIPE_WEBHOOK_SECRET_TEST) {
-           try {
-             event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET_TEST);
-           } catch(e: any) {
-             throw new Error(`Test secret verification also failed: ${e.message}`);
-           }
-        } else {
-          throw err;
-        }
-      }
-    } else if (process.env.STRIPE_WEBHOOK_SECRET_TEST) {
-       // Only Test Secret configured
-       event = billing.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET_TEST);
-    } else {
-      throw new Error('Missing STRIPE_WEBHOOK_SECRET');
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2023-10-16' });
+
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_WEBHOOK_SECRET_TEST,
+  ].filter(Boolean) as string[];
+
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, secret);
+      break;
+    } catch (err: any) {
+      // Try next secret
     }
-  } catch (err: any) {    
-    return NextResponse.json({ error: `Webhook signature verification failed: ${err.message}` }, { status: 400 });
+  }
+
+  if (!event) {
+    return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
   }
 
   // Use Service Role for admin access
