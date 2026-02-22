@@ -9,6 +9,7 @@ import { PipelineProgressBar } from "@/components/PipelineProgressBar";
 
 type OrderDetail = {
     id: string;
+    display_id: string;
     created_at: string;
     updated_at: string;
     total_amount: number;
@@ -172,7 +173,7 @@ export default function OrderDetail() {
                     </Link>
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 font-mono">
-                            Order #{order.id.slice(0, 8).toUpperCase()}
+                            Order #{order.display_id || order.id.slice(0, 8).toUpperCase()}
                         </h1>
                         <p className="text-slate-500 text-sm">{formatDate(order.created_at)}</p>
                     </div>

@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 type Order = {
     id: string;
+    display_id: string;
     created_at: string;
     total_amount: number;
     currency: string;
@@ -109,6 +110,7 @@ export default function OrdersList() {
     const filteredOrders = orders.filter((order) => {
         const matchesSearch =
             order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (order.display_id && order.display_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
             order.customer?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             order.customer?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             order.customer?.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -254,7 +256,7 @@ export default function OrdersList() {
                                         </div>
                                         <div>
                                             <p className="font-medium text-slate-900 font-mono text-sm">
-                                                #{order.id.slice(0, 8).toUpperCase()}
+                                                #{order.display_id || order.id.slice(0, 8).toUpperCase()}
                                             </p>
                                             <p className="text-xs text-slate-500">
                                                 {order.order_items.reduce((sum, i) => sum + i.quantity, 0)} items
