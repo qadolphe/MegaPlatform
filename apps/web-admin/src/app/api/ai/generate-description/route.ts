@@ -1,8 +1,12 @@
 
 import { NextResponse } from "next/server";
 import { chat } from "@repo/ai";
+import { getAiDisabledResponse } from "../shared";
 
 export async function POST(req: Request) {
+    const disabledResponse = getAiDisabledResponse();
+    if (disabledResponse) return disabledResponse;
+
     try {
         const { name, price, tags, existingDescription } = await req.json();
 

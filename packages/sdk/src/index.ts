@@ -6,6 +6,7 @@ import { StoreAPI } from './store';
 import { MediaAPI } from './media';
 import { DBAPI } from './db';
 import { OrdersAPI } from './orders';
+import { RequestsAPI } from './requests';
 import { SwatBlocConfig } from './types';
 
 export * from './types';
@@ -45,6 +46,7 @@ export class SwatBloc {
     public readonly media: MediaAPI;
     public readonly db: DBAPI;
     public readonly orders: OrdersAPI;
+    public readonly requests: RequestsAPI;
 
     private apiKey: string;
     private baseUrl: string;
@@ -67,6 +69,7 @@ export class SwatBloc {
         this.media = new MediaAPI(this.apiKey, this.baseUrl);
         this.db = new DBAPI(this.apiKey, this.baseUrl);
         this.orders = new OrdersAPI(this.apiKey, this.baseUrl);
+        this.requests = new RequestsAPI(this.apiKey, this.baseUrl);
     }
 }
 

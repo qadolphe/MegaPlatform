@@ -193,8 +193,9 @@ export interface Order {
     total_amount: number;
     currency: string;
     status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-    payment_status: 'unpaid' | 'paid' | 'refunded';
+    payment_status: 'unpaid' | 'paid' | 'authorized' | 'captured' | 'refunded' | 'failed';
     fulfillment_status: 'unfulfilled' | 'fulfilled' | 'partial';
+    stripe_payment_intent_id?: string;
     shipping_address?: Record<string, any>;
     billing_address?: Record<string, any>;
     order_items?: OrderItem[];
@@ -237,5 +238,14 @@ export interface OrderItem {
     step_history?: StepHistoryEntry[];
     /** Arbitrary linkage/custom metadata */
     metadata?: Record<string, any>;
+}
+
+export interface CustomerRequest {
+    id: string;
+    store_id: string;
+    type: string;
+    payload: Record<string, any>;
+    status: string;
+    created_at: string;
 }
 

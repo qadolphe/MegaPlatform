@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getAiDisabledResponse } from "../shared";
 
 // Supported models for media generation
 const MEDIA_MODELS = {
@@ -11,6 +12,9 @@ const MEDIA_MODELS = {
 };
 
 export async function POST(req: Request) {
+    const disabledResponse = getAiDisabledResponse();
+    if (disabledResponse) return disabledResponse;
+
     try {
         const body = await req.json();
         const { prompt, model, storeId } = body;
@@ -202,6 +206,9 @@ export async function POST(req: Request) {
 
 // Poll for video generation status
 export async function GET(req: Request) {
+    const disabledResponse = getAiDisabledResponse();
+    if (disabledResponse) return disabledResponse;
+
     const { searchParams } = new URL(req.url);
     const jobId = searchParams.get('jobId');
 

@@ -26,7 +26,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Database service not configured' }, { status: 500 });
         }
 
-        const { items, returnUrl } = await request.json() as { items: CartItem[]; returnUrl?: string };
+        const { items, returnUrl, captureMethod } = await request.json() as { items: CartItem[]; returnUrl?: string; captureMethod?: 'manual' };
 
         if (!items || items.length === 0) {
             return NextResponse.json({ error: 'No items in cart' }, { status: 400 });
@@ -137,10 +137,11 @@ export async function POST(request: Request) {
             metadata: {
                 items: JSON.stringify(items.map(i => ({ id: i.id, qty: i.quantity, price: i.price }))),
             },
+            captureMethod: captureMethod,
             isTestMode
         });
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             url: session.url,
             debug: process.env.NODE_ENV === 'development' ? {
                 mode: isTestMode ? 'test' : 'live',

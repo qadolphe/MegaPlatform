@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
 import { chat, generateEmbedding, AIModelConfig } from "@repo/ai";
 import { createClient } from "@/lib/supabase/server";
+import { getAiDisabledResponse } from "../shared";
 
 export async function POST(req: Request) {
+  const disabledResponse = getAiDisabledResponse();
+  if (disabledResponse) return disabledResponse;
+
   try {
     const body = await req.json();
     const { prompt, context, modelConfig } = body;

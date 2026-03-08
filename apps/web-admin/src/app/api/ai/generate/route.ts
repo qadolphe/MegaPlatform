@@ -1,11 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { getAiDisabledResponse } from "../shared";
 
 // Initialize Gemini
 // Note: In a real app, you might want to handle this initialization more robustly
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: Request) {
+  const disabledResponse = getAiDisabledResponse();
+  if (disabledResponse) return disabledResponse;
+
   if (!process.env.GEMINI_API_KEY) {
     console.error("GEMINI_API_KEY is missing");
     return NextResponse.json({ error: "GEMINI_API_KEY is not set" }, { status: 500 });

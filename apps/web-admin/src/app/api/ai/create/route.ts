@@ -1,10 +1,14 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
+import { getAiDisabledResponse } from "../shared";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: Request) {
+  const disabledResponse = getAiDisabledResponse();
+  if (disabledResponse) return disabledResponse;
+
   try {
     console.log("AI Create Request received");
     if (!process.env.GEMINI_API_KEY) {

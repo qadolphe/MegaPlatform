@@ -3,6 +3,7 @@ import { COMPONENT_DEFINITIONS } from "@/config/component-registry";
 import { chat, AIModelConfig } from "@repo/ai";
 import { createClient } from "@/lib/supabase/server";
 import { ProductGridPropsSchema, HeaderPropsSchema, FooterPropsSchema, HeroPropsSchema, TestimonialsPropsSchema, TextContentPropsSchema, FAQPropsSchema, FeaturesPropsSchema, NewsletterPropsSchema, BannerPropsSchema, InfoGridPropsSchema, CountdownPropsSchema, LogoCloudPropsSchema, ImageBoxPropsSchema, VideoGridPropsSchema, StatsSectionPropsSchema } from "@/lib/schemas/component-props";
+import { getAiDisabledResponse } from "../shared";
 
 // Schema map for validation
 const COMPONENT_SCHEMA_MAP: Record<string, any> = {
@@ -96,6 +97,9 @@ function validateAndFixLayout(blocks: any[]): { blocks: any[]; errors: string[] 
 }
 
 export async function POST(req: Request) {
+    const disabledResponse = getAiDisabledResponse();
+    if (disabledResponse) return disabledResponse;
+
     try {
         const body = await req.json();
         const { prompt } = body;

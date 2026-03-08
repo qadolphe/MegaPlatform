@@ -2,8 +2,12 @@
 import { NextResponse } from "next/server";
 import { generateEmbedding } from "@repo/ai";
 import { createClient } from "@/lib/supabase/server";
+import { getAiDisabledResponse } from "../../ai/shared";
 
 export async function POST(req: Request) {
+    const disabledResponse = getAiDisabledResponse();
+    if (disabledResponse) return disabledResponse;
+
     try {
         const { query, storeId } = await req.json();
 

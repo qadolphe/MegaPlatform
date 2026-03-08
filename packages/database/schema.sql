@@ -20,5 +20,6 @@
 -- 6. migrations/06_service_products.sql
 -- 7. migrations/07_order_management.sql
 -- 8. migrations/08_order_display_id.sql
+-- 9. migrations/09_payment_capture.sql
 
 -- Note: Each migration file can be run independently for targeted updates.

@@ -119,4 +119,15 @@ export class OrdersAPI {
     ): Promise<OrderItem> {
         return this.request('POST', `/${orderId}/items/${itemId}/transition`, data);
     }
+
+    /**
+     * Capture a previously authorized payment.
+     * Requires Secret Key (sk_live_...).
+     *
+     * @param orderId - The order ID
+     * @param finalAmountInCents - The amount to capture in cents
+     */
+    async capturePayment(orderId: string, finalAmountInCents: number) {
+        return this.request('POST', `/${orderId}/capture`, { finalAmountInCents });
+    }
 }

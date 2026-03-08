@@ -56,6 +56,7 @@ export const createCheckoutSession = async ({
   applicationFeeAmount, // In cents
   customerEmail,
   metadata,
+  captureMethod,
   isTestMode = false
 }: {
   storeId: string;
@@ -67,11 +68,12 @@ export const createCheckoutSession = async ({
   applicationFeeAmount: number;
   customerEmail?: string;
   metadata?: Record<string, string>;
+  captureMethod?: 'automatic' | 'manual';
   isTestMode?: boolean;
 }) => {
   try {
     const stripe = getStripeClient(isTestMode);
-    
+
     // Note: When calling connected accounts in Test Mode, 
     // the platform must also use its Test Mode secret key.
     const session = await stripe.checkout.sessions.create({
@@ -79,6 +81,7 @@ export const createCheckoutSession = async ({
       line_items: lineItems,
       payment_intent_data: {
         application_fee_amount: applicationFeeAmount,
+        capture_method: captureMethod || 'automatic',
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -93,10 +96,10 @@ export const createCheckoutSession = async ({
     return session;
   } catch (error) {
     if (error instanceof Error && (error as any).code === 'account_invalid') {
-        const errorMsg = (error as any).message;
-        // Check if we are trying to use a test key on a live account or vice versa
-        // This often happens if the 'isTestMode' flag is desynced from the actual account ID
-        console.error(`STRIPE MODE MISMATCH: isTestMode=${isTestMode}, account=${stripeAccountId}. Error: ${errorMsg}`);
+      const errorMsg = (error as any).message;
+      // Check if we are trying to use a test key on a live account or vice versa
+      // This often happens if the 'isTestMode' flag is desynced from the actual account ID
+      console.error(`STRIPE MODE MISMATCH: isTestMode=${isTestMode}, account=${stripeAccountId}. Error: ${errorMsg}`);
     }
     console.error('Error creating checkout session:', error);
     throw error;
@@ -121,8 +124,8 @@ export const constructEvent = (payload: string | Buffer, signature: string, secr
   try {
     return stripeLive.webhooks.constructEvent(payload, signature, secret);
   } catch (error) {
-     console.error('Error constructing webhook event:', error);
-     throw error;
+    console.error('Error constructing webhook event:', error);
+    throw error;
   }
 };
 
@@ -135,6 +138,26 @@ export const retrieveAccount = async (accountId: string, isTestMode = false) => 
     throw error;
   }
 }
+
+export const capturePaymentIntent = async (
+  paymentIntentId: string,
+  amountToCapture: number,
+  stripeAccountId: string,
+  isTestMode = false
+) => {
+  const stripe = getStripeClient(isTestMode);
+  try {
+    const intent = await stripe.paymentIntents.capture(paymentIntentId, {
+      amount_to_capture: amountToCapture,
+    }, {
+      stripeAccount: stripeAccountId,
+    });
+    return intent;
+  } catch (error) {
+    console.error('Error capturing payment intent:', error);
+    throw error;
+  }
+};
 
 export const createLoginLink = async (accountId: string, isTestMode = false) => {
   const stripe = getStripeClient(isTestMode);
