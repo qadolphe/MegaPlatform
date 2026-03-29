@@ -293,11 +293,15 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         );
     }
 
+    const enableSaas = process.env.NEXT_PUBLIC_ENABLE_SAAS === 'true';
+
     const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
         { id: 'general', label: 'General', icon: <Shield size={18} /> },
-        { id: 'domains', label: 'Domains', icon: <Globe size={18} /> },
+        ...(enableSaas ? [
+            { id: 'domains', label: 'Domains', icon: <Globe size={18} /> } as const,
+        ] : []),
         { id: 'theme', label: 'Theme', icon: <Palette size={18} /> },
-        ...(isOwner ? [
+        ...(enableSaas && isOwner ? [
             { id: 'billing', label: 'Billing', icon: <CreditCard size={18} /> } as const,
             { id: 'team', label: 'Team', icon: <Users size={18} /> } as const,
         ] : []),

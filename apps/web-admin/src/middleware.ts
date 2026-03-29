@@ -58,6 +58,11 @@ export async function middleware(request: NextRequest) {
 
   // --- ADMIN ROUTES ---
   if (isAdmin) {
+    // Stealth Pivot: Bypass marketing landing page, redirect root to /login
+    if (url.pathname === '/') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
     // 1. Check for Preview Mode Cookie
     const previewCookie = request.cookies.get("x-preview-store");
     const previewStoreParam = request.nextUrl.searchParams.get("preview_store");
@@ -109,8 +114,7 @@ export const config = {
      * - login (auth page)
      * - auth (auth callbacks)
      * - docs (documentation)
-     * - / (Root Landing Page - NEW!)
      */
-    '/((?!_next/static|_next/image|favicon.ico|login|auth|api/stripe/webhook|docs|$).*)', // Added |$ to exclude root
+    '/((?!_next/static|_next/image|favicon.ico|login|auth|api/stripe/webhook|docs).*)',
   ],
 }

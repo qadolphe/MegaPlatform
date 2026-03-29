@@ -8,10 +8,14 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
+const ENABLE_SAAS = process.env.NEXT_PUBLIC_ENABLE_SAAS === 'true';
+
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Create Store", href: "/new-store", icon: PlusCircle },
-  { name: "SDK Docs", href: "/docs", icon: Book },
+  ...(ENABLE_SAAS ? [
+    { name: "Create Store", href: "/new-store", icon: PlusCircle },
+    { name: "SDK Docs", href: "/docs", icon: Book },
+  ] : []),
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
