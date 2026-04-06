@@ -26,6 +26,8 @@ alter table public.content_packets enable row level security;
 alter table public.content_models enable row level security;
 alter table public.content_items enable row level security;
 alter table public.webhook_subscriptions enable row level security;
+alter table public.media_assets enable row level security;
+alter table public.customer_requests enable row level security;
 
 -- ==========================================
 -- STORES POLICIES
@@ -246,3 +248,19 @@ drop policy if exists "Public insert" on public.carts;
 create policy "Public insert" on public.carts for insert with check (true);
 drop policy if exists "Public update" on public.carts;
 create policy "Public update" on public.carts for update using (true);
+
+-- ==========================================
+-- MEDIA ASSETS POLICIES
+-- ==========================================
+
+drop policy if exists "Public viewable" on public.media_assets;
+create policy "Public viewable" on public.media_assets for select using (true);
+drop policy if exists "Admins manage media" on public.media_assets;
+create policy "Admins manage media" on public.media_assets for all to authenticated using (has_store_access(store_id, 'editor'));
+
+-- ==========================================
+-- CUSTOMER REQUESTS POLICIES
+-- ==========================================
+
+drop policy if exists "Admins manage requests" on public.customer_requests;
+create policy "Admins manage requests" on public.customer_requests for all to authenticated using (has_store_access(store_id, 'editor'));

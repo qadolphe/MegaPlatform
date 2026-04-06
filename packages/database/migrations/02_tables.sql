@@ -27,9 +27,12 @@ create table if not exists public.stores (
   developer_mode boolean default false,
   stripe_account_id_test text,
   stripe_details_submitted_test boolean default false,
+  is_test_mode boolean default false,
   plan text default 'free',
   subscription_status text default 'active'
 );
+
+alter table public.stores add column if not exists is_test_mode boolean default false;
 
 -- Keep existing DBs aligned (idempotent)
 alter table public.stores alter column is_visible set default true;
@@ -97,6 +100,22 @@ create table if not exists public.products (
   updated_at timestamp with time zone default timezone('utc'::text, now()),
   unique(store_id, slug)
 );
+
+-- Order display_id generator
+CREATE OR REPLACE FUNCTION generate_order_display_id()
+RETURNS TEXT AS $$
+DECLARE
+  chars TEXT := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  result TEXT := '';
+  i INTEGER;
+BEGIN
+  FOR i IN 1..8 LOOP
+    result := result || substr(chars, floor(random() * length(chars) + 1)::integer, 1);
+  END LOOP;
+  RETURN 'ORD-' || result;
+END;
+$$ LANGUAGE plpgsql VOLATILE
+SET search_path = public;
 
 -- Product Variants
 create table if not exists public.product_variants (
@@ -186,9 +205,21 @@ create table if not exists public.orders (
   billing_address jsonb,
   metafields jsonb default '[]'::jsonb,
   deleted_at timestamp with time zone,
+  display_id text unique default generate_order_display_id(),
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+-- Payment status constraint
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'orders_payment_status_check'
+  ) then
+    alter table public.orders
+      add constraint orders_payment_status_check
+      check (payment_status in ('unpaid', 'paid', 'authorized', 'captured', 'refunded', 'failed'));
+  end if;
+end $$;
 
 -- Order Items
 create table if not exists public.order_items (
@@ -230,9 +261,10 @@ create table if not exists public.api_keys (
   id uuid default gen_random_uuid() primary key,
   store_id uuid references public.stores(id) on delete cascade not null,
   public_key text unique not null,
-  secret_key text,
-  name text,
+  secret_key text unique,
+  name text default 'Default',
   is_active boolean default true,
+  is_test boolean default false,
   last_used_at timestamp with time zone,
   created_at timestamp with time zone default now()
 );
@@ -280,7 +312,7 @@ create table if not exists public.content_items (
   model_id uuid references public.content_models(id) on delete cascade not null,
   store_id uuid references public.stores(id) on delete cascade not null,
   data jsonb not null default '{}'::jsonb,
-  "references" text[] default '{}',
+  "references" uuid[] default '{}',
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
@@ -334,9 +366,12 @@ create table if not exists public.planner_tasks (
   assignee_id uuid references auth.users,
   due_date timestamp with time zone,
   tag_ids uuid[] default '{}',
+  predecessor_id uuid references public.planner_tasks(id),
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+alter table public.planner_tasks add column if not exists predecessor_id uuid references public.planner_tasks(id);
 
 -- Task Tags
 create table if not exists public.store_task_tags (
@@ -345,4 +380,18 @@ create table if not exists public.store_task_tags (
   name text not null,
   color text not null,
   created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- ==========================================
+-- REQUESTS
+-- ==========================================
+
+-- Customer Requests (domain requests, feature requests, etc.)
+create table if not exists public.customer_requests (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid references public.stores(id) on delete cascade not null,
+  type text not null,
+  payload jsonb not null,
+  status text default 'pending',
+  created_at timestamp with time zone default now()
 );
